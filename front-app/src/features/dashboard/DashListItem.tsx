@@ -1,13 +1,33 @@
 
-const DashListItem = () => {
-  return ( <>
-    <div>DashListItem</div>
-    <div role="button"
-    className="flex items-center w-full p-3 leading-tight transition-all rounded-lg outline-none text-start hover:bg-blue-gray-50 hover:bg-opacity-80 hover:text-blue-gray-900 focus:bg-blue-gray-50 focus:bg-opacity-80 focus:text-blue-gray-900 active:bg-blue-gray-50 active:bg-opacity-80 active:text-blue-gray-900">
-    Settings
-  </div>
-    </>
-  )
-}
 
-export default DashListItem
+const DashListItem = ({ project }) => {
+  return (
+    <tr>
+      <td className="py-2 px-4 border-b">{project.name}</td>
+      <td className="py-2 px-4 border-b">
+        <a href="#" className="text-blue-600 underline">
+          {project.image}
+        </a>
+      </td>
+      <td
+        className={`py-2 px-4 border-b ${
+          project.status.includes('Running') ? 'text-green-600' : 'text-red-600'
+        }`}
+      >
+        {project.status}
+      </td>
+      <td className="py-2 px-4 border-b">{project.ports}</td>
+      <td className="py-2 px-4 border-b">{project.cpu}</td>
+      <td className="py-2 px-4 border-b">{project.lastStarted}</td>
+      <td className="py-2 px-4 border-b">
+        <div className="flex space-x-2">
+          <button className="text-green-600">Start</button>
+          <button className="text-gray-600">...</button>
+          <button className="text-red-600">Delete</button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+export default DashListItem;
