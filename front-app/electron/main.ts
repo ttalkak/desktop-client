@@ -2,6 +2,15 @@ import { app, BrowserWindow, Menu, Tray, shell } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import os from 'os';
+
+// import Docker from "dockerode"
+
+
+const platform = os.platform()
+console.log(platform)
+
+
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +38,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+
+// Dockerode instance
+// const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+
+
 // Create the main application window
 function createWindow() {
   win = new BrowserWindow({
@@ -39,6 +53,8 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
+
+    win.webContents.openDevTools()
   // Load the appropriate URL or file
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
