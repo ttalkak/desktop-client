@@ -11,8 +11,7 @@
     "deploy:osx": "electron-builder --mac",
     "deploy:win": "npm run deploy:win32 && npm run deploy:win64",
     "deploy:win32": "electron-builder --win nsis:ia32",
-    "deploy:win64": "electron-builder --win nsis:x64",
-    "start": "electron . --enable-logging"
+    "deploy:win64": "electron-builder --win nsis:x64"
   },
   "dependencies": {
     "@stomp/stompjs": "^7.0.0",
