@@ -9,11 +9,14 @@
 }
 
 .flex {
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
   display: flex;
   align-items: center;
 }
 
+.button {
+  -webkit-app-region: no-drag;
+}
 .text-white {
   color: #ffffff;
 }
@@ -24,6 +27,7 @@
 
 .window-controls .hover\:bg-gray-600:hover {
   background-color: #4e4e4e;
+
 }
 
 .window-controls .hover\:bg-red-600:hover {

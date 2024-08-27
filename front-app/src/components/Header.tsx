@@ -19,7 +19,7 @@ const Header = () => {
   return (
     <div className="titlebar">
       <div className="flex items-center justify-between w-full px-4">
-        <div className="flex space-x-4 text-white">
+        <div className="flex space-x-4 text-white button">
           <Link to="/" className="hover:underline">
             Home
           </Link>
@@ -32,19 +32,19 @@ const Header = () => {
         </div>
         <div className="window-controls flex space-x-2">
           <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer button"
             onClick={handleMinimize}
           >
             _
           </div>
           <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer button"
             onClick={handleMaximize}
           >
             [ ]
           </div>
           <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-red-600 cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center hover:bg-red-600 cursor-pointer button"
             onClick={handleClose}
           >
             X
