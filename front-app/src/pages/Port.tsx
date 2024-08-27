@@ -1,5 +1,11 @@
+import InboundRule from "../features/port/InboundRule";
+
 const Port = () => {
-  return <div>Port 페이지</div>;
+  return (
+    <>
+      <InboundRule />
+    </>
+  );
 };
 
 export default Port;
