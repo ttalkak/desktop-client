@@ -10,6 +10,7 @@ const InboundRule: React.FC = () => {
     if (window.electronAPI) {
       console.log("electronAPI exists:", window.electronAPI);
 
+      // 로컬 포트 정보 불러오기
       const fetchInboundRules = async () => {
         try {
           console.log("2. Calling getInboundRules");
@@ -27,6 +28,26 @@ const InboundRule: React.FC = () => {
     }
   }, []);
 
+  // 해당 포트 토글(활성/비활성)
+  const toggleRule = async (rule: InboundRuleDto, index: number) => {
+    try {
+      console.log(`Toggle ${rule.name} | 이전 상태: ${rule.enabled}`);
+      const newEnabledState = rule.enabled === "예" ? "no" : "yes";
+      await window.electronAPI.togglePort(rule.name, newEnabledState);
+
+      // 상태 업데이트
+      setRules((prevRules) =>
+        prevRules.map((r, i) =>
+          i === index
+            ? { ...r, enabled: rule.enabled === "예" ? "아니요" : "예" }
+            : r
+        )
+      );
+    } catch (error) {
+      console.error("Failed to toggle rule:", error);
+    }
+  };
+
   return (
     <div>
       <h2>Inbound Rules</h2>
@@ -36,6 +57,7 @@ const InboundRule: React.FC = () => {
             <th>Rule Name</th>
             <th>Local IP</th>
             <th>Local Port</th>
+            <th>Enabled</th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +66,17 @@ const InboundRule: React.FC = () => {
               <td>{rule.name}</td>
               <td>{rule.localIP}</td>
               <td>{rule.localPort}</td>
+              <td>
+                {rule.enabled === "예" ? (
+                  <button onClick={() => toggleRule(rule, index)}>
+                    Disable
+                  </button>
+                ) : (
+                  <button onClick={() => toggleRule(rule, index)}>
+                    Enable
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

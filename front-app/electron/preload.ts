@@ -5,10 +5,14 @@ console.log("Preload script loaded");
 
 const electron = require("electron");
 
-electron.contextBridge.exposeInMainWorld("electronAPI", {
+contextBridge.exposeInMainWorld("electronAPI", {
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return electron.ipcRenderer.invoke("get-inbound-rules");
+  },
+  togglePort: (name: string, newEnabled: string) => {
+    console.log(`Toggling port ${name} to ${newEnabled}`);
+    return ipcRenderer.invoke("toggle-port", name, newEnabled);
   },
 });
 

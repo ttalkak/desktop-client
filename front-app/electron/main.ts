@@ -42,9 +42,6 @@ function createWindow() {
 
 // IPC 핸들러 설정
 ipcMain.handle("get-inbound-rules", async () => {
-  console.log("IPC Event Received: get-inbound-rules");
-  console.log("Executing netsh command");
-
   return new Promise<string>((resolve, reject) => {
     exec(
       "netsh advfirewall firewall show rule name=all",
@@ -62,8 +59,22 @@ ipcMain.handle("get-inbound-rules", async () => {
             Buffer.from(stdout, "binary"),
             "cp949"
           );
-          console.log("Command executed successfully, output:", decodedOutput);
           resolve(decodedOutput);
+        }
+      }
+    );
+  });
+});
+
+ipcMain.handle("toggle-port", async (_, name: string, newEnabled: string) => {
+  return new Promise<string>((resolve, reject) => {
+    exec(
+      `netsh advfirewall firewall set rule name="${name}" new enable=${newEnabled}`,
+      (error, stdout, _) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(stdout);
         }
       }
     );
