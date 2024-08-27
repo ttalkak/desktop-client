@@ -2,6 +2,7 @@ export interface InboundRuleDto {
   name: string;
   localIP: string;
   localPort: string;
+  enabled: string;
 }
 
 export function parseInboundRule(data: string): InboundRuleDto[] {
@@ -15,11 +16,17 @@ export function parseInboundRule(data: string): InboundRuleDto[] {
 
     if (trimmedLine.startsWith("규칙 이름:")) {
       if (currentRule && currentRule.direction === "들어오는 메시지") {
-        if (currentRule.name && currentRule.localIP && currentRule.localPort) {
+        if (
+          currentRule.name &&
+          currentRule.localIP &&
+          currentRule.localPort &&
+          currentRule.enabled
+        ) {
           rules.push({
             name: currentRule.name,
             localIP: currentRule.localIP,
             localPort: currentRule.localPort,
+            enabled: currentRule.enabled,
           });
         }
       }
@@ -36,6 +43,10 @@ export function parseInboundRule(data: string): InboundRuleDto[] {
 
     if (trimmedLine.startsWith("LocalPort:") && currentRule) {
       currentRule.localPort = trimmedLine.split("LocalPort:")[1].trim();
+    }
+
+    if (trimmedLine.startsWith("사용:") && currentRule) {
+      currentRule.enabled = trimmedLine.split("사용:")[1].trim();
     }
   });
 
