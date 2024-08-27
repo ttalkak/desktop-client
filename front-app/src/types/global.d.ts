@@ -1,11 +1,16 @@
+export {};
+
 declare global {
     interface Window {
-      electron: {
+      electronAPI: {
+        minimizeWindow: () => void;
+        maximizeWindow: () => void;
+        closeWindow: () => void;
         getDockerImages: () => Promise<string[]>;
         fetchDockerContainers: () => Promise<string[]>;
       };
     }
   }
   
-  export {};
+
   

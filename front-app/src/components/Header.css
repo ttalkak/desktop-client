@@ -1,0 +1,31 @@
+/* Header.css */
+
+.titlebar {
+  background-color: rgba(47, 50, 65, 0.85);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  -webkit-app-region: drag;
+}
+
+.flex {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+}
+
+.text-white {
+  color: #ffffff;
+}
+
+.hover\:underline:hover {
+  text-decoration: underline;
+}
+
+.window-controls .hover\:bg-gray-600:hover {
+  background-color: #4e4e4e;
+}
+
+.window-controls .hover\:bg-red-600:hover {
+  background-color: #e81123;
+}

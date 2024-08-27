@@ -1,32 +1,25 @@
+import React from 'react';
 
+interface DashListItemProps {
+  item: {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+  };
+}
 
-const DashListItem = ({ project }) => {
+const DashListItem: React.FC<DashListItemProps> = ({ item }) => {
   return (
-    <tr>
-      <td className="py-2 px-4 border-b">{project.name}</td>
-      <td className="py-2 px-4 border-b">
-        <a href="#" className="text-blue-600 underline">
-          {project.image}
-        </a>
-      </td>
-      <td
-        className={`py-2 px-4 border-b ${
-          project.status.includes('Running') ? 'text-green-600' : 'text-red-600'
-        }`}
-      >
-        {project.status}
-      </td>
-      <td className="py-2 px-4 border-b">{project.ports}</td>
-      <td className="py-2 px-4 border-b">{project.cpu}</td>
-      <td className="py-2 px-4 border-b">{project.lastStarted}</td>
-      <td className="py-2 px-4 border-b">
-        <div className="flex space-x-2">
-          <button className="text-green-600">Start</button>
-          <button className="text-gray-600">...</button>
-          <button className="text-red-600">Delete</button>
-        </div>
-      </td>
-    </tr>
+    <div className="bg-white shadow-md rounded-lg p-4 mb-4 hover:shadow-lg transition-shadow duration-300">
+      <h3 className="text-xl font-semibold text-gray-800">{item.name}</h3>
+      <p className="text-gray-600 mt-2">{item.description}</p>
+      <div className="mt-4">
+        <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${item.status === 'Running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {item.status}
+        </span>
+      </div>
+    </div>
   );
 };
 

@@ -1,5 +1,31 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
+console.log('Preload script loaded');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  getDockerImages: () => {
+    console.log("fetching..img preload");
+    return ipcRenderer.invoke('get-docker-images');
+  },
+  fetchDockerContainers: () => {
+    console.log('fetchingDocker.. preload');
+    return ipcRenderer.invoke('fetch-docker-containers');
+  },
+  minimizeWindow: () => {
+    ipcRenderer.send('minimize-window');
+  },
+  maximizeWindow: () => {
+    ipcRenderer.send('maximize-window');
+  },
+  closeWindow: () => {
+    ipcRenderer.send('close-window');
+  },
+
+
+    
+});
+
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
@@ -22,9 +48,3 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // ...
 })
 
-console.log('Preload script loaded');
-
-contextBridge.exposeInMainWorld('electron', {
-  getDockerImages: () => ipcRenderer.invoke('get-docker-images'),
-  fetchDockerContainers: () => ipcRenderer.invoke('fetch-docker-containers'),
-});
