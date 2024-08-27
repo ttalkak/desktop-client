@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import './Header.css';
 
 
-
 const Header = () => {
   const handleMinimize = () => {
     window.electronAPI.minimizeWindow();
@@ -22,13 +21,13 @@ const Header = () => {
       <div className="flex items-center justify-between w-full px-4">
         <div className="flex space-x-4 text-white">
           <Link to="/" className="hover:underline">
-            home
+            Home
           </Link>
           <Link to="/dashboard" className="hover:underline">
-            dashboard
+            Dashboard
           </Link>
           <Link to="/port" className="hover:underline">
-            port
+            Port
           </Link>
         </div>
         <div className="window-controls flex space-x-2">

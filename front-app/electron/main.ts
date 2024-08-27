@@ -53,7 +53,8 @@ async function createWindow() {
     await win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
-  //IPC 핸들러 설정 - Docker관련
+  //IPC 핸들러
+  //Docker 이미지
   ipcMain.handle('get-docker-images', async () => {
     try {
       const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}}"');
@@ -63,7 +64,7 @@ async function createWindow() {
       throw error;
     }
   });
-
+  //Docker 컨테이너
   ipcMain.handle('fetch-docker-containers', async () => {
     try {
       const { stdout } = await execAsync('docker ps --format "{{.ID}} {{.Image}} {{.Status}} {{.Ports}}"');
@@ -73,7 +74,7 @@ async function createWindow() {
       throw error;
     }
   });
-
+ //Docker 헬스체크
   
 
 
