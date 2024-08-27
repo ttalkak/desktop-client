@@ -11,17 +11,19 @@
     "deploy:osx": "electron-builder --mac",
     "deploy:win": "npm run deploy:win32 && npm run deploy:win64",
     "deploy:win32": "electron-builder --win nsis:ia32",
-    "deploy:win64": "electron-builder --win nsis:x64"
+    "deploy:win64": "electron-builder --win nsis:x64",
+    "start": "electron . --enable-logging"
   },
   "dependencies": {
     "@stomp/stompjs": "^7.0.0",
-    "dockerode": "^4.0.2",
+    "axios": "^1.7.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.26.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@types/dockerode": "^3.3.31",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@typescript-eslint/eslint-plugin": "^7.1.1",

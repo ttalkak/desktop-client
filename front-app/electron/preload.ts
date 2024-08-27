@@ -18,7 +18,24 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
   // You can expose other APTs you need here.
   // ...
 })
+
+console.log('Preload script loaded');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  getDockerImages: async (): Promise<DockerImage[]> => ipcRenderer.invoke('get-docker-images'),
+  getDockerContainers: async (): Promise<DockerContainer[]> => ipcRenderer.invoke('get-docker-containers'),
+  
+  //도커 API 접근하는 
+  getContainers: async ():Promise<DockerContainer[]> => {
+    try {
+      const containers = await ipcRenderer.invoke('fetch-docker-containers');
+      return containers;
+    } catch (error) {
+      console.error('Error fetching Docker containers:', error);
+      throw error;
+    }
+  },
+});

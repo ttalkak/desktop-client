@@ -1,18 +1,12 @@
-import { app, BrowserWindow, Menu, Tray, shell } from "electron";
-import { createRequire } from "node:module";
+import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
+// import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import os from 'os';
-
-// import Docker from "dockerode"
+import Docker from 'dockerode';
 
 
-const platform = os.platform()
-console.log(platform)
-
-
-
-const require = createRequire(import.meta.url);
+// const require = createRequire(import.meta.url);
+// const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The built directory structure
@@ -39,16 +33,21 @@ let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
 
-// Dockerode instance
-// const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+// 1. docker 설치 여부확인 - 명령어로 
+// 2. docker 설치 안내 => 웹
+// 3. docker 설치되었다는 가정하에 os 버전 확인 => os 버전에 따라 electrone과 docker 연결=> 직접 연결이 필요한가? api 사용하면 가져올수 있지 않은가?
+const docker = new Docker({ socketPath: '/var/run/docker.sock' })
 
 
-// Create the main application window
+// 새로운 electrone 창 오픈
 function createWindow() {
   win = new BrowserWindow({
       icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      // preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "dist", "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: true, 
     },
     autoHideMenuBar: true,
   });
@@ -61,6 +60,9 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+
+  
+
 
   // Handle the window closing event (minimize to tray instead of closing)
   win.on("close", (event) => {
@@ -105,10 +107,41 @@ function createTray() {
   });
 }
 
+
 app.on("ready", () => {
   createWindow();
   createTray();
+  
 });
+
+
+
+
+// Handle request for Docker images
+ipcMain.handle('get-docker-images', async () => {
+  try {
+    const images = await docker.listImages();
+    return images;
+  } catch (error) {
+    console.error('Failed to fetch Docker images:', error);
+    throw error;
+  }
+});
+
+// Handle request for Docker containers
+// ipcMain.handle('get-docker-containers', async () => {
+//   try {
+//     const containers = await docker.listContainers({ all: true });
+//     return containers;
+//   } catch (error) {
+//     console.error('Failed to fetch Docker containers:', error);
+//     throw error;
+//   }
+// });
+
+
+
+
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -122,3 +155,5 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+
