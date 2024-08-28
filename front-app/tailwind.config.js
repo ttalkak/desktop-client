@@ -3,6 +3,9 @@ export default {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Noto Sans"', '"Noto Sans KR"', "sans-serif"],
+      },
       colors: {
         "color-1": "#F4F4F5",
         "color-2": "#E4E4E7",
@@ -12,8 +15,23 @@ export default {
         "color-6": "#3B82F6",
         "color-7": "#22C55E",
         "color-8": "#EF4444",
+        "color-9": "#383838",
+        "color-10": "#A5A5A5",
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        ".app-region-drag": {
+          "-webkit-app-region": "drag",
+        },
+        ".app-region-no-drag": {
+          "-webkit-app-region": "no-drag",
+        },
+      };
+
+      addUtilities(newUtilities);
+    },
+  ],
 };
