@@ -8,6 +8,7 @@ import {
   handleFetchDockerContainers,
   getDockerPath,
   handleOpenDocker,
+  handleFetchContainerLogs,
   // createAndStartContainer,
 } from "./dockerManager";
 
@@ -64,6 +65,7 @@ async function createWindow() {
   handleFetchDockerContainers();
   getDockerPath();
   handleOpenDocker();
+  // handleFetchContainerLogs();
 
   // 컨테이너 생성 및 실행
   // createAndStartContainer();
@@ -173,7 +175,7 @@ function createTray() {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 
-app.whenReady().then(createWindow).then(createTray);
+app.whenReady().then(createWindow).then(handleFetchContainerLogs).then(createTray);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

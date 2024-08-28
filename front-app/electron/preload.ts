@@ -1,5 +1,13 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
+
+
+type LogCallback = (log: string) => void;
+type ErrorCallback = (error: string) => void;
+type EndCallback = () => void;
+
+
+
 console.log('Preload script loaded');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -11,9 +19,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('fetchingDocker.. preload');
     return ipcRenderer.invoke('fetch-docker-containers');
   },
-  getDockerExecutablePath: () => ipcRenderer.invoke('get-docker-path'), // 올바른 함수 노출
+  getDockerExecutablePath: () => {return ipcRenderer.invoke('get-docker-path')}, // 올바른 함수 노출
   openDockerDesktop: (dockerPath: string | null) => ipcRenderer.invoke('open-docker-desktop', dockerPath),
   createAndStartContainer: () => ipcRenderer.invoke('create-and-start-container'),
+  
+  //로그가져오기
+  
+  startLogStream: (containerId:string) => ipcRenderer.send('start-container-log-stream', containerId), // 로그 스트림 시작
+  onLogStream: (callback:LogCallback) => ipcRenderer.on('container-logs-stream', (_event, log) => callback(log)), // 로그 데이터 수신
+  onLogError: (callback:ErrorCallback) => ipcRenderer.on('container-logs-error', (_event, error) => callback(error)), // 오류 수신
+  onLogEnd: (callback:EndCallback) => ipcRenderer.on('container-logs-end', () => callback()), // 로그 스트림 종료 수신
+
   minimizeWindow: () => {
     ipcRenderer.send('minimize-window');
   },
