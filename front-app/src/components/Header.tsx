@@ -1,24 +1,12 @@
-
-import { Link } from 'react-router-dom';
-import './Header.css';
-
+import { Link } from "react-router-dom";
+import "./Header.css";
+import TitleBar from "./TitleBar";
 
 const Header = () => {
-  const handleMinimize = () => {
-    window.electronAPI.minimizeWindow();
-  };
-
-  const handleMaximize = () => {
-    window.electronAPI.maximizeWindow();
-  };
-
-  const handleClose = () => {
-    window.electronAPI.closeWindow();
-  };
-
   return (
-    <div className="titlebar">
-      <div className="flex items-center justify-between w-full px-4">
+    <div className="">
+      <TitleBar />
+      <div className="flex items-center justify-between w-full px-4 bg-color-1">
         <div className="flex space-x-4 text-white button">
           <Link to="/" className="hover:underline">
             Home
@@ -29,26 +17,6 @@ const Header = () => {
           <Link to="/port" className="hover:underline">
             Port
           </Link>
-        </div>
-        <div className="window-controls flex space-x-2">
-          <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer button"
-            onClick={handleMinimize}
-          >
-            _
-          </div>
-          <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-gray-600 cursor-pointer button"
-            onClick={handleMaximize}
-          >
-            [ ]
-          </div>
-          <div
-            className="w-10 h-10 flex items-center justify-center hover:bg-red-600 cursor-pointer button"
-            onClick={handleClose}
-          >
-            X
-          </div>
         </div>
       </div>
     </div>
