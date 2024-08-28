@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getInboundRules: () => {
     console.log("3. getInboundRules called");
-    return ipcRenderer.invoke("get-inbound-rules");
+    return ipcRenderer.invoke("get-inbound-rules");8
   },
   togglePort: (name: string, newEnabled: string) => {
     console.log(`Toggling port ${name} to ${newEnabled}`);
