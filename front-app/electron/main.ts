@@ -1,19 +1,17 @@
 import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
-// import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { exec } from "child_process"; // exec 추가
 import iconv from "iconv-lite"; // iconv-lite 추가
-import Dockerode from "dockerode";
-import DockerHandler from "./dockerIpcHandler"
-
-const Docker = Dockerode;
-const docker = new Docker({ host: '127.0.0.1', port: 2375  })
+import {
+  handleGetDockerImages,
+  handleFetchDockerContainers,
+  getDockerPath,
+  handleOpenDocker,
+  // createAndStartContainer,
+} from "./dockerManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-
-
 
 process.env.APP_ROOT = path.join(__dirname, "..");
 
@@ -28,8 +26,6 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
-
-// const execAsync = promisify(exec);
 
 // 새로운 Electron 창 오픈
 async function createWindow() {
@@ -53,13 +49,7 @@ async function createWindow() {
     autoHideMenuBar: true,
   });
 
-
-
   win.webContents.openDevTools();
- 
-  win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", new Date().toLocaleString());
-  });
 
   if (VITE_DEV_SERVER_URL) {
     await win.loadURL(VITE_DEV_SERVER_URL);
@@ -68,28 +58,15 @@ async function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
-  // 이미지 목록 불러오기 IPC 이벤트 처리
-ipcMain.handle("get-docker-images", async () => {
-  try {
-    const images = await docker.listImages(); // Docker 이미지 목록 가져오기
-    return images; // 이미지 목록을 렌더러 프로세스로 반환
-  } catch (err) {
-    console.error('Error fetching images:', err);
-    return;
-  }
-});
+  //DockerManager
+  // Docker IPC 핸들러 등록
+  handleGetDockerImages();
+  handleFetchDockerContainers();
+  getDockerPath();
+  handleOpenDocker();
 
-  // 컨테이너 목록 불러오기 IPC 이벤트 처리
-  ipcMain.handle("fetch-docker-containers", async () => {
-    try {
-      const containers = await docker.listContainers();// Docker 이미지 목록 가져오기
-      return containers
-    } catch (err) {
-      console.error('Error fetching container:', err);
-      return;
-    }
-  });
-  
+  // 컨테이너 생성 및 실행
+  // createAndStartContainer();
 
   // IPC 핸들러 설정
   ipcMain.handle("get-inbound-rules", async () => {
@@ -132,6 +109,8 @@ ipcMain.handle("get-docker-images", async () => {
     });
   });
 
+
+  
   win.on("close", (event) => {
     if (!isQuiting) {
       event.preventDefault();
@@ -144,7 +123,7 @@ ipcMain.handle("get-docker-images", async () => {
     return { action: "deny" };
   });
 
-  //CustomBar 관련
+  //CustomBar IPC 핸들러
   ipcMain.on("minimize-window", () => {
     win?.minimize();
   });
@@ -194,10 +173,7 @@ function createTray() {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 
-app.on("ready", async () => {
-  await createWindow();
-  createTray();
-});
+app.whenReady().then(createWindow).then(createTray);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

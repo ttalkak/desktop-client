@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('fetchingDocker.. preload');
     return ipcRenderer.invoke('fetch-docker-containers');
   },
+  getDockerExecutablePath: () => ipcRenderer.invoke('get-docker-path'), // 올바른 함수 노출
+  openDockerDesktop: (dockerPath: string | null) => ipcRenderer.invoke('open-docker-desktop', dockerPath),
+  createAndStartContainer: () => ipcRenderer.invoke('create-and-start-container'),
   minimizeWindow: () => {
     ipcRenderer.send('minimize-window');
   },
@@ -29,7 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke("toggle-port", name, newEnabled);
   },
 
-    
+
 });
 
 

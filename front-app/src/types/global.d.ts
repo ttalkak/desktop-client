@@ -1,3 +1,4 @@
+export{};
 declare global {
   interface DockerPort {
     IP: string;
@@ -40,9 +41,11 @@ declare global {
       fetchDockerContainers: () => Promise<DockerContainer[]>;
       getInboundRules: () => Promise<string>;
       togglePort: (name: string, newEnabled: string) => Promise<void>;
+      getDockerExecutablePath: () => Promise<string | null>; // Docker 경로 가져오기
+      openDockerDesktop: (dockerPath: string) => Promise<void>; // Docker Desktop 실행
+      createAndStartContainer: () => Promise<void>; 
     };
   }
 }
 
 
-export{};
