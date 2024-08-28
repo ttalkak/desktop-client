@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import DashBoard from "./pages/DashBoard";
 import Port from "./pages/Port";
 import Header from "./components/Header";
+import SignUp from "./pages/SignUp";
+import Login from "./pages/Login";
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<DashBoard />} />
           <Route path="/port" element={<Port />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </div>
     </div>
