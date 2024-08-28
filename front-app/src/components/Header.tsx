@@ -19,27 +19,42 @@ const Header = () => {
   };
 
   const isActive = (path: string) =>
-    location.pathname === path ? "text-color-5 font-bold" : "text-color-10";
+    location.pathname === path
+      ? "text-color-5 bg-white rounded-t-lg"
+      : "text-color-10";
 
-  const navContainer = `flex space-x-10 text-white button ml-5 app-region-no-drag`;
-  const navText = `text-color-10 font-normal text-sm`;
+  const navContainer = `flex justify-between button ml-2.5 app-region-no-drag`;
+  const navText = `text-color-10 font-normal text-sm px-6 py-1 mt-0.5 relative hover:text-color-5`;
   const pageBtn = `w-11 h-11 flex items-center justify-center hover:bg-color-2 cursor-pointer button app-region-no-drag`;
   const signBtn = `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`;
 
+  const Additional = () => (
+    <div
+      style={{ width: `calc(100% + 16px)` }}
+      className="absolute bg-white w-full h-3.5 left-1/2 transform -translate-x-1/2"
+    >
+      <div className="absolute left-0 top-0 w-2 h-2.5 bg-color-1 rounded-br-lg"></div>
+      <div className="absolute right-0 top-0 w-2 h-2.5 bg-color-1 rounded-bl-lg"></div>
+    </div>
+  );
+
   return (
-    <div className="w-full flex justify-between items-center bg-color-1 app-region-drag">
+    <div className="w-full flex justify-between items-center bg-color-1 app-region-drag relative">
       <div className={navContainer}>
         <Link to="/" className={`${navText} ${isActive("/")}`}>
           Home
+          {location.pathname === "/" && <Additional />}
         </Link>
         <Link
           to="/dashboard"
           className={`${navText} ${isActive("/dashboard")}`}
         >
           Dashboard
+          {location.pathname === "/dashboard" && <Additional />}
         </Link>
         <Link to="/port" className={`${navText} ${isActive("/port")}`}>
           Port
+          {location.pathname === "/port" && <Additional />}
         </Link>
       </div>
       <div className="flex flex-wrap items-center ">
