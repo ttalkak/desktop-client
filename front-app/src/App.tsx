@@ -7,14 +7,16 @@ import Header from "./components/Header";
 
 function App() {
   return (
-    <>
+    <div className="flex flex-col h-screen">
       <Header />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<DashBoard />} />
-        <Route path="/port" element={<Port />} />
-      </Routes>
-    </>
+      <div className="flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<DashBoard />} />
+          <Route path="/port" element={<Port />} />
+        </Routes>
+      </div>
+    </div>
   );
 }
 
