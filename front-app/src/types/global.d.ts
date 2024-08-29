@@ -41,6 +41,9 @@ declare global {
     minimizeWindow: () => void;
     maximizeWindow: () => void;
     closeWindow: () => void;
+
+    //도커 관련
+    checkDockerStatus:() =>Promise<void>;
     getDockerImages: () => Promise<DockerImage[]>; // Docker 이미지 목록 가져오기
     fetchDockerContainers: () => Promise<DockerContainer[]>; // Docker 컨테이너 목록 가져오기
     getInboundRules: () => Promise<string>; // Inbound 규칙 가져오기

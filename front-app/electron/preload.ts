@@ -7,19 +7,42 @@ type EndCallback = () => void;
 console.log("Preload script loaded");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  //도커 실행여부 check
+  checkDockerStatus: async () => {
+    try {
+      const status = await ipcRenderer.invoke('check-docker-status'); 
+      return status;
+    } catch (error) {
+      console.error('Error checking Docker status:', error);
+      throw error;
+    }
+  },
+
+  //도커 info 확인 => 필요시 추가 작성
+
+
+  //이미지 로드
   getDockerImages: () => {
     console.log("fetching..img preload");
     return ipcRenderer.invoke("get-docker-images");
   },
+
+  //컨테이너 로드
   fetchDockerContainers: () => {
     console.log("fetchingDocker.. preload");
     return ipcRenderer.invoke("fetch-docker-containers");
   },
+
+  //도커 실행파일 경로가져오기
   getDockerExecutablePath: () => {
     return ipcRenderer.invoke("get-docker-path");
-  }, // 올바른 함수 노출
+  }, 
+  
+  // 도커 데스크탑 실행
   openDockerDesktop: (dockerPath: string | null) =>
     ipcRenderer.invoke("open-docker-desktop", dockerPath),
+  
+  //컨테이너 생성 및 실행 
   createAndStartContainer: () =>
     ipcRenderer.invoke("create-and-start-container"),
 
@@ -35,7 +58,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
 
-  //로그가져오기
+  //로그가져오기[실시간 처리 위해 추후 invoke 변경 예정]
   startLogStream: (containerId: string) =>
     ipcRenderer.send("start-container-log-stream", containerId), // 로그 스트림 시작
   onLogStream: (callback: LogCallback) =>
@@ -45,6 +68,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onLogEnd: (callback: EndCallback) =>
     ipcRenderer.on("container-logs-end", () => callback()), // 로그 스트림 종료 수신
 
+  //창 조절 관련 
   minimizeWindow: () => {
     ipcRenderer.send("minimize-window");
   },
@@ -54,6 +78,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   closeWindow: () => {
     ipcRenderer.send("close-window");
   },
+
+  //포트 인바운드 관련
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return ipcRenderer.invoke("get-inbound-rules");
