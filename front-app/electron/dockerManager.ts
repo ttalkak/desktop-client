@@ -8,32 +8,32 @@ export const docker = new Dockerode({ host: "127.0.0.1", port: 2375 });
 
 
 //도커 실행여부 확인 ping()
-
 function checkDockerStatus() {
   return new Promise((resolve) => {
     docker.ping()
       .then(() => {
         console.log('Docker is running.');
-        resolve(true); // Docker가 실행 중일 때 true 반환
+        resolve('running'); // Docker가 실행 중일 때 'running' 반환
       })
       .catch((error) => {
         console.error('Docker is not running:', error);
-        resolve(false); // Docker가 실행 중이 아닐 때 false 반환
+        resolve('unknown'); // Docker가 실행 중이 아니거나 접근할 수 없을 때 'unknown' 반환
       });
   });
 }
 
+// IPC 핸들러 등록 함수
 export const handlecheckDockerStatus = (): void => {
   ipcMain.handle('check-docker-status', async () => {
     try {
-      const status = await checkDockerStatus(); // 비동기 함수 호출 후 결과를 기다림
-      return status;  // Docker 실행 여부를 true/false로 반환
+      const status = await checkDockerStatus(); // Docker 상태 체크 후 결과를 기다림
+      return status;  // Docker 실행 여부를 'running' 또는 'unknown'으로 반환
     } catch (error) {
       console.error('Error while checking Docker status:', error);
-      throw error;  // 오류 발생 시 오류를 던짐
+      return 'unknown'; // 오류 발생 시 'unknown' 반환
     }
   });
-}
+};
 
 //도터 실행 정보 가져옴()=> 쓸지 안쓸지 모르겠음
 
