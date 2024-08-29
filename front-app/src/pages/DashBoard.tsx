@@ -1,9 +1,8 @@
 import DashList from "../features/dashboard/DashList";
 
 const DashBoard = () => {
-  
-
-  const DockerStarter = async () => {
+  //도커 시작 버튼
+  const dockerStarter = async () => {
     try {
       const dockerPath = await window.electronAPI.getDockerExecutablePath();
       console.log(dockerPath)
@@ -18,11 +17,18 @@ const DashBoard = () => {
     }
   };
 
+  //도커 실시간 모니터링 실행
+  const dockerMonitor = async() =>{
+    await window.electronAPI.getDockerEvent();
+    console.log('감지 실행중')
+
+  };
+
   return (
     
     <>
-    <button onClick={DockerStarter}>도커데스크탑 실행하기</button>
-    
+    <button onClick={dockerStarter}>도커데스크탑 실행하기</button>
+    <button onClick={dockerMonitor}>도커 실시간 모니터링 실행</button>
     <DashList/>
     </>
   ) 

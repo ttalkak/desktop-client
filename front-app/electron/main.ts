@@ -7,9 +7,11 @@ import {
   handleGetDockerImages,
   handleFetchDockerContainers,
   getDockerPath,
-  handleOpenDocker,
+  // handleOpenDocker,
   handleFetchContainerLogs,
   // createAndStartContainer,
+  handleGetDockerEvent
+  
 } from "./dockerManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,18 +61,29 @@ async function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
-  //DockerManager
-  // Docker IPC 핸들러 등록
+  //DockerManager Docker IPC handler
+  //1.도커 열려있는지 확인=>도커 실행여부 대시보드에 보여줌
+  //2. 안열려 있으면 열수 있도록 => 버튼 기능
+  getDockerPath();
+  // handleOpenDocker();
+
+  //3. 현재 도커 이벤트 감지 [이벤트 기반 감지]
+  handleGetDockerEvent();
+
+  //=> 감지된 이벤트를 기반으로 컨테이너, 이미지 , 로그데이터 렌더링
   handleGetDockerImages();
   handleFetchDockerContainers();
-  getDockerPath();
-  handleOpenDocker();
-  // handleFetchContainerLogs();
 
-  // 컨테이너 생성 및 실행
+  //4.이미지 재생 버튼 누르면 컨테이너 생성 및 실행
   // createAndStartContainer();
 
-  // IPC 핸들러 설정
+  //5. 컨테이너 정지, 시작 버튼 => 도커 조작==> 이벤트 감지 callback으로 처리?
+
+
+  // 컨테이너 생성 및 실행
+
+
+  // IPC 핸들러 설정: inbound-rule
   ipcMain.handle("get-inbound-rules", async () => {
     return new Promise<string>((resolve, reject) => {
       exec(
@@ -187,4 +200,6 @@ app.on("activate", async () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     await createWindow();
   }
+    
+
 });

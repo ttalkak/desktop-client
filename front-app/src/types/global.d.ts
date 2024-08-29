@@ -49,6 +49,8 @@ declare global {
     openDockerDesktop: (dockerPath: string) => Promise<void>; // Docker Desktop 실행
     createAndStartContainer: () => Promise<void>; // 컨테이너 생성 및 시작
     
+    getDockerEvent:()=>Promise<void>; //도커 이벤트감지 렌더러 연결
+
     startLogStream: (containerId: string) => void; // 컨테이너 로그 스트림 시작
     onLogStream: (callback: LogCallback) => void; // 로그 스트림 데이터 수신
     onLogError: (callback: ErrorCallback) => void; // 로그 오류 수신
