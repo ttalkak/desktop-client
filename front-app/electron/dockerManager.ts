@@ -100,7 +100,6 @@ export const handleGetDockerEvent = (): void => {
   });
 };
 
-//경로 가져오기---------------------------------------------------
 export const getDockerPath = (): void => {
   ipcMain.handle("get-docker-path", async () => {
     return new Promise((resolve, reject) => {
@@ -112,12 +111,22 @@ export const getDockerPath = (): void => {
           reject(`Error getting Docker path: ${error.message}`); // 오류가 발생하면 reject 호출
           return;
         }
-        if (stderr) {
-          console.error(`Stderr: ${stderr}`);
-          reject(`Stderr: ${stderr}`); // 표준 오류가 있으면 reject 호출
+        if (stderr && stderr.toLowerCase().includes("not found")) {
+          // 표준 오류가 있고, 'not found'가 포함된 경우에만 오류로 처리
+          console.error(`Docker not found: ${stderr}`);
+          reject(`Docker not found: ${stderr}`); 
           return;
         }
-        const dockerPath = stdout.trim().split("\n")[1];
+
+        const dockerPaths = stdout.trim().split("\n");
+        const dockerPath = dockerPaths[0]; // 첫 번째 경로 사용
+
+        if (!dockerPath) {
+          console.error("Docker path not found.");
+          reject("Docker path not found.");
+          return;
+        }
+
         console.log(`Docker path found: ${dockerPath}`);
         resolve(dockerPath); // Docker 경로 반환
       });
@@ -127,28 +136,38 @@ export const getDockerPath = (): void => {
 
 // Docker Desktop 실행 IPC 핸들러
 export const handleOpenDockerEvent = (): void => {
-  ipcMain.handle("open-docker-desktop", (_event, dockerPath) => {
+  ipcMain.handle("open-docker-desktop", async (_event, dockerPath) => {
     if (!dockerPath) {
       console.error("Docker executable path not provided.");
       return;
     }
 
-    const command = `"${dockerPath}"`;
+    // Construct the command to open Docker Desktop or run a specific Docker command.
+    const command = `"${dockerPath}"`; // Adjust this if you need to specify a particular command.
 
     exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error: ${error.message}`);
+        console.error(`Execution Error: ${error.message}`);
         return;
       }
+
       if (stderr) {
-        console.error(`Stderr: ${stderr}`);
-        return;
+        // Log the stderr to understand if it's an expected output or a critical error.
+        if (stderr.toLowerCase().includes("usage: docker") || stderr.toLowerCase().includes("common commands")) {
+          // Likely the output of Docker's help command; handle as a non-critical issue.
+          console.log(`Docker CLI help output detected: ${stderr}`);
+        } else {
+          // If not expected, treat it as a potential issue.
+          console.error(`Unexpected Stderr: ${stderr}`);
+          return;
+        }
       }
-      console.log(`Output: ${stdout}`);
+
+      // Log any standard output for debugging purposes.
+      console.log(`Command Output: ${stdout}`);
     });
   });
 };
-
 // Docker 이미지 목록을 가져오는 IPC 핸들러
 export const handleGetDockerImages = (): void => {
   ipcMain.handle("get-docker-images", async () => {
@@ -157,7 +176,7 @@ export const handleGetDockerImages = (): void => {
       return images;
     } catch (err) {
       console.error("Error fetching Docker images:", err);
-      return;
+      return err;
     }
   });
 };
@@ -170,7 +189,7 @@ export const handleFetchDockerContainers = (): void => {
       return containers;
     } catch (err) {
       console.error("Error fetching container:", err);
-      return;
+      return err;
     }
   });
 };

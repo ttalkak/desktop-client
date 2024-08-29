@@ -9,7 +9,7 @@ import {
   handleGetDockerImages,
   handleFetchDockerContainers,
   getDockerPath,
-  // handleOpenDocker,
+  handleOpenDockerEvent,
   handleFetchContainerLogs,
  
   // createAndStartContainer,
@@ -70,7 +70,7 @@ async function createWindow() {
 
   //2. 안열려 있으면 열수 있도록 => 버튼 기능
   getDockerPath();
-  // handleOpenDocker();
+  handleOpenDockerEvent();
 
   //3. 현재 도커 이벤트 감지 [이벤트 기반 감지]
   handleGetDockerEvent();

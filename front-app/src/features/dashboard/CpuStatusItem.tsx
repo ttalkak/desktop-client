@@ -19,8 +19,6 @@ const CpuStatusItem = () => {
   //dummydata
   const cpuUsage = 30;
 
-
-
   return (
     <div className="card">
     <p className="font-sans font-bold text-xl">Overall CPU Usage</p>

@@ -66,7 +66,7 @@ const DockerStatusItem = () => {
               <p className="font-sans text-gray-500">Current docker status</p>
             </div>
             <div className="flex items-center ml-2">
-              <FaCircle className={`${statusColor[dockerStatus]} text-xs mr-1`} />
+              {/* <FaCircle className={`${statusColor[dockerStatus]} text-xs mr-1`} /> */}
               <span className="font-sans">{dockerStatus}</span>
             </div>
           </div>

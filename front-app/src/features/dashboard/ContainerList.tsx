@@ -49,7 +49,18 @@ const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
   }, []);
 
   if (containers.length === 0) {
-    return <div className="text-center mt-8">현재 실행 중인 Docker 컨테이너가 없습니다.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center mt-8">
+        <p className="text-center text-xl text-gray-500">
+          현재 실행 중인 Docker 컨테이너가 없습니다.
+        </p>
+        <div className="mt-4">
+          <span className="text-gray-400">
+            Docker 컨테이너를 실행한 후 새로 고침해주세요.
+          </span>
+        </div>
+      </div>
+    );
   }
 
   return (

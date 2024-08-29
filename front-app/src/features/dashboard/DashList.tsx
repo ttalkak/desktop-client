@@ -56,8 +56,23 @@ const DashList: React.FC = () => {
         </button>
       </div>
 
-      {activeView === 'containers' && <ContainerList containers={dockerContainers} />}
-      {activeView === 'images' && <ImageList images={dockerImages} />}
+      {activeView === 'containers' ? (
+        dockerContainers.length > 0 ? (
+          <ContainerList containers={dockerContainers} />
+        ) : (
+          <div className="text-center mt-8 text-red-500">
+            No containers found or failed to load containers.
+          </div>
+        )
+      ) : activeView === 'images' ? (
+        dockerImages.length > 0 ? (
+          <ImageList images={dockerImages} />
+        ) : (
+          <div className="text-center mt-8 text-red-500">
+            No images found or failed to load images.
+          </div>
+        )
+      ) : null}
     </div>
   );
 };

@@ -33,7 +33,7 @@ const ImageList: React.FC<ImageListProps> = ({ images }) => {
           </tr>
         </thead>
         <tbody>
-          {images.map((image, index) => {
+          {images?.map((image, index) => {
             const { RepoTags, Id, Size, ParentId, Labels } = image;
             return (
               <tr key={index}>
