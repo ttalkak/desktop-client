@@ -7,59 +7,49 @@ import { BrowserWindow } from "electron";
 export const docker = new Dockerode({ host: "127.0.0.1", port: 2375 });
 
 //도커 이벤트 스트림 구독(로컬에서 발생하는 도커 이벤트 감지)---------------------
-
-const getDockerEvent = (): void => {
-
-
-  docker.getEvents((err, stream) => {
-    if (err) {
-      console.error("Error connecting to Docker events:", err);
-      // 이벤트 오류를 렌더러 프로세스로 전송
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send("docker-event-error", err.message);
-      });
-      return;
-    }
-
-    stream?.on("data", (chunk) => {
-      try {
-        const event = JSON.parse(chunk.toString());
-        console.log("Docker Event:", event);
-
-        // Docker 이벤트를 렌더러 프로세스로 전송
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send("docker-event-response", JSON.stringify(event));
-        });
-      } catch (parseError) {
-        console.error("Error parsing Docker event:", parseError);
-        // 파싱 오류를 렌더러 프로세스로 전송
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send("docker-event-error");
-        });
+async function getDockerEvent() {
+  return new Promise((resolve, reject) => {
+    docker.getEvents((err, stream) => {
+      if (err) {
+        console.error("Error connecting to Docker events:", err);
+        reject(err.message);
+        return;
       }
-    });
 
-    stream?.on("error", (error) => {
-      console.error("Stream Error:", error);
-      // 스트림 오류를 렌더러 프로세스로 전송
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send("docker-event-error", error.message);
+      stream?.on("data", (chunk) => {
+        try {
+          const event = JSON.parse(chunk.toString());
+          // Docker 이벤트를 렌더러 프로세스로 전송
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send("docker-event-response", event);
+          });
+          resolve(event); // 데이터를 성공적으로 수신한 경우 resolve
+        } catch (parseError) {
+          console.error("Error parsing Docker event:", parseError);
+          reject(parseError); // 파싱 오류가 발생한 경우 reject
+        }
       });
-    });
 
-    stream?.on("end", () => {
-      console.log("Docker events stream ended");
+      stream?.on("error", (error) => {
+        console.error("Stream Error:", error);
+        reject(error.message); // 스트림 오류가 발생한 경우 reject
+      });
+
+      stream?.on("end", () => {
+        console.log("Docker events stream ended");
+        resolve(null); // 스트림이 종료된 경우 resolve
+      });
     });
   });
-};
+}
 
 // DockerEvent 감지 핸들러
 export const handleGetDockerEvent = (): void => {
   ipcMain.handle("get-docker-event", async () => {
     console.log("Docker event request received");
     try {
-      const result = await getDockerEvent();
-      console.log(result)
+      const result = await getDockerEvent(); // 비동기 함수 호출 후 결과를 기다림
+      console.log(result, ":try parsing");
       return result; // 성공적으로 처리된 결과 반환
     } catch (error) {
       console.error("Error while handling Docker event:", error);
@@ -68,7 +58,7 @@ export const handleGetDockerEvent = (): void => {
   });
 };
 
-//경로가져오기-----------------------------------------------------------------------
+//경로 가져오기---------------------------------------------------
 export const getDockerPath = (): void => {
   ipcMain.handle("get-docker-path", async () => {
     return new Promise((resolve, reject) => {
@@ -85,7 +75,6 @@ export const getDockerPath = (): void => {
           reject(`Stderr: ${stderr}`); // 표준 오류가 있으면 reject 호출
           return;
         }
-
         const dockerPath = stdout.trim().split("\n")[1];
         console.log(`Docker path found: ${dockerPath}`);
         resolve(dockerPath); // Docker 경로 반환
