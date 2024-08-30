@@ -1,35 +1,35 @@
 import DashList from "../features/dashboard/DashList";
+import CpuStatusItem from "../features/dashboard/CpuStatusItem";
+import DockerStatusItem from "../features/dashboard/DockerStatusItem";
+// import DockerLogs from "../features/dashboard/DockerLogs";
+
+//1.도커 실행여부 체크 => 안되어있으면 실행하기 버튼 보이기//실행해주세요//자동실행 => 로딩으로 처리
+//2.도커 실행완료후 실시간 모니터링 처리 =>
+
+
 
 const DashBoard = () => {
-  //도커 시작 버튼
-  const dockerStarter = async () => {
-    try {
-      const dockerPath = await window.electronAPI.getDockerExecutablePath();
-      console.log(dockerPath)
-      if (dockerPath) {
-        await window.electronAPI.openDockerDesktop(dockerPath);
-        console.log('Docker Desktop started successfully');
-      } else {
-        console.error('Failed to find Docker executable path');
-      }
-    } catch (error) {
-      console.error('Error starting Docker Desktop:', error);
-    }
-  };
+    return (
+      
+      <>
 
-  //도커 실시간 모니터링 실행
-  const dockerMonitor = async() =>{
-    await window.electronAPI.getDockerEvent();
-    console.log('감지 실행중')
+      <div className=" mx-auto p-6">
+        <div className="flex w-full">
+          <div className="flex-1 mr-2">
+          <CpuStatusItem />
 
-  };
+          </div>
+          <div className="flex-1 ml-2">
 
-  return (
-    
-    <>
-    <button onClick={dockerStarter}>도커데스크탑 실행하기</button>
-    <button onClick={dockerMonitor}>도커 실시간 모니터링 실행</button>
+          <DockerStatusItem/>
+          </div>
+
+        </div>
     <DashList/>
+    </div>
+    
+    
+
     </>
   ) 
 };

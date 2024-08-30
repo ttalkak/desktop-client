@@ -4,11 +4,14 @@ import path from "node:path";
 import { exec } from "child_process"; // exec 추가
 import iconv from "iconv-lite"; // iconv-lite 추가
 import {
+
+  handlecheckDockerStatus,
   handleGetDockerImages,
   handleFetchDockerContainers,
   getDockerPath,
-  // handleOpenDocker,
+  handleOpenDockerEvent,
   handleFetchContainerLogs,
+ 
   // createAndStartContainer,
   handleGetDockerEvent
   
@@ -61,11 +64,13 @@ async function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
-  //DockerManager Docker IPC handler
-  //1.도커 열려있는지 확인=>도커 실행여부 대시보드에 보여줌
+  //DockerManager IPC handler 등록하기
+  //1.도커 열려있는지 확인
+  handlecheckDockerStatus();
+
   //2. 안열려 있으면 열수 있도록 => 버튼 기능
   getDockerPath();
-  // handleOpenDocker();
+  handleOpenDockerEvent();
 
   //3. 현재 도커 이벤트 감지 [이벤트 기반 감지]
   handleGetDockerEvent();
