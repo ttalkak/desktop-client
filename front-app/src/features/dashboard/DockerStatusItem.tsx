@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react"
-import { FaCircle } from 'react-icons/fa';
+// import { FaCircle } from 'react-icons/fa';
 
 
 const DockerStatusItem = () => {
@@ -9,10 +8,10 @@ const DockerStatusItem = () => {
 
 
   // Docker 상태에 따른 색상 매핑 (as const 사용)
-  const statusColor: Record<'running' | 'unknown', string> = {
-    running: 'text-green-500',
-    unknown: 'text-gray-500',
-  };
+  // const statusColor: Record<'running' | 'unknown', string> = {
+  //   running: 'text-green-500',
+  //   unknown: 'text-gray-500',
+  // };
 
 
 
