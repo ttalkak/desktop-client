@@ -4,17 +4,14 @@ import path from "node:path";
 import { exec } from "child_process"; // exec 추가
 import iconv from "iconv-lite"; // iconv-lite 추가
 import {
-
   handlecheckDockerStatus,
   handleGetDockerImages,
   handleFetchDockerContainers,
   getDockerPath,
   handleOpenDockerEvent,
   handleFetchContainerLogs,
- 
+  handleGetDockerEvent,
   // createAndStartContainer,
-  handleGetDockerEvent
-  
 } from "./dockerManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,19 +30,26 @@ let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
+// 애플리케이션 초기화 시 
+//DockerManager IPC handler 등록하기
+function registerIpcHandlers() {
+  handlecheckDockerStatus();
+  getDockerPath();
+  handleOpenDockerEvent();
+  handleGetDockerEvent(); // Docker 이벤트 리스너 등록
+  handleGetDockerImages();
+  handleFetchDockerContainers();
+  handleFetchContainerLogs();
+}
+
 // 새로운 Electron 창 오픈
 async function createWindow() {
   win = new BrowserWindow({
     frame: false,
     titleBarStyle: "hidden",
-    width: 1000,
-    height: 800,
-    // titleBarOverlay: {
-    //   color: '#2f3241',
-    //   symbolColor: '#74b1be',
-    //   height: 60,
-    // },
-
+    minWidth: 1024,
+    minHeight: 400,
+    height: 650,
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
@@ -55,38 +59,12 @@ async function createWindow() {
     autoHideMenuBar: true,
   });
 
-  win.webContents.openDevTools();
-
   if (VITE_DEV_SERVER_URL) {
     await win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
-
-  //DockerManager IPC handler 등록하기
-  //1.도커 열려있는지 확인
-  handlecheckDockerStatus();
-
-  //2. 안열려 있으면 열수 있도록 => 버튼 기능
-  getDockerPath();
-  handleOpenDockerEvent();
-
-  //3. 현재 도커 이벤트 감지 [이벤트 기반 감지]
-  handleGetDockerEvent();
-
-  //=> 감지된 이벤트를 기반으로 컨테이너, 이미지 , 로그데이터 렌더링
-  handleGetDockerImages();
-  handleFetchDockerContainers();
-
-  //4.이미지 재생 버튼 누르면 컨테이너 생성 및 실행
-  // createAndStartContainer();
-
-  //5. 컨테이너 정지, 시작 버튼 => 도커 조작==> 이벤트 감지 callback으로 처리?
-
-
-  // 컨테이너 생성 및 실행
-
 
   // IPC 핸들러 설정: inbound-rule
   ipcMain.handle("get-inbound-rules", async () => {
@@ -129,8 +107,6 @@ async function createWindow() {
     });
   });
 
-
-  
   win.on("close", (event) => {
     if (!isQuiting) {
       event.preventDefault();
@@ -193,7 +169,12 @@ function createTray() {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 
-app.whenReady().then(createWindow).then(handleFetchContainerLogs).then(createTray);
+app
+  .whenReady()
+  .then(registerIpcHandlers)
+  .then(createWindow)
+  .then(handleFetchContainerLogs)
+  .then(createTray);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -205,6 +186,4 @@ app.on("activate", async () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     await createWindow();
   }
-    
-
 });

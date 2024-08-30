@@ -1,7 +1,7 @@
 import Dockerode from "dockerode";
 import { ipcMain } from "electron";
 import { exec } from "child_process";
-import { BrowserWindow } from "electron";
+
 
 // Dockerode 인스턴스 생성
 export const docker = new Dockerode({ host: "127.0.0.1", port: 2375 });
@@ -35,70 +35,47 @@ export const handlecheckDockerStatus = (): void => {
   });
 };
 
-//도터 실행 정보 가져옴()=> 쓸지 안쓸지 모르겠음
-
-// async function checkDockerInfo() {
-//   try {
-//     const info = await docker.info();
-//     console.log('Docker is running. Info:', info);
-//   } catch (error) {
-//     console.error('Docker is not running:', error);
-//   }
-// }
-
-
-
 //도커 이벤트 스트림 구독(로컬에서 발생하는 도커 이벤트 감지)---------------------
-async function getDockerEvent() {
-  return new Promise((resolve, reject) => {
+export const handleGetDockerEvent = (): void => {
+  ipcMain.on("get-docker-event", (event) => {
+
     docker.getEvents((err, stream) => {
       if (err) {
         console.error("Error connecting to Docker events:", err);
-        reject(err.message);
+        event.reply('docker-event-error', err.message);
         return;
       }
 
       stream?.on("data", (chunk) => {
         try {
-          const event = JSON.parse(chunk.toString());
-          // Docker 이벤트를 렌더러 프로세스로 전송
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send("docker-event-response", event);
-          });
-          resolve(event); // 데이터를 성공적으로 수신한 경우 resolve
+          const dockerEvent = JSON.parse(chunk.toString());
+          console.log("Docker event received:", dockerEvent);
+
+          // 렌더러 프로세스로 이벤트를 전송
+          event.reply('docker-event-response', dockerEvent);
+
         } catch (parseError) {
           console.error("Error parsing Docker event:", parseError);
-          reject(parseError); // 파싱 오류가 발생한 경우 reject
+          event.reply('docker-event-error');
         }
       });
 
       stream?.on("error", (error) => {
         console.error("Stream Error:", error);
-        reject(error.message); // 스트림 오류가 발생한 경우 reject
+        event.reply('docker-event-error', error.message);
       });
 
       stream?.on("end", () => {
         console.log("Docker events stream ended");
-        resolve(null); // 스트림이 종료된 경우 resolve
+        event.reply('docker-event-end');
       });
     });
   });
-}
-
-// DockerEvent 감지 핸들러
-export const handleGetDockerEvent = (): void => {
-  ipcMain.handle("get-docker-event", async () => {
-    console.log("Docker event request received");
-    try {
-      const result = await getDockerEvent(); // 비동기 함수 호출 후 결과를 기다림
-      console.log(result, ":try parsing");
-      return result; // 성공적으로 처리된 결과 반환
-    } catch (error) {
-      console.error("Error while handling Docker event:", error);
-      throw error; // 오류 발생 시 오류를 던짐
-    }
-  });
 };
+
+
+
+
 
 export const getDockerPath = (): void => {
   ipcMain.handle("get-docker-path", async () => {
@@ -118,8 +95,10 @@ export const getDockerPath = (): void => {
           return;
         }
 
-        const dockerPaths = stdout.trim().split("\n");
-        const dockerPath = dockerPaths[0]; // 첫 번째 경로 사용
+        // const dockerPaths = stdout.trim().split("\n");
+        // const dockerPath = dockerPaths[1]; // 첫 번째 경로 사용
+        //일단 보류..................
+        const dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
 
         if (!dockerPath) {
           console.error("Docker path not found.");
@@ -142,32 +121,24 @@ export const handleOpenDockerEvent = (): void => {
       return;
     }
 
-    // Construct the command to open Docker Desktop or run a specific Docker command.
-    const command = `"${dockerPath}"`; // Adjust this if you need to specify a particular command.
-
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Execution Error: ${error.message}`);
-        return;
-      }
-
-      if (stderr) {
-        // Log the stderr to understand if it's an expected output or a critical error.
-        if (stderr.toLowerCase().includes("usage: docker") || stderr.toLowerCase().includes("common commands")) {
-          // Likely the output of Docker's help command; handle as a non-critical issue.
-          console.log(`Docker CLI help output detected: ${stderr}`);
-        } else {
-          // If not expected, treat it as a potential issue.
-          console.error(`Unexpected Stderr: ${stderr}`);
+       // execFile 대신 exec 사용
+       exec(`"${dockerPath}"`, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Execution Error:, ${dockerPath}`);
           return;
         }
-      }
+        if (stderr) {
+          console.error(`Error Output:${dockerPath}`);
+          return;
+        }
+        console.log('Docker Desktop launched successfully.', dockerPath);
+      });
 
-      // Log any standard output for debugging purposes.
-      console.log(`Command Output: ${stdout}`);
-    });
   });
 };
+
+
+
 // Docker 이미지 목록을 가져오는 IPC 핸들러
 export const handleGetDockerImages = (): void => {
   ipcMain.handle("get-docker-images", async () => {
@@ -175,7 +146,7 @@ export const handleGetDockerImages = (): void => {
       const images = await docker.listImages();
       return images;
     } catch (err) {
-      console.error("Error fetching Docker images:", err);
+      // console.error("Error fetching Docker images:", err);
       return err;
     }
   });
@@ -188,7 +159,7 @@ export const handleFetchDockerContainers = (): void => {
       const containers = await docker.listContainers();
       return containers;
     } catch (err) {
-      console.error("Error fetching container:", err);
+      // console.error("Error fetching container:", err);
       return err;
     }
   });

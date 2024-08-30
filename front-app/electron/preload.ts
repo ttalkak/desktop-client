@@ -1,8 +1,10 @@
 import { ipcRenderer, contextBridge } from "electron";
 
-type LogCallback = (log: string) => void;
-type ErrorCallback = (error: string) => void;
-type EndCallback = () => void;
+
+
+
+
+
 
 console.log("Preload script loaded");
 
@@ -39,23 +41,37 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }, 
   
   // 도커 데스크탑 실행
-  openDockerDesktop: (dockerPath: string | null) =>
-    ipcRenderer.invoke("open-docker-desktop", dockerPath),
+  openDockerDesktop: (dockerPath: string | null) => {
+    ipcRenderer.invoke("open-docker-desktop", dockerPath)},
+
   
   //컨테이너 생성 및 실행 
   createAndStartContainer: () =>
     ipcRenderer.invoke("create-and-start-container"),
 
   //도커 이벤트 감지// handle = invoke 사용한 비동기 처리
-  getDockerEvent: async () => {
-    try {
-      const data = await ipcRenderer.invoke("get-docker-event"); // 비동기적으로 요청
-      console.log("Received Docker event data:", data);
-      return data;
-    } catch (error) {
-      console.error("Error receiving Docker event:", error);
-      throw error;
-    }
+  // getDockerEvent: async () => {
+  //   try {
+  //     const data = await ipcRenderer.invoke("get-docker-event"); // 비동기적으로 요청
+  //     console.log("Received Docker event data:", data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error("Error receiving Docker event:", error);
+  //     throw error;
+  //   }
+  // },
+
+  // 도커 이벤트 감지
+  //이벤트 감지 시작해주세요 요청
+  sendDockerEventRequest: () => ipcRenderer.send('get-docker-event'),
+  //이벤트 받아옴
+  onDockerEventResponse:  (callback: (data: DockerEvent) => void) => {return ipcRenderer.on('docker-event-response',  (_event, data: DockerEvent) => callback(data))},
+  onDockerEventError: (callback: ErrorCallback) => ipcRenderer.on('docker-event-error', (_event, error) => callback(error)),
+  onDockerEventEnd: () => ipcRenderer.invoke('docker-event-end'),
+  removeAllListeners: () => {
+    ipcRenderer.removeAllListeners('docker-event-response');
+    ipcRenderer.removeAllListeners('docker-event-error');
+    ipcRenderer.removeAllListeners('docker-event-end');
   },
 
   //로그가져오기[실시간 처리 위해 추후 invoke 변경 예정]
