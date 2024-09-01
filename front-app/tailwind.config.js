@@ -21,7 +21,7 @@ export default {
     },
   },
   plugins: [
-    function ({ addUtilities, addComponents }) {
+    function ({ addUtilities, addComponents, theme }) {
       const newUtilities = {
         ".app-region-drag": {
           "-webkit-app-region": "drag",
@@ -35,13 +35,9 @@ export default {
         ".card": {
           "background-color": "#fff",
           "border-radius": "0.5rem",
-          "box-shadow": "0 2px 4px rgba(0, 0, 0, 0.1)",
           "padding": "1rem",
-          "transition": "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-        },
-        ".card:hover": {
-          "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.15)",
-        },
+          "border": `1px solid ${theme('colors.color-3')}`,
+        }
       };
 
       addUtilities(newUtilities);

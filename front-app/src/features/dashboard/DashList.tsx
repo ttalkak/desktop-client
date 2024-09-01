@@ -1,98 +1,153 @@
 import React, { useState, useEffect } from 'react';
 import ContainerList from './ContainerList';
 import ImageList from './ImageList';
-
+import { FaPlay } from 'react-icons/fa';
+import { FaStop } from "react-icons/fa";
 
 const DashList: React.FC = () => {
   const [activeView, setActiveView] = useState<'containers' | 'images'>('containers');
-  //이미지, 도커 리스트 가져오기
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
   const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [eventState, setEventState] = useState<DockerEvent | null>(null)
+  const [_eventState, setEventState] = useState<DockerEvent | null>(null);
+
+
+  const fetchDockerContainers = async () => {
+    try {
+      const containers = await window.electronAPI.fetchDockerContainers();
+      setDockerContainers(containers);
+    } catch (err) {
+      setError('Failed to fetch Docker containers. Please try again.');
+      console.error('Error fetching Docker containers:', err);
+    }
+  };
+
+  const fetchDockerImages = async () => {
+    try {
+      const images = await window.electronAPI.getDockerImages();
+      setDockerImages(images);
+    } catch (err) {
+      setError('Failed to fetch Docker images. Please try again.');
+      console.error('Error fetching Docker images:', err);
+    }
+  };
 
   useEffect(() => {
-    //최초로 불러오기
-    const fetchDockerData = async () => {
-      setIsLoading(true);
-      setError(null);
+    // 초기 데이터 로드
+    const loadData = async () => {
       try {
-        const images = await window.electronAPI.getDockerImages();
-        const containers = await window.electronAPI.fetchDockerContainers();
-        setDockerImages(images);
-        setDockerContainers(containers);
+        await Promise.all([fetchDockerContainers(), fetchDockerImages()]);
+        setIsLoading(false);  // 데이터 로드 후 로딩 상태를 false로 변경
       } catch (err) {
-        setError('Failed to fetch Docker data. Please try again.');
-        console.error('Error fetching Docker data:', err);
-      } finally {
-        setIsLoading(false);
+        setError('Failed to load Docker data.');
+        setIsLoading(false);  // 오류가 발생해도 로딩 상태를 false로 변경
       }
     };
 
-    //도커 이벤트 수신 연결
-    //type 종류 : network,  container, images
-    //이벤트 종류: die,  kill, stop, start
-    const dockerEventReceiver = async () => {
-      await window.electronAPI.onDockerEventResponse((data: DockerEvent) => {
-        const dockerEvent =  data; // data는 이벤트와 관련된 중요한 정보
-        console.log(data)
-        setEventState(dockerEvent)
-        if (dockerEvent.Type === 'container') {
-          setDockerContainers(prevContainers => {
-            const updatedContainers = [...prevContainers];
-            const index = updatedContainers.findIndex(container => container.id === dockerEvent.id);
+    loadData();
 
-            if (dockerEvent.status === 'destroy' && index !== -1) {
-              // 컨테이너가 삭제된 경우
-              updatedContainers.splice(index, 1);
-            } else if (dockerEvent.status === 'create' || dockerEvent.status === 'start' || dockerEvent.status === 'stop' || dockerEvent.status === 'kill') {
-              // 컨테이너가 생성되거나 시작되거나 정지된 경우
-              //container 정보중에서 dockerEvent를 통해 전달 받을수 있는 부분만 수정함
-              
-              if (index !== -1) {
-                updatedContainers[index] = { ...updatedContainers[index], ...dockerEvent };
+    const handleDockerEvent = (dockerEvent: DockerEvent) => {
+      setEventState(dockerEvent);
+      console.log('Docker event received:', dockerEvent);
+  
+      if (dockerEvent.Type === 'container') {
+        setDockerContainers((prevContainers) => {
+          let updatedContainers = [...prevContainers];
+          const index = updatedContainers.findIndex((container) => container.Id === dockerEvent.id);
+  
+          switch (dockerEvent.status) {
+            case 'create':
+            case 'start':
+            case 'unpause':
+              if (index === -1) {
+                fetchDockerContainers();
               } else {
-                // updatedContainers.push({ id: dockerEvent.id, ...dockerEvent } as DockerContainer);
+                updatedContainers[index] = { ...updatedContainers[index], State: dockerEvent.status };
               }
-            }
-            return updatedContainers;
-          });
-
+              break;
+  
+            case 'stop':
+            case 'kill':
+            case 'pause':
+            case 'die':
+              if (index !== -1) {
+                updatedContainers[index] = { ...updatedContainers[index], State: dockerEvent.status };
+              }
+              break;
+  
+            case 'restart':
+              if (index !== -1) {
+                updatedContainers[index] = { ...updatedContainers[index], State: 'restarted' };
+              }
+              break;
+  
+            case 'destroy':
+              if (index !== -1) {
+                updatedContainers.splice(index, 1);
+              }
+              break;
+  
+            default:
+              console.warn('Unhandled Docker container event status:', dockerEvent.status);
+              break;
+          }
+  
+          return updatedContainers;
+        });
+      } else if (dockerEvent.Type === 'image') {
+        switch (dockerEvent.status) {
+          case 'pull':
+          case 'push':
+          case 'tag':
+          case 'untag':
+          case 'delete':
+            fetchDockerImages();
+            break;
+  
+          default:
+            console.warn('Unhandled Docker image event status:', dockerEvent.status);
+            break;
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      });
+      }
     };
 
+    // Docker 이벤트 리스너 설정
+    window.electronAPI.onDockerEventResponse(handleDockerEvent);
 
-    fetchDockerData();
-    dockerEventReceiver();
+    // 이벤트 수신 시작
+    window.electronAPI.sendDockerEventRequest();
 
-    return()=>{
+    // 컴포넌트 언마운트 시 리스너 정리
+    return () => {
       window.electronAPI.removeAllListeners();
-    }
-
-  }, [setDockerContainers]);
+    };
+  }, []);
 
   if (isLoading) {
-    return <div className="text-center mt-8">Loading Docker data...</div>;
+    return (
+      <div className="text-center">
+        <div role="status">
+          <svg
+            aria-hidden="true"
+            className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+            viewBox="0 0 100 101"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+              fill="currentColor"
+            />
+            <path
+              d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717"
+              fill="currentFill"
+            />
+          </svg>
+          <span className="sr-only">Loading...</span>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -100,47 +155,54 @@ const DashList: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto p-6 card">
-      <h1 className="font-mono text-4xl text-center mb-8">Docker Dashboard</h1>
-      
-      <div className="flex justify-center mb-6">
-        <button
-          className={`px-4 py-2 mr-2 ${activeView === 'containers' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => setActiveView('containers')}
-        >
-          Containers
-        </button>
-        <button
-          className={`px-4 py-2 ${activeView === 'images' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => setActiveView('images')}
-        >
-          Images
-        </button>
+    <div>
+      <div className="col-span-2 py-6">
+      <div className="flex items-center justify-between">
+        <div className="flex space-x-2 bg-color-2 p-1.5 rounded-lg max-w-min w-full">
+          <button
+            className={`px-4 py-2 rounded-lg ${activeView === 'containers' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
+            onClick={() => setActiveView('containers')}
+          >
+            Containers
+          </button>
+          <button
+            className={`px-4 py-2 rounded-lg ${activeView === 'images' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
+            onClick={() => setActiveView('images')}
+          >
+            Images
+          </button>
+  
 
 
-        <p>{eventState?.status}</p> 
-        <p>{eventState?.id}</p> 
-        <p>{eventState?.Type}</p> 
-        <p>{eventState?.scope}</p> 
+        </div>
+        <div className="flex space-x-2">
+            <button className="px-4 py-2 rounded-lg bg-green-500 text-white flex items-center justify-center">
+              <FaPlay />
+            </button>
+            <button className="px-4 py-2 rounded-lg bg-red-500 text-white flex items-center justify-center">
+              <FaStop />
+            </button>
+          </div>
+      </div>
+        {activeView === 'containers' ? (
+          dockerContainers.length > 0 ? (
+            <ContainerList containers={dockerContainers} />
+          ) : (
+            <div className="text-center mt-8 text-red-500">
+              No containers found or failed to load containers.
+            </div>
+          )
+        ) : activeView === 'images' ? (
+          dockerImages.length > 0 ? (
+            <ImageList images={dockerImages} />
+          ) : (
+            <div className="text-center mt-8 text-red-500">
+              No images found or failed to load images.
+            </div>
+          )
+        ) : null}
       </div>
 
-      {activeView === 'containers' ? (
-        dockerContainers.length > 0 ? (
-          <ContainerList containers={dockerContainers} />
-        ) : (
-          <div className="text-center mt-8 text-red-500">
-            No containers found or failed to load containers.
-          </div>
-        )
-      ) : activeView === 'images' ? (
-        dockerImages.length > 0 ? (
-          <ImageList images={dockerImages} />
-        ) : (
-          <div className="text-center mt-8 text-red-500">
-            No images found or failed to load images.
-          </div>
-        )
-      ) : null}
     </div>
   );
 };

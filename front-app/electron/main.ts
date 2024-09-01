@@ -1,18 +1,22 @@
 import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
+import { promisify } from 'util';
 import path from "node:path";
 import { exec } from "child_process"; // exec 추가
 import iconv from "iconv-lite"; // iconv-lite 추가
 import {
-  handlecheckDockerStatus,
-  handleGetDockerImages,
+  handlecheckDockerStatus, 
+  handleGetDockerEvent, 
+  checkDockerStatus, 
+  handleStartDocker,
+  handleFetchDockerImages,
   handleFetchDockerContainers,
-  getDockerPath,
-  handleOpenDockerEvent,
   handleFetchContainerLogs,
-  handleGetDockerEvent,
-  // createAndStartContainer,
+  getContainerStatsStream,
 } from "./dockerManager";
+const execAsync = promisify(exec);
+
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,16 +34,42 @@ let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
-// 애플리케이션 초기화 시 
-//DockerManager IPC handler 등록하기
+
+async function startDockerIfNotRunning(): Promise<void> {
+  const status = await checkDockerStatus();
+
+  if (status !== 'running') {
+    console.log('Docker is not running. Starting Docker...');
+    try {
+      // const dockerPath = await execAsync("where docker"); // Docker 경로 가져오기
+      // const resolvedPath = dockerPath.stdout.trim().split("\n")[0] || 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
+      const resolvedPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
+
+      // Docker Desktop 실행
+      await execAsync(`"${resolvedPath}"`);
+      console.log('Docker started successfully.');
+    } catch (error) {
+      console.error('Failed to start Docker:', error);
+      throw new Error('Docker failed to start');
+    }
+  } else {
+    console.log('Docker is already running.');
+  }
+}
+
+
+
+
+//DockerManager IPC handler 등록
 function registerIpcHandlers() {
-  handlecheckDockerStatus();
-  getDockerPath();
-  handleOpenDockerEvent();
-  handleGetDockerEvent(); // Docker 이벤트 리스너 등록
-  handleGetDockerImages();
-  handleFetchDockerContainers();
-  handleFetchContainerLogs();
+  handlecheckDockerStatus();//도커현재상태 확인 => 실행안되고 있으면, 
+  handleStartDocker(); //도커실행시키기
+  handleGetDockerEvent();//도커 이벤트 감지[시작, 중지 포함]
+  handleFetchDockerImages();//이미지 목록 가져오기
+  handleFetchDockerContainers();//컨테이너 목록 가져오기
+  handleFetchContainerLogs();//실행중인 컨테이너 로그 가져오기
+  // getContainerStatsStream()//cpu사용률 가져오기
+  //웹소켓으로 로그, CPU 가용률, 실행중인 컨테이너 상태 전달
 }
 
 // 새로운 Electron 창 오픈
@@ -169,12 +199,17 @@ function createTray() {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 
-app
-  .whenReady()
-  .then(registerIpcHandlers)
-  .then(createWindow)
-  .then(handleFetchContainerLogs)
-  .then(createTray);
+
+//실행 어떻게 시킬지 고려해보기, 어느시점에 시작하는게 맞는가?
+app.whenReady()
+  .then(startDockerIfNotRunning) // Docker 상태 확인 및 필요시 실행
+  .then(registerIpcHandlers)     // IPC 핸들러 등록
+  .then(handleGetDockerEvent)    // Docker 이벤트 감지 핸들러 실행
+  .then(createWindow)            // 윈도우 생성
+  .then(createTray)              // 트레이 생성
+  .catch(error => {
+    console.error('Failed to start application:', error);
+  })
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

@@ -4,11 +4,12 @@ import { FaCircle } from 'react-icons/fa';
 const DockerStatusItem = () => {
   const [dockerStatus, setDockerStatus] = useState("unknown"); // 기본값: 'running'
 
-  // Docker 상태에 따른 색상 매핑 (as const 사용)
-  // const statusColor: Record<'running' | 'unknown', string> = {
-  //   running: 'text-green-500',
-  //   unknown: 'text-gray-500',
-  // };
+  // Docker 상태에 따른 색상 매핑 (as cons=readonly 적용)
+  const statusColor: Record<'running' | 'not running' | 'unknown' , string> = {
+    'running': 'text-green-500',
+    'not running': 'text-red-500', // 예시로 'text-red-500' 추가
+    'unknown': 'text-gray-500',
+  } as const;
 
   // Docker 상태 체크 함수
   const dockerCheckHandler = async ()=> {
@@ -23,42 +24,82 @@ const DockerStatusItem = () => {
     }
   };
 
-  //도커 시작 버튼
-  const dockerStarter = async () => {
-    try {
-      const dockerPath = await window.electronAPI.getDockerExecutablePath();
-      console.log(dockerPath);
-      if (dockerPath) {
-        await window.electronAPI.openDockerDesktop(dockerPath);
-        console.log("Docker Desktop started successfully");
-      } else {
-        console.error("Failed to find Docker executable path");
-      }
-    } catch (error) {
-      console.error("Error starting Docker Desktop:", error);
-    }
-  };
+  //도커 시작 
+  // const dockerStarter = async () => {
+  //   try {
+  //     const dockerPath = await window.electronAPI.getDockerExecutablePath();
+  //     console.log(dockerPath);
+  //     if (dockerPath) {
+  //       await window.electronAPI.openDockerDesktop(dockerPath);
+  //       console.log("Docker Desktop started successfully");
+  //     } else {
+  //       console.error("Failed to find Docker executable path");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error starting Docker Desktop:", error);
+  //   }
+  // };
   
+
   useEffect(() => {
-    const checkAndStartDocker = async () => {
-      const status= await dockerCheckHandler(); // Docker 상태 확인
-      if (status !== "running") { // Docker가 실행 중이지 않으면
-        await dockerStarter(); // Docker 시작
-      } else {
-        console.log("Docker is already running, no need to start it.");
-      }
+    // const checkAndStartDocker = async () => {
+    //   const status= await dockerCheckHandler(); // Docker 상태 확인
+    //   if (status !== "running") { // Docker가 실행 중이지 않으면
+    //     await dockerStarter(); // Docker 시작
+    //   } else {
+    //     console.log("Docker is already running, no need to start it.");
+    //   }
+    // };
+
+    // checkAndStartDocker(); // 컴포넌트 마운트 시 상태 확인 및 시작 시도
+    // dockerMonitor();
+
+    dockerCheckHandler();
+
+    // Docker 이벤트 구독 및 상태 확인
+    window.electronAPI.sendDockerEventRequest();
+
+    window.electronAPI.onDockerEventResponse((data) => {
+      console.log("Docker event detected:", data);
+      dockerCheckHandler();  // 이벤트 발생 시 Docker 상태 확인
+    });
+
+    return () => {
+      window.electronAPI.removeAllListeners(); // 컴포넌트 언마운트 시 리스너 제거
     };
 
-    checkAndStartDocker(); // 컴포넌트 마운트 시 상태 확인 및 시작 시도
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   }, []);
 
 
 
-  // 도커 실시간 모니터링 실행
-  const dockerMonitor = async () => {
-    await window.electronAPI.sendDockerEventRequest();
-    console.log("감지 실행중");
-  };
+
 
   return (
     <>
@@ -69,17 +110,10 @@ const DockerStatusItem = () => {
             <p className="font-sans text-gray-500">Current docker status</p>
           </div>
           <div className="flex items-center ml-2">
-            <FaCircle className="text-xs mr-1" />
-            <span className="font-sans">{dockerStatus}</span>
+          <FaCircle className={`text-xs mr-1 ${statusColor[dockerStatus as 'running' | 'not running' | 'unknown']}`} />
+          <span>{dockerStatus === 'running' ? 'Docker is running' : 'Docker is not running'}</span>
           </div>
         </div>
-
-        <button
-          onClick={dockerMonitor}
-          className="bg-blue-500 hover:bg-blue-600 font-semibold py-2 px-4 border border-gray-400 rounded shadow"
-        >
-          도커 이벤트 감지 실행
-        </button>
       </div>
     </>
   );

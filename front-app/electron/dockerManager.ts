@@ -1,28 +1,31 @@
-import Dockerode from "dockerode";
+// import Dockerode from "dockerode";
 import { ipcMain } from "electron";
 import { exec } from "child_process";
+import { promisify } from 'util';
+import Docker from 'dockerode'
+import { EventEmitter } from 'events';
 
+const execAsync = promisify(exec);
 
 // Dockerode 인스턴스 생성
-export const docker = new Dockerode({ host: "127.0.0.1", port: 2375 });
+// export const docker = new Dockerode({ host: "127.0.0.1", port: 2375 }); 원격 도커 연결용
+// 로컬 도커 연결용
+export const docker = new Docker()
 
 
-//도커 실행여부 확인 ping()
-function checkDockerStatus() {
-  return new Promise((resolve) => {
-    docker.ping()
-      .then(() => {
-        console.log('Docker is running.');
-        resolve('running'); // Docker가 실행 중일 때 'running' 반환
-      })
-      .catch((error) => {
-        console.error('Docker is not running:', error);
-        resolve('unknown'); // Docker가 실행 중이 아니거나 접근할 수 없을 때 'unknown' 반환
-      });
-  });
+//로그 스트림 객체
+export const logStreams: { [key: string]: any } = {}; 
+
+//----------------------------------도커 실행관련------------------------------------
+// Docker running 상태 체크 반환 
+export async function checkDockerStatus(): Promise<string> {
+  try {
+    await execAsync('docker info');
+    return 'running';
+  } catch {
+    return 'not running';
+  }
 }
-
-// IPC 핸들러 등록 함수
 export const handlecheckDockerStatus = (): void => {
   ipcMain.handle('check-docker-status', async () => {
     try {
@@ -35,8 +38,69 @@ export const handlecheckDockerStatus = (): void => {
   });
 };
 
-//도커 이벤트 스트림 구독(로컬에서 발생하는 도커 이벤트 감지)---------------------
+// Docker Desktop 경로 가져오는 함수 및 IPC 핸들러
+export const getDockerPath = (): void => {
+  ipcMain.handle("get-docker-path", async () => {
+    return new Promise((resolve, reject) => {
+      const command = "where docker"; // Docker 경로를 찾는 명령
+
+      exec(command, (error, _stdout, stderr) => {
+        if (error) {
+          console.error(`Error getting Docker path: ${error.message}`);
+          reject(`Error getting Docker path: ${error.message}`);
+          return;
+        }
+        if (stderr && stderr.toLowerCase().includes("not found")) {
+          console.error(`Docker not found: ${stderr}`);
+          reject(`Docker not found: ${stderr}`);
+          return;
+        }
+
+        // 경로가 여러 줄로 나올 수 있으므로, 첫 번째 경로를 사용
+        // const dockerPath = stdout.trim().split("\n")[0] || 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
+        const dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
+
+        if (!dockerPath) {
+          console.error("Docker path not found.");
+          reject("Docker path not found.");
+          return;
+        }
+
+        console.log(`Docker path found: ${dockerPath}`);
+        resolve(dockerPath); // Docker 경로 반환
+      });
+    });
+  });
+};
+
+// Docker Desktop 실행
+export const handleStartDocker = (): void => {
+  ipcMain.handle("open-docker-desktop", async (_event, dockerPath) => {
+    if (!dockerPath) {
+      console.error("Docker executable path not provided.");
+      return;
+    }
+
+    exec(`"${dockerPath}"`, (error, _stdout, stderr) => {
+      if (error) {
+        console.error(`Execution Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        console.error(`Error Output: ${stderr}`);
+        return;
+      }
+      console.log('Docker Desktop launched successfully.', dockerPath);
+    });
+  });
+};
+
+
+//--------------------- 도커 이벤트 스트림 구독(로컬 도커 이벤트 감지)-------------------------
 export const handleGetDockerEvent = (): void => {
+
+  
+
   ipcMain.on("get-docker-event", (event) => {
 
     docker.getEvents((err, stream) => {
@@ -49,7 +113,7 @@ export const handleGetDockerEvent = (): void => {
       stream?.on("data", (chunk) => {
         try {
           const dockerEvent = JSON.parse(chunk.toString());
-          console.log("Docker event received:", dockerEvent);
+          // console.log("Docker event received:", dockerEvent);
 
           // 렌더러 프로세스로 이벤트를 전송
           event.reply('docker-event-response', dockerEvent);
@@ -75,72 +139,102 @@ export const handleGetDockerEvent = (): void => {
 
 
 
+//----------------------------------- cpu 가용률 스트림 --------------------------------
+export function getContainerStatsStream(containerId: string): EventEmitter {
+  const container = docker.getContainer(containerId);
+  const statsEmitter = new EventEmitter();
 
-
-export const getDockerPath = (): void => {
-  ipcMain.handle("get-docker-path", async () => {
-    return new Promise((resolve, reject) => {
-      const command = "where docker";
-
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error getting Docker path: ${error.message}`);
-          reject(`Error getting Docker path: ${error.message}`); // 오류가 발생하면 reject 호출
-          return;
-        }
-        if (stderr && stderr.toLowerCase().includes("not found")) {
-          // 표준 오류가 있고, 'not found'가 포함된 경우에만 오류로 처리
-          console.error(`Docker not found: ${stderr}`);
-          reject(`Docker not found: ${stderr}`); 
-          return;
-        }
-
-        // const dockerPaths = stdout.trim().split("\n");
-        // const dockerPath = dockerPaths[1]; // 첫 번째 경로 사용
-        //일단 보류..................
-        const dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
-
-        if (!dockerPath) {
-          console.error("Docker path not found.");
-          reject("Docker path not found.");
-          return;
-        }
-
-        console.log(`Docker path found: ${dockerPath}`);
-        resolve(dockerPath); // Docker 경로 반환
-      });
-    });
-  });
-};
-
-// Docker Desktop 실행 IPC 핸들러
-export const handleOpenDockerEvent = (): void => {
-  ipcMain.handle("open-docker-desktop", async (_event, dockerPath) => {
-    if (!dockerPath) {
-      console.error("Docker executable path not provided.");
+  container.stats({ stream: true }, (err, stream) => {
+    if (err) {
+      console.error('Error fetching stats:', err);
+      statsEmitter.emit('error', err);
       return;
     }
 
-       // execFile 대신 exec 사용
-       exec(`"${dockerPath}"`, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Execution Error:, ${dockerPath}`);
-          return;
-        }
-        if (stderr) {
-          console.error(`Error Output:${dockerPath}`);
-          return;
-        }
-        console.log('Docker Desktop launched successfully.', dockerPath);
-      });
+    stream?.on('data', (data) => {
+      const stats = JSON.parse(data.toString());
+      const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+      const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+      const numberOfCpus = stats.cpu_stats.online_cpus;
 
+      const cpuUsagePercent = (cpuDelta / systemDelta) * numberOfCpus * 100;
+      statsEmitter.emit('data', cpuUsagePercent);
+    });
+
+    stream?.on('error', (err) => {
+      console.error('Stream error:', err);
+      statsEmitter.emit('error', err);
+    });
+
+    stream?.on('end', () => {
+      statsEmitter.emit('end');
+    });
   });
-};
+
+  return statsEmitter;
+}
+
+export function calculateAverage(cpuUsages: number[]): number {
+  const sum = cpuUsages.reduce((a, b) => a + b, 0);
+  return sum / cpuUsages.length;
+}
+// 배치 처리 및 웹소켓 전송
+// export function handleCpuUsageBatchAndWebSocket(containerId: string, batchSize: number, interval: number) {
+//   const cpuUsages: number[] = [];
+//   const statsStream = getContainerStatsStream(containerId);
+
+//   statsStream.on('data', (cpuUsage) => {
+//     cpuUsages.push(cpuUsage);
+    
+//     if (cpuUsages.length >= batchSize) {
+//       const averageCpuUsage = calculateAverage(cpuUsages);
+//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
+//       cpuUsages.length = 0; // 배치 처리 후 배열 초기화
+//     }
+//   });
+
+//   statsStream.on('error', (err) => {
+//     console.error('Error in CPU usage stream:', err);
+//   });
+
+//   statsStream.on('end', () => {
+//     // 스트림이 종료되었을 때 남은 데이터를 처리
+//     if (cpuUsages.length > 0) {
+//       const averageCpuUsage = calculateAverage(cpuUsages);
+//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
+//     }
+//   });
+
+  // 정해진 간격(interval)마다 강제로 배치 처리
+//   setInterval(() => {
+//     if (cpuUsages.length > 0) {
+//       const averageCpuUsage = calculateAverage(cpuUsages);
+//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
+//       cpuUsages.length = 0;
+//     }
+//   }, interval);
+// }
 
 
 
-// Docker 이미지 목록을 가져오는 IPC 핸들러
-export const handleGetDockerImages = (): void => {
+// function sendCpuUsageOverWebSocket(containerId: string, cpuUsage: number) {
+//   const message = JSON.stringify({
+//     containerId,
+//     cpuUsage,
+//     timestamp: new Date().toISOString(),
+//   });
+
+//   wss.clients.forEach(client => {
+//     if (client.readyState === WebSocket.OPEN) {
+//       client.send(message);
+//     }
+//   });
+// }
+
+
+
+//---------------------------- Docker 이미지, 컨테이너 Fetch -------------------------------
+export const handleFetchDockerImages = (): void => {
   ipcMain.handle("get-docker-images", async () => {
     try {
       const images = await docker.listImages();
@@ -152,55 +246,63 @@ export const handleGetDockerImages = (): void => {
   });
 };
 
-// Docker 컨테이너 목록을 가져오는 IPC 핸들러
 export const handleFetchDockerContainers = (): void => {
   ipcMain.handle("fetch-docker-containers", async () => {
     try {
       const containers = await docker.listContainers();
       return containers;
     } catch (err) {
-      // console.error("Error fetching container:", err);
       return err;
     }
   });
 };
 
-// Docker 컨테이너 로그 가져오기 IPC 이벤트 처리
+// ----------------------- Docker 컨테이너 로그 -----------------------------------------
 export const handleFetchContainerLogs = (): void => {
-  ipcMain.on(
-    "start-container-log-stream",
-    async (event, containerId: string) => {
-      try {
-        const container = docker.getContainer(containerId);
-        const logStream = await container.logs({
-          follow: true,
-          stdout: true,
-          stderr: true,
-          since: 0,
-          timestamps: true,
-        });
+  ipcMain.on("start-container-log-stream", async (event, containerId: string) => {
+    try {
+      const container = docker.getContainer(containerId);
+      const logStream = await container.logs({
+        follow: true,   // 새로운 로그를 실시간으로 가져옵니다.
+        stdout: true,
+        stderr: true,
+        since: 0,       // 모든 로그를 가져옵니다.
+        timestamps: true,
+      });
 
-        logStream.on("data", (chunk) => {
-          event.sender.send("container-logs-stream", chunk.toString());
-        });
+      logStreams[containerId] = logStream; // 스트림을 저장합니다.
 
-        logStream.on("error", (err) => {
-          console.error("Error fetching logs:", err);
-          event.sender.send("container-logs-error", err.message);
-        });
+      logStream.on("data", (chunk) => {
+        event.sender.send("container-logs-stream", chunk.toString());
+      });
 
-        logStream.on("end", () => {
-          event.sender.send("container-logs-end");
-        });
-      } catch (err) {
-        console.error("Error fetching logs:", err);
-        event.sender.send("container-logs-error");
-      }
+      logStream.on("error", (err) => {
+        event.sender.send("container-logs-error", err.message);
+      });
+
+      logStream.on("end", () => {
+        event.sender.send("container-logs-end");
+      });
+
+    } catch (err) {
+      event.sender.send("container-logs-error" || 'Unknown error');
     }
-  );
+  });
+
+  ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
+    const logStream = logStreams[containerId];
+    if (logStream) {
+      logStream.destroy(); // 스트림을 종료합니다.
+      delete logStreams[containerId]; // 스트림을 객체에서 삭제합니다.
+      event.sender.send("container-logs-end", `Log stream for container ${containerId} has been stopped.`);
+    } else {
+      event.sender.send("container-logs-error", `No active log stream for container ${containerId}.`);
+    }
+  });
 };
 
-// Docker 컨테이너를 생성 및 실행하는 함수
+//----------------------------------------- Docker 컨테이너 생성 및 실행 --------------------------
+//이미지 목록 전체 가져와서 실행시키는 기능으로 바꿔야함
 export const createAndStartContainer = (): void => {
   const containerOptions = {
     Image: "nginx:latest",
@@ -237,4 +339,4 @@ export const createAndStartContainer = (): void => {
 
 //전체 컨테이너 정지
 
-//이미지 빌드
+//이미지 빌드??처리 어떻게 하는건지, 백에서 자동으로 조작해서 해주는건지????????? 
