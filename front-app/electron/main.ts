@@ -16,6 +16,7 @@ import {
   handleFetchDockerImages,
   handleFetchDockerContainers,
   handleFetchContainerLogs,
+  handleBuildDockerImage,
   // getContainerStatsStream,
 } from "./dockerManager";
 
@@ -63,8 +64,9 @@ async function startDockerIfNotRunning(): Promise<void> {
 
 //DockerManager IPC handler 등록
 function registerIpcHandlers() {
-  //zip다운 및 upzip
-  githubDownLoadAndUnzip();
+  githubDownLoadAndUnzip(); //zip다운 및 upzip
+  handleBuildDockerImage(); //unzip된 파일에서 도커파일 찾아서 빌드
+  //이미지 파일 기반 컨테이너 파일 빌드하기
   handlecheckDockerStatus(); //도커현재상태 확인 => 실행안되고 있으면,
   handleStartDocker(); //도커실행시키기
   handleGetDockerEvent(); //도커 이벤트 감지[시작, 중지 포함]
@@ -72,7 +74,6 @@ function registerIpcHandlers() {
   handleFetchDockerContainers(); //컨테이너 목록 가져오기
   handleFetchContainerLogs(); //실행중인 컨테이너 로그 가져오기
   // getContainerStatsStream()//cpu사용률 가져오기
-
   //웹소켓으로 로그, CPU 가용률, 실행중인 컨테이너 상태 전달
 }
 

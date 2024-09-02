@@ -108,6 +108,10 @@ declare global {
       downloadDir: string,
       extractDir: string
     ) => Promise<{ success: boolean; message: string }>;
+    //디렉토리 기준으로 image빌드
+    buildDockerImage: (
+      contextPath: string
+    ) => Promise<{ status: string; message?: string }>;
   }
 
   interface Window {

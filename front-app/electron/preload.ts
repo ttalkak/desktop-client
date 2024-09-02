@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("docker-event-end");
   },
 
-  //--------------------컨테이너, 이미지 로드-----------------------
+  //--------------------컨테이너, 이미지 로드-----------------
   getDockerImages: () => {
     // console.log("fetching..img preload");
     return ipcRenderer.invoke("get-docker-images");
@@ -50,7 +50,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("fetch-docker-containers");
   },
 
-  //---------------------- 도커 로그 -----------------------
+  //---------------------- 도커 로그 ------------------------
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);
   },
@@ -67,7 +67,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("stop-container-log-stream", containerId);
   },
 
-  //--------------------- CPU 사용률 --------------------------
+  //--------------------- CPU 사용률 -------------------------
   startContainerStatsStream: (containerId: string) =>
     ipcRenderer.send("start-container-stats-stream", containerId),
   onCpuUsageData: (callback: (cpuUsage: number) => void) =>
@@ -77,11 +77,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onCpuUsageEnd: (callback: () => void) =>
     ipcRenderer.on("cpu-usage-end", () => callback()),
 
-  //-------------------- 컨테이너 생성 및 실행 -----------------
+  //-------------------- 컨테이너 생성 및 실행 ----------------
   createAndStartContainer: () =>
     ipcRenderer.invoke("create-and-start-container"),
 
-  //---------------------- 창 조절 관련 ------------------------
+  //---------------------- 창 조절 관련 -----------------------
   minimizeWindow: () => {
     ipcRenderer.send("minimize-window");
   },
@@ -92,13 +92,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("close-window");
   },
 
-  //---------------------- zip 파일 다운로드 ---------------------
+  //---------------------- zip 파일 다운로드 --------------------
   // downloadGithubRepo: (repoUrl: string, downloadPath: string) => {
   //   console.log("git hubDownload 실행중");
   //   return ipcRenderer.invoke("download-github-repo", repoUrl, downloadPath);
   // },
 
-  //----------------- zip 다운 하고 바로 unzip ------------------------
+  //----------------- zip 다운 하고 바로 unzip ------------------
   downloadAndUnzip: (
     repoUrl: string,
     downloadDir: string,
@@ -106,7 +106,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) =>
     ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
 
-  //---------------------- 포트 인바운드 관련 ----------------------
+  //----------------------unzip한 파일 이미지 빌드----------------
+  buildDockerImage: (contextPath: string) =>
+    ipcRenderer.invoke("build-docker-image", contextPath),
+
+  //---------------------- 포트 인바운드 관련 --------------------
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return ipcRenderer.invoke("get-inbound-rules");
