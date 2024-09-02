@@ -370,7 +370,7 @@ export async function processAndBuildImage(contextPath: string) {
   }
 }
 
-//
+//도커 이미지 빌드
 export function handleBuildDockerImage() {
   ipcMain.handle("build-docker-image", async (_event, contextPath: string) => {
     console.log(

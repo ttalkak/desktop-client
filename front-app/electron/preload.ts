@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from "electron";
+import path from "path";
 
 console.log("Preload script loaded");
 
@@ -99,6 +100,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // },
 
   //----------------- zip 다운 하고 바로 unzip ------------------
+  getProjectSourceDirectory: (): Promise<string> =>
+    ipcRenderer.invoke("get-project-source-directory"),
   downloadAndUnzip: (
     repoUrl: string,
     downloadDir: string,
@@ -106,6 +109,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) =>
     ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
 
+  joinPath: (...paths: string[]): string => path.join(...paths), // joinPath 함수 구현
   //----------------------unzip한 파일 이미지 빌드----------------
   buildDockerImage: (contextPath: string) =>
     ipcRenderer.invoke("build-docker-image", contextPath),

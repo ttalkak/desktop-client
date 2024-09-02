@@ -102,12 +102,17 @@ declare global {
     // pgrok 다운로드
     downloadPgrok: () => Promise<string>; // pgrok 파일 다운로드
 
-    // 다운로드 하고 바로 upzip
+    // 저장할 경로 지정 + 다운로드 하고 바로 upzip
+    getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       repoUrl: string,
       downloadDir: string,
       extractDir: string
     ) => Promise<{ success: boolean; message: string }>;
+
+    //pathjoin을 위한 할당
+    joinPath: (...paths: string[]) => string;
+
     //디렉토리 기준으로 image빌드
     buildDockerImage: (
       contextPath: string

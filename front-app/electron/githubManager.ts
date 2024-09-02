@@ -1,12 +1,34 @@
 import path from "node:path";
-import { downloadFile, unzipFile } from "./utils";
+import { downloadFile, unzipFile, getTtalkakDirectory } from "./utils";
 import { ipcMain } from "electron";
+import fs from "fs";
 
-//다운로드 하고 바로 unzip
+export function getProjectSourceDirectory(): string {
+  const projectSourceDirectory = path.join(
+    getTtalkakDirectory(), // 기본 Ttalkak 경로
+    "project",
+    "source"
+  );
+
+  // 디렉토리가 존재하지 않으면 생성
+  if (!fs.existsSync(projectSourceDirectory)) {
+    fs.mkdirSync(projectSourceDirectory, { recursive: true });
+    console.log(`Directory created at: ${projectSourceDirectory}`);
+  }
+
+  return projectSourceDirectory; // 경로 반환
+}
+
+// IPC 핸들러로 projectSourceDirectory를 반환
+ipcMain.handle("get-project-source-directory", async () => {
+  return getProjectSourceDirectory();
+});
+
+// 다운로드 하고 바로 unzip
 async function downloadAndUnzip(
   repoUrl: string,
-  downloadDir: string,
-  extractDir: string
+  downloadDir: string = getProjectSourceDirectory(),
+  extractDir: string = getProjectSourceDirectory()
 ): Promise<void> {
   try {
     const repoName = path.basename(repoUrl); // 레포지토리 이름 추출
@@ -30,10 +52,16 @@ async function downloadAndUnzip(
   }
 }
 
+// IPC 핸들러를 설정하여 다운로드 및 압축 해제를 처리
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(
     "download-and-unzip",
-    async (_, repoUrl, downloadDir, extractDir) => {
+    async (
+      _,
+      repoUrl: string,
+      downloadDir: string = getProjectSourceDirectory(),
+      extractDir: string = getProjectSourceDirectory()
+    ) => {
       return await downloadAndUnzip(repoUrl, downloadDir, extractDir);
     }
   );

@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import ContainerList from './ContainerList';
-import ImageList from './ImageList';
-import { FaPlay } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import ContainerList from "./ContainerList";
+import ImageList from "./ImageList";
+import { FaPlay } from "react-icons/fa";
 import { FaStop } from "react-icons/fa";
 
 const DashList: React.FC = () => {
-  const [activeView, setActiveView] = useState<'containers' | 'images'>('containers');
+  const [activeView, setActiveView] = useState<"containers" | "images">(
+    "containers"
+  );
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
-  const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>([]);
+  const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [_eventState, setEventState] = useState<DockerEvent | null>(null);
-
 
   const fetchDockerContainers = async () => {
     try {
       const containers = await window.electronAPI.fetchDockerContainers();
       setDockerContainers(containers);
     } catch (err) {
-      setError('Failed to fetch Docker containers. Please try again.');
-      console.error('Error fetching Docker containers:', err);
+      setError("Failed to fetch Docker containers. Please try again.");
+      console.error("Error fetching Docker containers:", err);
     }
   };
 
@@ -28,8 +31,8 @@ const DashList: React.FC = () => {
       const images = await window.electronAPI.getDockerImages();
       setDockerImages(images);
     } catch (err) {
-      setError('Failed to fetch Docker images. Please try again.');
-      console.error('Error fetching Docker images:', err);
+      setError("Failed to fetch Docker images. Please try again.");
+      console.error("Error fetching Docker images:", err);
     }
   };
 
@@ -38,10 +41,10 @@ const DashList: React.FC = () => {
     const loadData = async () => {
       try {
         await Promise.all([fetchDockerContainers(), fetchDockerImages()]);
-        setIsLoading(false);  // 데이터 로드 후 로딩 상태를 false로 변경
+        setIsLoading(false); // 데이터 로드 후 로딩 상태를 false로 변경
       } catch (err) {
-        setError('Failed to load Docker data.');
-        setIsLoading(false);  // 오류가 발생해도 로딩 상태를 false로 변경
+        setError("Failed to load Docker data.");
+        setIsLoading(false); // 오류가 발생해도 로딩 상태를 false로 변경
       }
     };
 
@@ -49,64 +52,81 @@ const DashList: React.FC = () => {
 
     const handleDockerEvent = (dockerEvent: DockerEvent) => {
       setEventState(dockerEvent);
-      console.log('Docker event received:', dockerEvent);
-  
-      if (dockerEvent.Type === 'container') {
+      console.log("Docker event received:", dockerEvent);
+
+      if (dockerEvent.Type === "container") {
         setDockerContainers((prevContainers) => {
           let updatedContainers = [...prevContainers];
-          const index = updatedContainers.findIndex((container) => container.Id === dockerEvent.id);
-  
+          const index = updatedContainers.findIndex(
+            (container) => container.Id === dockerEvent.id
+          );
+
           switch (dockerEvent.status) {
-            case 'create':
-            case 'start':
-            case 'unpause':
+            case "create":
+            case "start":
+            case "unpause":
               if (index === -1) {
                 fetchDockerContainers();
               } else {
-                updatedContainers[index] = { ...updatedContainers[index], State: dockerEvent.status };
+                updatedContainers[index] = {
+                  ...updatedContainers[index],
+                  State: dockerEvent.status,
+                };
               }
               break;
-  
-            case 'stop':
-            case 'kill':
-            case 'pause':
-            case 'die':
+
+            case "stop":
+            case "kill":
+            case "pause":
+            case "die":
               if (index !== -1) {
-                updatedContainers[index] = { ...updatedContainers[index], State: dockerEvent.status };
+                updatedContainers[index] = {
+                  ...updatedContainers[index],
+                  State: dockerEvent.status,
+                };
               }
               break;
-  
-            case 'restart':
+
+            case "restart":
               if (index !== -1) {
-                updatedContainers[index] = { ...updatedContainers[index], State: 'restarted' };
+                updatedContainers[index] = {
+                  ...updatedContainers[index],
+                  State: "restarted",
+                };
               }
               break;
-  
-            case 'destroy':
+
+            case "destroy":
               if (index !== -1) {
                 updatedContainers.splice(index, 1);
               }
               break;
-  
+
             default:
-              console.warn('Unhandled Docker container event status:', dockerEvent.status);
+              console.warn(
+                "Unhandled Docker container event status:",
+                dockerEvent.status
+              );
               break;
           }
-  
+
           return updatedContainers;
         });
-      } else if (dockerEvent.Type === 'image') {
+      } else if (dockerEvent.Type === "image") {
         switch (dockerEvent.status) {
-          case 'pull':
-          case 'push':
-          case 'tag':
-          case 'untag':
-          case 'delete':
+          case "pull":
+          case "push":
+          case "tag":
+          case "untag":
+          case "delete":
             fetchDockerImages();
             break;
-  
+
           default:
-            console.warn('Unhandled Docker image event status:', dockerEvent.status);
+            console.warn(
+              "Unhandled Docker image event status:",
+              dockerEvent.status
+            );
             break;
         }
       }
@@ -157,25 +177,30 @@ const DashList: React.FC = () => {
   return (
     <div>
       <div className="col-span-2 py-6">
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2 bg-color-2 p-1.5 rounded-lg max-w-min w-full">
-          <button
-            className={`px-4 py-2 rounded-lg ${activeView === 'containers' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
-            onClick={() => setActiveView('containers')}
-          >
-            Containers
-          </button>
-          <button
-            className={`px-4 py-2 rounded-lg ${activeView === 'images' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
-            onClick={() => setActiveView('images')}
-          >
-            Images
-          </button>
-  
-
-
-        </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center justify-between">
+          <div className="flex space-x-2 bg-color-2 p-1.5 rounded-lg max-w-min w-full">
+            <button
+              className={`px-4 py-2 rounded-lg ${
+                activeView === "containers"
+                  ? "bg-white text-black shadow"
+                  : "text-gray-500"
+              }`}
+              onClick={() => setActiveView("containers")}
+            >
+              Containers
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg ${
+                activeView === "images"
+                  ? "bg-white text-black shadow"
+                  : "text-gray-500"
+              }`}
+              onClick={() => setActiveView("images")}
+            >
+              Images
+            </button>
+          </div>
+          <div className="flex space-x-2">
             <button className="px-4 py-2 rounded-lg bg-green-500 text-white flex items-center justify-center">
               <FaPlay />
             </button>
@@ -183,8 +208,8 @@ const DashList: React.FC = () => {
               <FaStop />
             </button>
           </div>
-      </div>
-        {activeView === 'containers' ? (
+        </div>
+        {activeView === "containers" ? (
           dockerContainers.length > 0 ? (
             <ContainerList containers={dockerContainers} />
           ) : (
@@ -192,7 +217,7 @@ const DashList: React.FC = () => {
               No containers found or failed to load containers.
             </div>
           )
-        ) : activeView === 'images' ? (
+        ) : activeView === "images" ? (
           dockerImages.length > 0 ? (
             <ImageList images={dockerImages} />
           ) : (
@@ -202,7 +227,6 @@ const DashList: React.FC = () => {
           )
         ) : null}
       </div>
-
     </div>
   );
 };
