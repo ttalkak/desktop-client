@@ -4,11 +4,15 @@ import { FaRegSquare } from "react-icons/fa";
 import { FiMinus } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import LoginModal from "./../features/auth/LoginModal";
+import { useAuthStore } from "../stores/authStore";
 
 const Header = () => {
   const location = useLocation();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isFromModal, setIsFromModal] = useState(false);
+
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const clearTokens = useAuthStore((state) => state.clearTokens);
 
   const handleMinimize = () => {
     window.electronAPI.minimizeWindow();
@@ -20,6 +24,10 @@ const Header = () => {
 
   const handleClose = () => {
     window.electronAPI.closeWindow();
+  };
+
+  const handleLogout = () => {
+    clearTokens();
   };
 
   const toggleLoginModal = (source: string) => {
@@ -53,7 +61,7 @@ const Header = () => {
   const navContainer = `flex justify-between button ml-2.5 app-region-no-drag`;
   const navText = `text-color-10 text-sm px-6 py-1 mt-0.5 relative hover:text-color-5`;
   const pageBtn = `w-11 h-11 flex items-center justify-center hover:bg-color-2 cursor-pointer button app-region-no-drag`;
-  const signBtn = `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`;
+  const signBtn = `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-11`;
 
   const Additional = () => (
     <div
@@ -86,9 +94,15 @@ const Header = () => {
       </div>
       <div className="flex flex-wrap items-center ">
         <div className="relative">
-          <div className={signBtn} onClick={() => toggleLoginModal("header")}>
-            Sign in
-          </div>
+          {accessToken ? (
+            <div onClick={handleLogout} className={signBtn}>
+              Logout
+            </div>
+          ) : (
+            <div className={signBtn} onClick={() => toggleLoginModal("header")}>
+              Sign in
+            </div>
+          )}
           <LoginModal isOpen={isLoginModalOpen} onClose={toggleLoginModal} />
         </div>
         <div className={pageBtn} onClick={handleMinimize}>
