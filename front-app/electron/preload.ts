@@ -3,9 +3,9 @@ import { ipcRenderer, contextBridge } from "electron";
 console.log("Preload script loaded");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-
-  // ------------------------------ 도커 실행 -------------------------------
-  checkDockerStatus: async () => { //상태확인
+  // ------------------------------ 도커 실행 -----------------------------
+  checkDockerStatus: async () => {
+    //상태확인
     try {
       const status = await ipcRenderer.invoke("check-docker-status");
       return status;
@@ -14,14 +14,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  getDockerExecutablePath: () => {   //도커 실행파일 경로
+  getDockerExecutablePath: () => {
+    //도커 실행파일 경로
     return ipcRenderer.invoke("get-docker-path");
   },
-  openDockerDesktop: (dockerPath: string | null) => {   // 도커 데스크탑 시작
+  openDockerDesktop: (dockerPath: string | null) => {
+    // 도커 데스크탑 시작
     ipcRenderer.invoke("open-docker-desktop", dockerPath);
   },
 
-  // -----------------------도커 이벤트 감지 ---------------------------------
+  // -----------------------도커 이벤트 감지 -------------------------------
   sendDockerEventRequest: () => ipcRenderer.send("get-docker-event"),
   onDockerEventResponse: (callback: (data: DockerEvent) => void) => {
     return ipcRenderer.on(
@@ -38,8 +40,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("docker-event-end");
   },
 
-  
-
   //--------------------컨테이너, 이미지 로드-----------------------
   getDockerImages: () => {
     // console.log("fetching..img preload");
@@ -49,7 +49,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // console.log("fetchingDocker.. preload");
     return ipcRenderer.invoke("fetch-docker-containers");
   },
-
 
   //---------------------- 도커 로그 -----------------------
   startLogStream: (containerId: string) => {
@@ -67,18 +66,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopLogStream: (containerId: string) => {
     ipcRenderer.send("stop-container-log-stream", containerId);
   },
-  
 
   //--------------------- CPU 사용률 --------------------------
-  startContainerStatsStream: (containerId: string) => ipcRenderer.send('start-container-stats-stream', containerId),
-  onCpuUsageData: (callback: (cpuUsage: number) => void) => ipcRenderer.on('cpu-usage-data', (_event, cpuUsage) => callback(cpuUsage)),
-  onCpuUsageError: (callback: (error: string) => void) => ipcRenderer.on('cpu-usage-error', (_event, error) => callback(error)),
-  onCpuUsageEnd: (callback: () => void) => ipcRenderer.on('cpu-usage-end', () => callback()),
+  startContainerStatsStream: (containerId: string) =>
+    ipcRenderer.send("start-container-stats-stream", containerId),
+  onCpuUsageData: (callback: (cpuUsage: number) => void) =>
+    ipcRenderer.on("cpu-usage-data", (_event, cpuUsage) => callback(cpuUsage)),
+  onCpuUsageError: (callback: (error: string) => void) =>
+    ipcRenderer.on("cpu-usage-error", (_event, error) => callback(error)),
+  onCpuUsageEnd: (callback: () => void) =>
+    ipcRenderer.on("cpu-usage-end", () => callback()),
 
   //-------------------- 컨테이너 생성 및 실행 -----------------
   createAndStartContainer: () =>
     ipcRenderer.invoke("create-and-start-container"),
-
 
   //---------------------- 창 조절 관련 ------------------------
   minimizeWindow: () => {
@@ -91,7 +92,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("close-window");
   },
 
-  //---------------------- 포트 인바운드 관련 -------------------
+  //---------------------- zip 파일 다운로드 ---------------------
+  // downloadGithubRepo: (repoUrl: string, downloadPath: string) => {
+  //   console.log("git hubDownload 실행중");
+  //   return ipcRenderer.invoke("download-github-repo", repoUrl, downloadPath);
+  // },
+
+  //----------------- zip 다운 하고 바로 unzip ------------------------
+  downloadAndUnzip: (repoUrl: string, downloadDir: string, extractDir: string) => 
+    ipcRenderer.invoke('download-and-unzip', repoUrl, downloadDir, extractDir),
+
+
+  //---------------------- 포트 인바운드 관련 ----------------------
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return ipcRenderer.invoke("get-inbound-rules");

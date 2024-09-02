@@ -4,6 +4,9 @@ import { promisify } from 'util';
 import path from "node:path";
 import { exec } from "child_process"; // exec 추가
 import iconv from "iconv-lite"; // iconv-lite 추가
+import { githubDownLoadAndUnzip } from "./githubManager";
+
+
 import {
   handlecheckDockerStatus, 
   handleGetDockerEvent, 
@@ -12,13 +15,19 @@ import {
   handleFetchDockerImages,
   handleFetchDockerContainers,
   handleFetchContainerLogs,
-  getContainerStatsStream,
+  // getContainerStatsStream,
 } from "./dockerManager";
+
+ 
 const execAsync = promisify(exec);
 
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// const pipelineAsync = promisify(pipeline);import { githubDownLoadAndUnzip } from './githubManager';
+
+
+
 
 process.env.APP_ROOT = path.join(__dirname, "..");
 
@@ -62,6 +71,8 @@ async function startDockerIfNotRunning(): Promise<void> {
 
 //DockerManager IPC handler 등록
 function registerIpcHandlers() {
+  //zip다운 및 upzip
+  githubDownLoadAndUnzip();
   handlecheckDockerStatus();//도커현재상태 확인 => 실행안되고 있으면, 
   handleStartDocker(); //도커실행시키기
   handleGetDockerEvent();//도커 이벤트 감지[시작, 중지 포함]
@@ -69,6 +80,8 @@ function registerIpcHandlers() {
   handleFetchDockerContainers();//컨테이너 목록 가져오기
   handleFetchContainerLogs();//실행중인 컨테이너 로그 가져오기
   // getContainerStatsStream()//cpu사용률 가져오기
+
+
   //웹소켓으로 로그, CPU 가용률, 실행중인 컨테이너 상태 전달
 }
 
@@ -137,6 +150,74 @@ async function createWindow() {
     });
   });
 
+
+// // 다운로드 함수 
+// async function downloadFile(url: string, dest: string) {
+//   const response = await axios({
+//       url,
+//       method: 'GET',
+//       responseType: 'stream',
+//   });
+
+//   const writer = fs.createWriteStream(dest);
+
+//   response.data.pipe(writer);
+
+//   return new Promise((resolve, reject) => {
+//       writer.on('finish', resolve);
+//       writer.on('error', reject);
+//   });
+// }
+
+// // ZIP 파일 압축 해제 함수
+// async function unzipFile(zipFilePath: string, destDir: string) {
+//   const zip = new StreamZipAsync({ file: zipFilePath });
+
+//   if (!fs.existsSync(destDir)) {
+//       fs.mkdirSync(destDir, { recursive: true });
+//   }
+//   const entries = await zip.entries();
+//   for (const entry of Object.values(entries)) {
+//       const filePath = path.join(destDir, entry.name);
+
+//       if (entry.isDirectory) {
+//           if (!fs.existsSync(filePath)) {
+//               fs.mkdirSync(filePath, { recursive: true });
+//           }
+//       } else {
+//           const readStream = await zip.stream(entry.name);
+//           const writeStream = fs.createWriteStream(filePath);
+//           readStream.pipe(writeStream);
+//       }
+//   }
+
+//   await zip.close();
+//   console.log('Unzip completed!');
+// }
+
+
+ // GitHub 레포지토리 ZIP 파일 다운로드 기능 IPC 핸들러 
+//  ipcMain.handle(
+//   "download-github-repo",
+//   async (_, repoUrl: string, downloadPath: string) => {
+//     try {
+//       const zipUrl = `${repoUrl}/archive/refs/heads/main.zip`; // main 브랜치 기준으로 다운로드
+//       const downloadFilePath = path.join(
+//         downloadPath,
+//         `${path.basename(repoUrl)}.zip`
+//       );
+
+//       await downloadFile(zipUrl, downloadFilePath);
+
+//       return { success: true, filePath: downloadFilePath };
+//     } catch (error) {
+//       console.error("Error downloading repository:", error);
+//       return { success: false, message: error };
+//     }
+//   }
+// );
+
+
   win.on("close", (event) => {
     if (!isQuiting) {
       event.preventDefault();
@@ -166,6 +247,11 @@ async function createWindow() {
     win?.close();
   });
 }
+
+
+
+
+
 
 // Create the system tray icon and menu
 function createTray() {

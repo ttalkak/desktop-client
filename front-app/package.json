@@ -18,6 +18,7 @@
     "@types/stompjs": "^2.3.9",
     "axios": "^1.7.5",
     "dockerode": "^4.0.2",
+    "node-stream-zip": "^1.15.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.3.0",

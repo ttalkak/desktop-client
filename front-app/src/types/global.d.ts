@@ -98,6 +98,12 @@ declare global {
     // 인바운드, 포트설정
     getInboundRules: () => Promise<string>;
     togglePort: (name: string, newEnabled: string) => Promise<void>;
+
+    //zip 다운로드 관련
+    // downloadGithubRepo: (repoUrl: string, downloadPath: string)=> Promise<void>;
+    
+    // 다운로드 하고 바로 upzip
+    downloadAndUnzip: (repoUrl: string, downloadDir: string, extractDir: string) => Promise<{ success: boolean, message: string }>;
   }
 
   interface Window {

@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from './ContainerLogs';
-import { ipcRenderer } from 'electron';
 
 interface ContainerListProps {
   containers: DockerContainer[];
 }
-
-
 
 
 const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
