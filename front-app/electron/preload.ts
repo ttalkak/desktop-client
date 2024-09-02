@@ -99,9 +99,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // },
 
   //----------------- zip 다운 하고 바로 unzip ------------------------
-  downloadAndUnzip: (repoUrl: string, downloadDir: string, extractDir: string) => 
-    ipcRenderer.invoke('download-and-unzip', repoUrl, downloadDir, extractDir),
-
+  downloadAndUnzip: (
+    repoUrl: string,
+    downloadDir: string,
+    extractDir: string
+  ) =>
+    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
 
   //---------------------- 포트 인바운드 관련 ----------------------
   getInboundRules: () => {
@@ -112,6 +115,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   togglePort: (name: string, newEnabled: string) => {
     console.log(`Toggling port ${name} to ${newEnabled}`);
     return ipcRenderer.invoke("toggle-port", name, newEnabled);
+  },
+
+  // pgrok 다운로드
+  downloadPgrok: () => {
+    return ipcRenderer.invoke("download-pgrok");
   },
 });
 

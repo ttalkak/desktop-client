@@ -99,11 +99,15 @@ declare global {
     getInboundRules: () => Promise<string>;
     togglePort: (name: string, newEnabled: string) => Promise<void>;
 
-    //zip 다운로드 관련
-    // downloadGithubRepo: (repoUrl: string, downloadPath: string)=> Promise<void>;
-    
+    // pgrok 다운로드
+    downloadPgrok: () => Promise<string>; // pgrok 파일 다운로드
+
     // 다운로드 하고 바로 upzip
-    downloadAndUnzip: (repoUrl: string, downloadDir: string, extractDir: string) => Promise<{ success: boolean, message: string }>;
+    downloadAndUnzip: (
+      repoUrl: string,
+      downloadDir: string,
+      extractDir: string
+    ) => Promise<{ success: boolean; message: string }>;
   }
 
   interface Window {

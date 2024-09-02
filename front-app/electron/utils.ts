@@ -29,42 +29,43 @@ export async function downloadFile(url: string, dest: string) {
   });
 }
 
-
- 
 // ZIP 파일 압축 해제 함수
-export async function unzipFile(zipFilePath: string, destDir: string): Promise<void> {
-    const zip = new StreamZip({
-        file: zipFilePath,
-        storeEntries: true,
+export async function unzipFile(
+  zipFilePath: string,
+  destDir: string
+): Promise<void> {
+  const zip = new StreamZip({
+    file: zipFilePath,
+    storeEntries: true,
+  });
+
+  return new Promise<void>((resolve, reject) => {
+    zip.on("ready", () => {
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+
+      for (const entry of Object.values(zip.entries())) {
+        const filePath = path.join(destDir, entry.name);
+
+        if (entry.isDirectory) {
+          if (!fs.existsSync(filePath)) {
+            fs.mkdirSync(filePath, { recursive: true });
+          }
+        } else {
+          zip.extract(entry.name, filePath, (error) => {
+            if (error) {
+              reject(error);
+            }
+          });
+        }
+      }
+
+      zip.close();
+      console.log("Unzip completed!");
+      resolve();
     });
 
-    return new Promise<void>((resolve, reject) => {
-        zip.on('ready', () => {
-            if (!fs.existsSync(destDir)) {
-                fs.mkdirSync(destDir, { recursive: true });
-            }
-
-            for (const entry of Object.values(zip.entries())) {
-                const filePath = path.join(destDir, entry.name);
-
-                if (entry.isDirectory) {
-                    if (!fs.existsSync(filePath)) {
-                        fs.mkdirSync(filePath, { recursive: true });
-                    }
-                } else {
-                    zip.extract(entry.name, filePath, (err) => {
-                        if (err) {
-                            reject(err);
-                        }
-                    });
-                }
-            }
-
-            zip.close();
-            console.log('Unzip completed!');
-            resolve();
-        });
-
-        zip.on('error', reject);
-    });
+    zip.on("error", reject);
+  });
 }
