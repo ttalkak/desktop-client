@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ContainerList from "./ContainerList";
 import ImageList from "./ImageList";
-import { FaPlay } from "react-icons/fa";
-import { FaStop } from "react-icons/fa";
 
 const DashList: React.FC = () => {
   const [activeView, setActiveView] = useState<"containers" | "images">(
@@ -198,14 +196,6 @@ const DashList: React.FC = () => {
               onClick={() => setActiveView("images")}
             >
               Images
-            </button>
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-4 py-2 rounded-lg bg-green-500 text-white flex items-center justify-center">
-              <FaPlay />
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-red-500 text-white flex items-center justify-center">
-              <FaStop />
             </button>
           </div>
         </div>

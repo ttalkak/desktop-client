@@ -7,6 +7,7 @@ import path from "node:path";
 import * as fs from "fs";
 import { IpcMainEvent } from "electron";
 import { Readable } from "stream";
+import { BrowserWindow } from "electron";
 
 const execAsync = promisify(exec);
 
@@ -140,7 +141,7 @@ export const handleGetDockerEvent = (): void => {
   });
 };
 
-//----------------------------------- cpu 가용률 스트림 --------------------------------
+//---------------------cpu 가용률 스트림[개별] ----------------------
 export function getContainerStatsStream(containerId: string): EventEmitter {
   const container = docker.getContainer(containerId);
   const statsEmitter = new EventEmitter();
@@ -148,15 +149,13 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
   container.stats(
     { stream: true },
     (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
-      // Typing for err and stream
       if (err) {
         console.error("Error fetching stats:", err);
-        statsEmitter.emit("error", err);
+        statsEmitter.emit("error", { containerId, error: err });
         return;
       }
 
       stream?.on("data", (data: Buffer) => {
-        // Typing for data
         const stats = JSON.parse(data.toString());
         const cpuDelta =
           stats.cpu_stats.cpu_usage.total_usage -
@@ -167,16 +166,16 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
         const numberOfCpus = stats.cpu_stats.online_cpus;
 
         const cpuUsagePercent = (cpuDelta / systemDelta) * numberOfCpus * 100;
-        statsEmitter.emit("data", cpuUsagePercent);
+        statsEmitter.emit("data", { containerId, cpuUsagePercent });
       });
 
       stream?.on("error", (err: Error) => {
         console.error("Stream error:", err);
-        statsEmitter.emit("error", err);
+        statsEmitter.emit("error", { containerId, error: err });
       });
 
       stream?.on("end", () => {
-        statsEmitter.emit("end");
+        statsEmitter.emit("end", { containerId });
       });
     }
   );
@@ -184,10 +183,86 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
   return statsEmitter;
 }
 
+export function monitorAllContainersCpuUsage(mainWindow: BrowserWindow): void {
+  docker.listContainers(
+    async (
+      err: Error | null,
+      containers: Docker.ContainerInfo[] | undefined
+    ) => {
+      if (err) {
+        console.error("Error listing containers:", err);
+        return;
+      }
+
+      if (!containers) {
+        console.error("No containers found.");
+        return;
+      }
+
+      let totalCpuUsage = 0;
+      let containerCount = containers.length;
+
+      containers.forEach((container) => {
+        const statsEmitter = getContainerStatsStream(container.Id);
+
+        statsEmitter.on(
+          "data",
+          ({ containerId, cpuUsagePercent }: CpuUsageData) => {
+            totalCpuUsage += cpuUsagePercent;
+
+            // 전체 평균 CPU 사용률 계산
+            const averageCpuUsage = totalCpuUsage / containerCount;
+
+            // 개별 CPU 사용률 전송
+            mainWindow.webContents.send("cpu-usage-percent", {
+              containerId,
+              cpuUsagePercent,
+            });
+
+            // 전체 평균 CPU 사용률 전송
+            mainWindow.webContents.send("average-cpu-usage", {
+              averageCpuUsage,
+            });
+          }
+        );
+        statsEmitter.on(
+          "error",
+          ({ containerId, error }: { containerId: string; error: Error }) => {
+            console.error(`Error in container ${containerId}:`, error);
+          }
+        );
+
+        statsEmitter.on("end", ({ containerId }: { containerId: string }) => {
+          console.log(`Monitoring ended for container ${containerId}`);
+          containerCount--;
+          totalCpuUsage -= 0; // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
+        });
+      });
+    }
+  );
+}
+
 export function calculateAverage(cpuUsages: number[]): number {
   const sum = cpuUsages.reduce((a, b) => a + b, 0);
   return sum / cpuUsages.length;
 }
+// 필요시 일회성 요청
+// ipcMain.handle("fetch-container-cpu-usage", async (event, containerId) => {
+//   try {
+//     const statsStream = getContainerStatsStream(containerId);
+//     return new Promise((resolve, reject) => {
+//       statsStream.once("data", (cpuUsagePercent) => {
+//         resolve(cpuUsagePercent);
+//       });
+
+//       statsStream.once("error", (err) => {
+//         reject(err);
+//       });
+//     });
+//   } catch (err) {
+//     return err;
+//   }
+// });
 
 //---------------------------- Docker 이미지, 컨테이너 Fetch -------------------------------
 export const handleFetchDockerImages = (): void => {

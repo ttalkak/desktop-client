@@ -1,9 +1,15 @@
 export {};
+
 declare global {
   // 콜백 타입 정의
   type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
   type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
   type EndCallback = () => void; // 스트림 종료 콜백 타입
+
+  interface CpuUsageData {
+    containerId: string;
+    cpuUsagePercent: number;
+  }
 
   // Docker Event Actor 정의 (예: 어떤 컨테이너나 이미지에 대한 이벤트인지)
   interface DockerEventActor {
@@ -78,8 +84,8 @@ declare global {
     // Docker 이벤트 감지 및 렌더러 연결
     sendDockerEventRequest: () => void;
     onDockerEventResponse: (callback: EventCallback) => void;
-    onDockerEventError: () => void;
-    onDockerEventEnd: () => void;
+    onDockerEventError: (callback: ErrorCallback) => void;
+    onDockerEventEnd: (callback: EndCallback) => void;
     removeAllListeners: () => void;
 
     // Docker 로그 스트리밍 관련 메서드들
@@ -90,19 +96,26 @@ declare global {
     stopLogStream: (containerId: string) => void; // 로그 스트림 중지 추가
 
     // CPU 사용률 스트리밍 관련 메서드들
-    startContainerStatsStream: (containerId: string) => void;
-    onCpuUsageData: (callback: CpuUsageCallback) => void;
-    onCpuUsageError: (callback: ErrorCallback) => void;
-    onCpuUsageEnd: (callback: EndCallback) => void;
+    onCpuUsagePercent: (
+      callback: (
+        event: Electron.IpcRendererEvent,
+        data: { containerId: string; cpuUsagePercent: number }
+      ) => void
+    ) => void;
+    onAverageCpuUsage: (
+      callback: (
+        event: Electron.IpcRendererEvent,
+        data: { averageCpuUsage: number }
+      ) => void
+    ) => void;
 
-    // 인바운드, 포트설정
+    // 기타 기능들
     getInboundRules: () => Promise<string>;
     togglePort: (name: string, newEnabled: string) => Promise<void>;
 
-    // pgrok 다운로드
     downloadPgrok: () => Promise<string>; // pgrok 파일 다운로드
 
-    // 저장할 경로 지정 + 다운로드 하고 바로 upzip
+    // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       repoUrl: string,
@@ -110,10 +123,10 @@ declare global {
       extractDir: string
     ) => Promise<{ success: boolean; message: string }>;
 
-    //pathjoin을 위한 할당
+    // path join을 위한 메서드
     joinPath: (...paths: string[]) => string;
 
-    //디렉토리 기준으로 image빌드
+    // 디렉토리 기준으로 이미지 빌드
     buildDockerImage: (
       contextPath: string
     ) => Promise<{ status: string; message?: string }>;

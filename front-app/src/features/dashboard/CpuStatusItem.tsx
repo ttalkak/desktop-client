@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { LuCpu } from "react-icons/lu";
 
 const CpuUsageBar = ({ usagePercentage }: { usagePercentage: number }) => {
@@ -6,7 +6,7 @@ const CpuUsageBar = ({ usagePercentage }: { usagePercentage: number }) => {
     <div className="w-full bg-gray-200 rounded-full h-3">
       <div
         className={`bg-blue-500 h-3 ${
-          usagePercentage === 100 ? 'rounded-full' : 'rounded-l-full'
+          usagePercentage === 100 ? "rounded-full" : "rounded-l-full"
         }`}
         style={{ width: `${usagePercentage}%` }}
       ></div>
@@ -14,40 +14,24 @@ const CpuUsageBar = ({ usagePercentage }: { usagePercentage: number }) => {
   );
 };
 
-const CpuStatusItem = ({ containerId }: { containerId: string }) => {
+const CpuStatusItem = () => {
   const [cpuUsage, setCpuUsage] = useState(0);
 
   useEffect(() => {
-    // CPU 사용률 스트림 시작
-    window.electronAPI.startContainerStatsStream(containerId);
-
-    // CPU 사용률 데이터 수신
-    const handleCpuUsageData = (cpuUsage: number) => {
-      setCpuUsage(cpuUsage);
+    const handleAverageCpuUsage = (
+      _event: Electron.IpcRendererEvent,
+      data: { averageCpuUsage: number }
+    ) => {
+      setCpuUsage(data.averageCpuUsage);
     };
 
-    // 에러 핸들링
-    const handleCpuUsageError = (error: string) => {
-      console.error("Error receiving CPU usage data:", error);
-    };
+    window.electronAPI.onAverageCpuUsage(handleAverageCpuUsage);
 
-    // 스트림 종료 핸들링
-    const handleCpuUsageEnd = () => {
-      console.log("CPU usage stream ended.");
-    };
-
-    // 이벤트 리스너 등록
-    window.electronAPI.onCpuUsageData(handleCpuUsageData);
-    window.electronAPI.onCpuUsageError(handleCpuUsageError);
-    window.electronAPI.onCpuUsageEnd(handleCpuUsageEnd);
-
-    // 클린업 함수에서 리스너 제거
     return () => {
-      window.electronAPI.onCpuUsageData(() => {});  // 리스너 제거
-      window.electronAPI.onCpuUsageError(() => {}); // 리스너 제거
-      window.electronAPI.onCpuUsageEnd(() => {});   // 리스너 제거
+      // Clean up the listener when the component unmounts
+      window.electronAPI.removeAllListeners();
     };
-  }, [containerId]);
+  }, []);
 
   return (
     <div className="card">

@@ -1,6 +1,7 @@
 import React from "react";
 import DashList from "../features/dashboard/DashList";
 import DockerStatusItem from "../features/dashboard/DockerStatusItem";
+import CpuStatusItem from "../features/dashboard/CpuStatusItem";
 
 const DashBoard: React.FC = () => {
   // Docker 이미지 빌드 핸들러 함수
@@ -51,7 +52,9 @@ const DashBoard: React.FC = () => {
     <>
       <div className="mx-auto p-6">
         <div className="flex w-full">
-          <div className="flex-1 mr-2">{/* <CpuStatusItem /> */}</div>
+          <div className="flex-1 mr-2">
+            <CpuStatusItem />
+          </div>
           <div className="flex-1 ml-2">
             <DockerStatusItem />
             <button

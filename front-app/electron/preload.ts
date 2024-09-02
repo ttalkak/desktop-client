@@ -75,15 +75,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   //--------------------- CPU 사용률 -------------------------
-  startContainerStatsStream: (containerId: string) =>
-    ipcRenderer.send("start-container-stats-stream", containerId),
-  onCpuUsageData: (callback: (cpuUsage: number) => void) =>
-    ipcRenderer.on("cpu-usage-data", (_event, cpuUsage) => callback(cpuUsage)),
-  onCpuUsageError: (callback: (error: string) => void) =>
-    ipcRenderer.on("cpu-usage-error", (_event, error) => callback(error)),
-  onCpuUsageEnd: (callback: () => void) =>
-    ipcRenderer.on("cpu-usage-end", () => callback()),
-
+  onCpuUsagePercent: (
+    callback: (
+      event: Electron.IpcRendererEvent,
+      data: { containerId: string; cpuUsagePercent: number }
+    ) => void
+  ) => {
+    ipcRenderer.on("cpu-usage-percent", callback);
+  },
+  onAverageCpuUsage: (
+    callback: (
+      event: Electron.IpcRendererEvent,
+      data: { averageCpuUsage: number }
+    ) => void
+  ) => {
+    ipcRenderer.on("average-cpu-usage", callback);
+  },
   //-------------------- 컨테이너 생성 및 실행 ----------------
   createAndStartContainer: () =>
     ipcRenderer.invoke("create-and-start-container"),

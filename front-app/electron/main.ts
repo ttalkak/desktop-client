@@ -17,7 +17,8 @@ import {
   handleFetchDockerContainers,
   handleFetchContainerLogs,
   handleBuildDockerImage,
-
+  calculateAverage,
+  monitorAllContainersCpuUsage,
   // getContainerStatsStream,
 } from "./dockerManager";
 
@@ -53,6 +54,8 @@ async function startDockerIfNotRunning(): Promise<void> {
 
       // Docker Desktop 실행
       await execAsync(`"${resolvedPath}"`);
+      await checkDockerStatus();
+
       console.log("Docker started successfully.");
     } catch (error) {
       console.error("Failed to start Docker:", error);
@@ -74,6 +77,7 @@ function registerIpcHandlers() {
   handleFetchDockerImages(); //이미지 목록 가져오기
   handleFetchDockerContainers(); //컨테이너 목록 가져오기
   handleFetchContainerLogs(); //실행중인 컨테이너 로그 가져오기
+
   // getContainerStatsStream()//cpu사용률 가져오기
   //웹소켓으로 로그, CPU 가용률, 실행중인 컨테이너 상태 전달
 }
@@ -100,6 +104,11 @@ async function createWindow() {
   } else {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
+
+  // 컨테이너 CPU 사용률 모니터링 시작
+  if (win !== null) {
+    monitorAllContainersCpuUsage(win);
   }
 
   // IPC 핸들러 설정: inbound-rule
