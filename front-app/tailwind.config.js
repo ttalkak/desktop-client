@@ -17,6 +17,7 @@ export default {
         "color-8": "#EF4444",
         "color-9": "#383838",
         "color-10": "#A5A5A5",
+        "color-11": "#2A69D0",
       },
     },
   },
@@ -36,8 +37,8 @@ export default {
           "background-color": "#fff",
           "border-radius": "0.5rem",
           "box-shadow": "0 2px 4px rgba(0, 0, 0, 0.1)",
-          "padding": "1rem",
-          "transition": "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+          padding: "1rem",
+          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
         },
         ".card:hover": {
           "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.15)",
