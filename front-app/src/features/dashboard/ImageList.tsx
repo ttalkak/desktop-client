@@ -1,19 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface ImageListProps {
   images: DockerImage[];
 }
 
 const ImageList: React.FC<ImageListProps> = ({ images }) => {
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
-
-  const handleImageSelect = (id: string) => {
-    setSelectedImages((prevSelected) =>
-      prevSelected.includes(id)
-        ? prevSelected.filter((imageId) => imageId !== id)
-        : [...prevSelected, id]
-    );
-  };
 
   if (images.length === 0) {
     return <div className="text-center mt-8">사용 가능한 Docker 이미지가 없습니다.</div>;
@@ -21,33 +12,36 @@ const ImageList: React.FC<ImageListProps> = ({ images }) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Docker Images</h2>
-      <table className="min-w-full bg-white border border-gray-300 mt-4">
+      <table className="min-w-full bg-white border border-gray-300 mt-2">
         <thead>
           <tr>
-            <th className="py-2 px-4 border-b"></th>
-            <th className="py-2 px-4 border-b">Repository:Tag</th>
-            <th className="py-2 px-4 border-b">Size</th>
-            <th className="py-2 px-4 border-b">ParentId</th>
-            <th className="py-2 px-4 border-b">Labels</th>
+            <th className="py-2 px-4 border-b text-left">Name</th>
+            <th className="py-2 px-4 border-b text-left">Tag</th>
+            <th className="py-2 px-4 border-b text-left">Status</th>
+            <th className="py-2 px-4 border-b text-left">Size</th>
           </tr>
         </thead>
         <tbody>
-          {images?.map((image, index) => {
-            const { RepoTags, Id, Size, ParentId, Labels } = image;
+          {images.map((image, index) => {
+            const { RepoTags, Id, Size, Containers } = image;
+            const name = RepoTags ? RepoTags[0].split(':')[0] : 'None';
+            const tag = RepoTags ? RepoTags[0].split(':')[1] : 'None';
+            const status = Containers > 0 ? 'In use' : 'Unused';
             return (
-              <tr key={index}>
-                <td className="py-2 px-4 border-b">
-                  <input
-                    type="checkbox"
-                    checked={selectedImages.includes(Id)}
-                    onChange={() => handleImageSelect(Id)}
-                  />
+              <tr key={index} className="hover:bg-gray-100">
+                <td className="py-2 px-4 border-b text-color-6">
+                  <a href="#" className="hover:underline">
+                    {name}
+                  </a>
+                  <div className="text-sm text-gray-500">{Id.split(':')[1].slice(0, 12)}</div>
                 </td>
-                <td className="py-2 px-4 border-b">{RepoTags ? RepoTags.join(', ') : 'None'}</td>
+                <td className="py-2 px-4 border-b">{tag}</td>
+                <td className="py-2 px-4 border-b text-color-6">
+                  <a href="#" className="hover:underline">
+                    {status}
+                  </a>
+                </td>
                 <td className="py-2 px-4 border-b">{(Size / (1024 * 1024)).toFixed(2)} MB</td>
-                <td className="py-2 px-4 border-b">{ParentId}</td>
-                <td className="py-2 px-4 border-b">{Labels ? JSON.stringify(Labels) : 'None'}</td>
               </tr>
             );
           })}

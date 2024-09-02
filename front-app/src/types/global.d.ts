@@ -4,6 +4,28 @@ declare global {
   type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
   type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
   type EndCallback = () => void; // 스트림 종료 콜백 타입
+
+  // Docker Event Actor 정의 (예: 어떤 컨테이너나 이미지에 대한 이벤트인지)
+  interface DockerEventActor {
+    ID: string;
+    Attributes: Record<string, string>; // 추가 속성을 포함하는 객체
+  }
+
+  // Docker Event 타입 정의
+  interface DockerEvent {
+    status: string; // 이벤트 상태 (예: start, stop, die, delete 등)
+    id: string; // 컨테이너 또는 이미지 ID
+    Type: string; // 이벤트 타입 (예: container, image 등)
+    Action: string; // 수행된 액션 (예: start, stop, die, delete 등)
+    Actor: DockerEventActor; // 이벤트와 연관된 요소
+    scope: string; // 이벤트 범위 (예: local, global)
+    time: number; // 이벤트 발생 시간 (Unix 타임스탬프)
+    timeNano: number; // 이벤트 발생 시간 (나노초 단위)
+  }
+
+  // 이벤트 콜백 타입 정의
+  type EventCallback = (event: DockerEvent) => void;
+
   interface DockerPort {
     IP: string;
     PrivatePort: number;
@@ -36,36 +58,55 @@ declare global {
     [key: string]: any; // 기타 속성
   }
 
+  // CPU 사용률 콜백 타입 정의
+  type CpuUsageCallback = (cpuUsage: number) => void;
+
   // Electron API의 타입 지정
   interface ElectronAPI {
     minimizeWindow: () => void;
     maximizeWindow: () => void;
     closeWindow: () => void;
 
-    //도커 현재 상태
-    checkDockerStatus:() =>Promise<string>;
+    // Docker 관련 메서드들
+    checkDockerStatus: () => Promise<string>;
+    getDockerImages: () => Promise<DockerImage[]>;
+    fetchDockerContainers: () => Promise<DockerContainer[]>;
+    getDockerExecutablePath: () => Promise<string | null>;
+    openDockerDesktop: (dockerPath: string) => Promise<void>;
+    createAndStartContainer: () => Promise<void>;
 
-    getDockerImages: () => Promise<DockerImage[]>; // Docker 이미지 목록 가져오기
-    fetchDockerContainers: () => Promise<DockerContainer[]>; // Docker 컨테이너 목록 가져오기
-    getDockerExecutablePath: () => Promise<string | null>; // Docker 경로 가져오기
-    openDockerDesktop: (dockerPath: string) => Promise<void>; // Docker Desktop 실행
-    createAndStartContainer: () => Promise<void>; // 컨테이너 생성 및 시작
-    getDockerEvent:()=>Promise<void>; //도커 이벤트감지 렌더러 연결
-    //도커 로그관련
-    startLogStream: (containerId: string) => void; // 컨테이너 로그 스트림 시작
-    onLogStream: (callback: LogCallback) => void; // 로그 스트림 데이터 수신
-    onLogError: (callback: ErrorCallback) => void; // 로그 오류 수신
-    onLogEnd: (callback: EndCallback) => void; // 로그 스트림 종료 수신
+    // Docker 이벤트 감지 및 렌더러 연결
+    sendDockerEventRequest: () => void;
+    onDockerEventResponse: (callback: EventCallback) => void;
+    onDockerEventError: () => void;
+    onDockerEventEnd: () => void;
+    removeAllListeners: () => void;
+
+    // Docker 로그 스트리밍 관련 메서드들
+    startLogStream: (containerId: string) => void;
+    onLogStream: (callback: LogCallback) => void;
+    onLogError: (callback: ErrorCallback) => void;
+    onLogEnd: (callback: EndCallback) => void;
+    stopLogStream: (containerId: string) => void; // 로그 스트림 중지 추가
+
+    // CPU 사용률 스트리밍 관련 메서드들
+    startContainerStatsStream: (containerId: string) => void;
+    onCpuUsageData: (callback: CpuUsageCallback) => void;
+    onCpuUsageError: (callback: ErrorCallback) => void;
+    onCpuUsageEnd: (callback: EndCallback) => void;
+
+    // 인바운드, 포트설정
+    getInboundRules: () => Promise<string>;
+    togglePort: (name: string, newEnabled: string) => Promise<void>;
+
+    //zip 다운로드 관련
+    // downloadGithubRepo: (repoUrl: string, downloadPath: string)=> Promise<void>;
     
-    //인바운드, 포트설정
-    getInboundRules: () => Promise<string>; // Inbound 규칙 가져오기
-    togglePort: (name: string, newEnabled: string) => Promise<void>; // 포트 활성화/비활성화 전환
-    
+    // 다운로드 하고 바로 upzip
+    downloadAndUnzip: (repoUrl: string, downloadDir: string, extractDir: string) => Promise<{ success: boolean, message: string }>;
   }
 
   interface Window {
     electronAPI: ElectronAPI; // Electron API 인터페이스 지정
   }
-
-
 }
