@@ -26,15 +26,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // -----------------------도커 이벤트 감지 -------------------------------
   sendDockerEventRequest: () => ipcRenderer.send("get-docker-event"),
+
   onDockerEventResponse: (callback: (data: DockerEvent) => void) => {
     return ipcRenderer.on(
       "docker-event-response",
       (_event, data: DockerEvent) => callback(data)
     );
   },
+
   onDockerEventError: (callback: ErrorCallback) =>
     ipcRenderer.on("docker-event-error", (_event, error) => callback(error)),
-  onDockerEventEnd: () => ipcRenderer.invoke("docker-event-end"),
+
+  onDockerEventEnd: (callback: () => void) => {
+    ipcRenderer.on("docker-event-end", () => callback());
+  },
+
   removeAllListeners: () => {
     ipcRenderer.removeAllListeners("docker-event-response");
     ipcRenderer.removeAllListeners("docker-event-error");
@@ -92,12 +98,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   closeWindow: () => {
     ipcRenderer.send("close-window");
   },
-
-  //---------------------- zip 파일 다운로드 --------------------
-  // downloadGithubRepo: (repoUrl: string, downloadPath: string) => {
-  //   console.log("git hubDownload 실행중");
-  //   return ipcRenderer.invoke("download-github-repo", repoUrl, downloadPath);
-  // },
 
   //----------------- zip 다운 하고 바로 unzip ------------------
   getProjectSourceDirectory: (): Promise<string> =>

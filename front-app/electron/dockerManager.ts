@@ -5,6 +5,8 @@ import Docker from "dockerode";
 import { EventEmitter } from "events";
 import path from "node:path";
 import * as fs from "fs";
+import { IpcMainEvent } from "electron";
+import { Readable } from "stream";
 
 const execAsync = promisify(exec);
 
@@ -96,39 +98,45 @@ export const handleStartDocker = (): void => {
   });
 };
 
-//--------------------- 도커 이벤트 스트림 구독(로컬 도커 이벤트 감지)-------------------------
+//--------------------- 도커 이벤트 스트림 구독(로컬 도커 이벤트 감지)
 export const handleGetDockerEvent = (): void => {
-  ipcMain.on("get-docker-event", (event) => {
-    docker.getEvents((err, stream) => {
-      if (err) {
-        console.error("Error connecting to Docker events:", err);
-        event.reply("docker-event-error", err.message);
-        return;
-      }
-
-      stream?.on("data", (chunk) => {
-        try {
-          const dockerEvent = JSON.parse(chunk.toString());
-          // console.log("Docker event received:", dockerEvent);
-
-          // 렌더러 프로세스로 이벤트를 전송
-          event.reply("docker-event-response", dockerEvent);
-        } catch (parseError) {
-          console.error("Error parsing Docker event:", parseError);
-          event.reply("docker-event-error");
+  ipcMain.on("get-docker-event", (event: IpcMainEvent) => {
+    docker.getEvents(
+      {},
+      (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
+        if (err) {
+          console.error("Error connecting to Docker events:", err);
+          event.reply("docker-event-error", err.message);
+          return;
         }
-      });
 
-      stream?.on("error", (error) => {
-        console.error("Stream Error:", error);
-        event.reply("docker-event-error", error.message);
-      });
+        if (stream) {
+          // Process the stream data
+          stream.on("data", (chunk: Buffer) => {
+            try {
+              const dockerEvent = JSON.parse(chunk.toString());
+              // Send the event to the renderer process
+              event.reply("docker-event-response", dockerEvent);
+            } catch (parseError) {
+              console.error("Error parsing Docker event:", parseError);
+              event.reply("docker-event-error", (parseError as Error).message);
+            }
+          });
 
-      stream?.on("end", () => {
-        console.log("Docker events stream ended");
-        event.reply("docker-event-end");
-      });
-    });
+          stream.on("error", (error: Error) => {
+            console.error("Stream Error:", error);
+            event.reply("docker-event-error", error.message);
+          });
+
+          stream.on("end", () => {
+            console.log("Docker events stream ended");
+            event.reply("docker-event-end");
+          });
+        } else {
+          event.reply("docker-event-error", "No stream returned");
+        }
+      }
+    );
   });
 };
 
@@ -137,35 +145,41 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
   const container = docker.getContainer(containerId);
   const statsEmitter = new EventEmitter();
 
-  container.stats({ stream: true }, (err, stream) => {
-    if (err) {
-      console.error("Error fetching stats:", err);
-      statsEmitter.emit("error", err);
-      return;
+  container.stats(
+    { stream: true },
+    (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
+      // Typing for err and stream
+      if (err) {
+        console.error("Error fetching stats:", err);
+        statsEmitter.emit("error", err);
+        return;
+      }
+
+      stream?.on("data", (data: Buffer) => {
+        // Typing for data
+        const stats = JSON.parse(data.toString());
+        const cpuDelta =
+          stats.cpu_stats.cpu_usage.total_usage -
+          stats.precpu_stats.cpu_usage.total_usage;
+        const systemDelta =
+          stats.cpu_stats.system_cpu_usage -
+          stats.precpu_stats.system_cpu_usage;
+        const numberOfCpus = stats.cpu_stats.online_cpus;
+
+        const cpuUsagePercent = (cpuDelta / systemDelta) * numberOfCpus * 100;
+        statsEmitter.emit("data", cpuUsagePercent);
+      });
+
+      stream?.on("error", (err: Error) => {
+        console.error("Stream error:", err);
+        statsEmitter.emit("error", err);
+      });
+
+      stream?.on("end", () => {
+        statsEmitter.emit("end");
+      });
     }
-
-    stream?.on("data", (data) => {
-      const stats = JSON.parse(data.toString());
-      const cpuDelta =
-        stats.cpu_stats.cpu_usage.total_usage -
-        stats.precpu_stats.cpu_usage.total_usage;
-      const systemDelta =
-        stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
-      const numberOfCpus = stats.cpu_stats.online_cpus;
-
-      const cpuUsagePercent = (cpuDelta / systemDelta) * numberOfCpus * 100;
-      statsEmitter.emit("data", cpuUsagePercent);
-    });
-
-    stream?.on("error", (err) => {
-      console.error("Stream error:", err);
-      statsEmitter.emit("error", err);
-    });
-
-    stream?.on("end", () => {
-      statsEmitter.emit("end");
-    });
-  });
+  );
 
   return statsEmitter;
 }
@@ -174,57 +188,6 @@ export function calculateAverage(cpuUsages: number[]): number {
   const sum = cpuUsages.reduce((a, b) => a + b, 0);
   return sum / cpuUsages.length;
 }
-
-// 배치 처리 및 웹소켓 전송
-// export function handleCpuUsageBatchAndWebSocket(containerId: string, batchSize: number, interval: number) {
-//   const cpuUsages: number[] = [];
-//   const statsStream = getContainerStatsStream(containerId);
-
-//   statsStream.on('data', (cpuUsage) => {
-//     cpuUsages.push(cpuUsage);
-
-//     if (cpuUsages.length >= batchSize) {
-//       const averageCpuUsage = calculateAverage(cpuUsages);
-//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
-//       cpuUsages.length = 0; // 배치 처리 후 배열 초기화
-//     }
-//   });
-
-//   statsStream.on('error', (err) => {
-//     console.error('Error in CPU usage stream:', err);
-//   });
-
-//   statsStream.on('end', () => {
-//     // 스트림이 종료되었을 때 남은 데이터를 처리
-//     if (cpuUsages.length > 0) {
-//       const averageCpuUsage = calculateAverage(cpuUsages);
-//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
-//     }
-//   });
-
-// 정해진 간격(interval)마다 강제로 배치 처리
-//   setInterval(() => {
-//     if (cpuUsages.length > 0) {
-//       const averageCpuUsage = calculateAverage(cpuUsages);
-//       sendCpuUsageOverWebSocket(containerId, averageCpuUsage);
-//       cpuUsages.length = 0;
-//     }
-//   }, interval);
-// }
-
-// function sendCpuUsageOverWebSocket(containerId: string, cpuUsage: number) {
-//   const message = JSON.stringify({
-//     containerId,
-//     cpuUsage,
-//     timestamp: new Date().toISOString(),
-//   });
-
-//   wss.clients.forEach(client => {
-//     if (client.readyState === WebSocket.OPEN) {
-//       client.send(message);
-//     }
-//   });
-// }
 
 //---------------------------- Docker 이미지, 컨테이너 Fetch -------------------------------
 export const handleFetchDockerImages = (): void => {
@@ -254,24 +217,24 @@ export const handleFetchDockerContainers = (): void => {
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
-    async (event, containerId: string) => {
+    async (event: IpcMainEvent, containerId: string) => {
       try {
         const container = docker.getContainer(containerId);
-        const logStream = await container.logs({
+        const logStream = (await container.logs({
           follow: true, // 새로운 로그를 실시간으로 가져옵니다.
           stdout: true,
           stderr: true,
           since: 0, // 모든 로그를 가져옵니다.
           timestamps: true,
-        });
+        })) as Readable; // logStream을 Readable로 타입 캐스팅
 
         logStreams[containerId] = logStream; // 스트림을 저장합니다.
 
-        logStream.on("data", (chunk) => {
+        logStream.on("data", (chunk: Buffer) => {
           event.sender.send("container-logs-stream", chunk.toString());
         });
 
-        logStream.on("error", (err) => {
+        logStream.on("error", (err: Error) => {
           event.sender.send("container-logs-error", err.message);
         });
 
@@ -279,33 +242,36 @@ export const handleFetchContainerLogs = (): void => {
           event.sender.send("container-logs-end");
         });
       } catch (err) {
-        event.sender.send("container-logs-error" || "Unknown error");
+        event.sender.send(
+          "container-logs-error",
+          (err as Error).message || "Unknown error"
+        );
       }
     }
   );
-
-  ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
-    const logStream = logStreams[containerId];
-    if (logStream) {
-      logStream.destroy(); // 스트림을 종료합니다.
-      delete logStreams[containerId]; // 스트림을 객체에서 삭제합니다.
-      event.sender.send(
-        "container-logs-end",
-        `Log stream for container ${containerId} has been stopped.`
-      );
-    } else {
-      event.sender.send(
-        "container-logs-error",
-        `No active log stream for container ${containerId}.`
-      );
-    }
-  });
 };
 
-//----------------------------------------- Docker 이미지 생성 --------------------------
+//로그 스트림 원할때 중지
+ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
+  const logStream = logStreams[containerId];
+  if (logStream) {
+    logStream.destroy(); // 스트림을 종료합니다.
+    delete logStreams[containerId]; // 스트림을 객체에서 삭제합니다.
+    event.sender.send(
+      "container-logs-end",
+      `Log stream for container ${containerId} has been stopped.`
+    );
+  } else {
+    event.sender.send(
+      "container-logs-error",
+      `No active log stream for container ${containerId}.`
+    );
+  }
+});
 
-// unzip된 파일에서 도커파일 경로 탐색
+//----------------------------------------- Docker 이미지 생성
 
+// Dockerfile을 탐색하는 함수
 export function findDockerfile(directory: string): string | null {
   const files = fs.readdirSync(directory);
 
@@ -326,41 +292,64 @@ export function findDockerfile(directory: string): string | null {
   return null;
 }
 
-//=> 해당 도커파일 경로를 기준으로 이미지 빌드
+// Docker 이미지 빌드
 export async function buildDockerImage(
-  _dockerfilePath: string,
-  contextPath: string
-) {
-  const stream = await docker.buildImage(
-    {
-      context: contextPath,
-      src: ["Dockerfile"],
-    },
-    { t: "my-new-docker-image" }
-  );
+  dockerfilePath: string
+): Promise<string> {
+  // Dockerfile이 위치한 디렉토리 경로를 컨텍스트로 설정
+  const contextPath = path.dirname(dockerfilePath);
+  const dockerfileRelativePath = path.basename(dockerfilePath);
 
-  stream.pipe(process.stdout, { end: true });
+  const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
+    docker.buildImage(
+      {
+        context: contextPath, // Dockerfile이 있는 디렉토리를 컨텍스트로 설정
+        src: [dockerfileRelativePath], // Dockerfile의 상대 경로
+      },
+      { t: "my-new-docker-image" },
+      (err, stream) => {
+        if (err) {
+          reject(err);
+        } else if (stream) {
+          resolve(stream);
+        } else {
+          reject(new Error("Stream is undefined"));
+        }
+      }
+    );
+  });
 
-  return new Promise((resolve, reject) => {
-    stream.on("end", () => {
-      console.log("Docker image built successfully");
-      resolve("built");
-    });
+  // 빌드 로그를 표준 출력으로 스트리밍
+  if (stream) {
+    stream.pipe(process.stdout, { end: true });
+  }
 
-    stream.on("error", (err) => {
-      console.error("Error building Docker image:", err);
-      reject("failed");
-    });
+  // 빌드 완료를 기다림
+  return new Promise<string>((resolve, reject) => {
+    if (stream) {
+      stream.on("end", () => {
+        console.log("Docker image built successfully");
+        resolve("built");
+      });
+
+      stream.on("error", (err: Error) => {
+        console.error("Error building Docker image:", err);
+        reject("failed");
+      });
+    } else {
+      reject("Stream not available");
+    }
   });
 }
 
+// Dockerfile을 찾고 이미지를 빌드하는 함수
 export async function processAndBuildImage(contextPath: string) {
   const dockerfilePath = findDockerfile(contextPath);
 
   if (dockerfilePath) {
     console.log(`Dockerfile found at: ${dockerfilePath}`);
     try {
-      const buildStatus = await buildDockerImage(dockerfilePath, contextPath);
+      const buildStatus = await buildDockerImage(dockerfilePath);
       console.log(`Docker image build status: ${buildStatus}`);
     } catch (error) {
       console.error("Failed to build Docker image:", error);
@@ -370,21 +359,20 @@ export async function processAndBuildImage(contextPath: string) {
   }
 }
 
-//도커 이미지 빌드
-export function handleBuildDockerImage() {
-  ipcMain.handle("build-docker-image", async (_event, contextPath: string) => {
-    console.log(
-      `Received request to build Docker image from path: ${contextPath}`
-    );
-    try {
-      await processAndBuildImage(contextPath);
-      return { status: "success" };
-    } catch (error) {
-      console.error("Error processing Docker image:", error);
-      return { status: "error", message: error };
-    }
-  });
-}
+// 도커 이미지 빌드를 위한 핸들러
+export function handleBuildDockerImage() {}
+ipcMain.handle("build-docker-image", async (_event, contextPath: string) => {
+  console.log(
+    `Received request to build Docker image from path: ${contextPath}`
+  );
+  try {
+    await processAndBuildImage(contextPath);
+    return { status: "success" };
+  } catch (error) {
+    console.error("Error processing Docker image:", error);
+    return { status: "error", message: (error as Error).message };
+  }
+});
 
 // function updateMetadata(dockerfilePath, status) {
 //   // 예: JSON 파일 업데이트
@@ -414,13 +402,13 @@ export const createAndStartContainer = (): void => {
     },
   };
 
-  docker.createContainer(containerOptions, (err, container) => {
+  docker.createContainer(containerOptions, (err: Error, container) => {
     if (err) {
       console.error("Error creating container:", err);
       return;
     }
 
-    container?.start((err, _) => {
+    container?.start((err: Error, _) => {
       if (err) {
         console.error("Error starting container:", err);
         return;
@@ -431,5 +419,3 @@ export const createAndStartContainer = (): void => {
 };
 
 //컨테이너 정지
-
-//
