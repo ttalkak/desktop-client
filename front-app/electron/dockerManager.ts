@@ -8,6 +8,7 @@ import * as fs from "fs";
 import { IpcMainEvent } from "electron";
 import { Readable } from "stream";
 import { BrowserWindow } from "electron";
+import { getAllDockerImages, addDockerImageIfNew } from "./store/storeManager";
 
 const execAsync = promisify(exec);
 
@@ -246,25 +247,8 @@ export function calculateAverage(cpuUsages: number[]): number {
   const sum = cpuUsages.reduce((a, b) => a + b, 0);
   return sum / cpuUsages.length;
 }
-// 필요시 일회성 요청
-// ipcMain.handle("fetch-container-cpu-usage", async (event, containerId) => {
-//   try {
-//     const statsStream = getContainerStatsStream(containerId);
-//     return new Promise((resolve, reject) => {
-//       statsStream.once("data", (cpuUsagePercent) => {
-//         resolve(cpuUsagePercent);
-//       });
 
-//       statsStream.once("error", (err) => {
-//         reject(err);
-//       });
-//     });
-//   } catch (err) {
-//     return err;
-//   }
-// });
-
-//---------------------------- Docker 이미지, 컨테이너 Fetch -------------------------------
+//Docker 이미지, 컨테이너 Fetch -------------------------------
 export const handleFetchDockerImages = (): void => {
   ipcMain.handle("get-docker-images", async () => {
     try {
@@ -288,7 +272,7 @@ export const handleFetchDockerContainers = (): void => {
   });
 };
 
-// ----------------------- Docker 컨테이너 로그 -----------------------------------------
+// Docker 컨테이너 로그 -----------------------------------------
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
@@ -344,7 +328,7 @@ ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
   }
 });
 
-//----------------------------------------- Docker 이미지 생성
+// Docker 이미지 생성 --------------------------------------------
 
 // Dockerfile을 탐색하는 함수
 export function findDockerfile(directory: string): string | null {
@@ -367,10 +351,37 @@ export function findDockerfile(directory: string): string | null {
   return null;
 }
 
-// Docker 이미지 빌드
+// Docker 이미지 빌드--------------------------------------------------------
 export async function buildDockerImage(
-  dockerfilePath: string
+  dockerfilePath: string,
+  imageName: string = "my-docker-image",
+  tag: string = "latest" // 기본 태그 설정
 ): Promise<string> {
+  // 태그를 기본적으로 "latest"로 설정
+  const fullTag = `${imageName}:${tag}`;
+
+  // 먼저 이미지가 이미 존재하는지 확인
+  const existingImages = await getAllDockerImages();
+  if (existingImages && existingImages.length > 0) {
+    const imageExists = existingImages.some((img) => {
+      // 태그로 확인
+      if (Array.isArray(img.RepoTags) && img.RepoTags.includes(tag)) {
+        return true;
+      }
+      // 이미지 이름으로 확인 (태그 없이)
+      return img.RepoTags?.some((repoTag) =>
+        repoTag.startsWith(`${imageName}:`)
+      );
+    });
+
+    if (imageExists) {
+      console.log(
+        `Image ${tag} or with similar name already exists. Skipping build.`
+      );
+      return "exists";
+    }
+  }
+
   // Dockerfile이 위치한 디렉토리 경로를 컨텍스트로 설정
   const contextPath = path.dirname(dockerfilePath);
   const dockerfileRelativePath = path.basename(dockerfilePath);
@@ -378,10 +389,10 @@ export async function buildDockerImage(
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       {
-        context: contextPath, // Dockerfile이 있는 디렉토리를 컨텍스트로 설정
-        src: [dockerfileRelativePath], // Dockerfile의 상대 경로
+        context: contextPath,
+        src: [dockerfileRelativePath],
       },
-      { t: "my-new-docker-image" },
+      { t: fullTag },
       (err, stream) => {
         if (err) {
           reject(err);
@@ -402,9 +413,16 @@ export async function buildDockerImage(
   // 빌드 완료를 기다림
   return new Promise<string>((resolve, reject) => {
     if (stream) {
-      stream.on("end", () => {
-        console.log("Docker image built successfully");
-        resolve("built");
+      stream.on("end", async () => {
+        console.log(`Docker image ${fullTag} built successfully`);
+        try {
+          const builtImage = await docker.getImage(tag).inspect();
+          console.log(`Image ID: ${builtImage.Id}`);
+          resolve(builtImage.Id);
+        } catch (error) {
+          console.error("Error inspecting built image:", error);
+          resolve("built"); // 이미지 검사에 실패해도 빌드는 성공한 것으로 간주
+        }
       });
 
       stream.on("error", (err: Error) => {
@@ -418,13 +436,22 @@ export async function buildDockerImage(
 }
 
 // Dockerfile을 찾고 이미지를 빌드하는 함수
-export async function processAndBuildImage(contextPath: string) {
+export async function processAndBuildImage(
+  contextPath: string,
+  imageName: string,
+  tag: string
+) {
   const dockerfilePath = findDockerfile(contextPath);
 
   if (dockerfilePath) {
     console.log(`Dockerfile found at: ${dockerfilePath}`);
     try {
-      const buildStatus = await buildDockerImage(dockerfilePath);
+      const buildStatus = await buildDockerImage(
+        dockerfilePath,
+        imageName,
+        tag
+      );
+
       console.log(`Docker image build status: ${buildStatus}`);
     } catch (error) {
       console.error("Failed to build Docker image:", error);
@@ -435,30 +462,41 @@ export async function processAndBuildImage(contextPath: string) {
 }
 
 // 도커 이미지 빌드를 위한 핸들러
-export function handleBuildDockerImage() {}
-ipcMain.handle("build-docker-image", async (_event, contextPath: string) => {
-  console.log(
-    `Received request to build Docker image from path: ${contextPath}`
+export function handleBuildDockerImage() {
+  ipcMain.handle(
+    "build-docker-image",
+    async (
+      _event,
+      contextPath: string,
+      imageName: string = "my-docker-image",
+      tag: string = "latest"
+    ) => {
+      console.log(
+        `Received request to build Docker image from path: ${contextPath}, ${imageName}`
+      );
+      try {
+        await processAndBuildImage(contextPath, imageName, tag);
+
+        return { status: "success" };
+      } catch (error) {
+        console.error("Error processing Docker image:", error);
+        return { status: "error", message: (error as Error).message };
+      }
+    }
   );
-  try {
-    await processAndBuildImage(contextPath);
-    return { status: "success" };
-  } catch (error) {
-    console.error("Error processing Docker image:", error);
-    return { status: "error", message: (error as Error).message };
-  }
-});
+}
 
 // function updateMetadata(dockerfilePath, status) {
-//   // 예: JSON 파일 업데이트
+//   // 예: 메타데이터 업데이트 용
 //   console.log(
 //     `Updating metadata for: ${dockerfilePath} with status: ${status}`
 //   );
 //   // 실제 업데이트 로직을 여기에 추가
 // }
 
-//----------------------------------------- Docker 컨테이너 생성 및 실행 --------------------------
-//이미지 목록 전체 가져와서 실행시키는 기능으로 바꿔야함
+// Docker 컨테이너 생성 및 실행 ------------------------------------
+//이미지 목록 전체 가져와서 실행시키는 기능으로 바꿔야함/ 이미 실행중이면
+
 export const createAndStartContainer = (): void => {
   const containerOptions = {
     Image: "nginx:latest",
@@ -493,4 +531,4 @@ export const createAndStartContainer = (): void => {
   });
 };
 
-//컨테이너 정지
+//컨테이너 정지----------------------------------------------------------

@@ -61,7 +61,33 @@ declare global {
     Ports: DockerPort[]; // DockerPort 배열로 설정
     State: string;
     Status: string;
-    [key: string]: any; // 기타 속성
+    // 알려진 추가 속성들
+    Labels: Record<string, string>;
+    HostConfig: {
+      NetworkMode: string;
+      [key: string]: unknown;
+    };
+    NetworkSettings: {
+      Networks: Record<
+        string,
+        {
+          IPAddress: string;
+          Gateway: string;
+          MacAddress: string;
+        }
+      >;
+      [key: string]: unknown;
+    };
+    Mounts: Array<{
+      Type: string;
+      Source: string;
+      Destination: string;
+      Mode: string;
+      RW: boolean;
+      Propagation: string;
+    }>;
+    // 기타 알 수 없는 속성들을 위한 인덱스 시그니처
+    [key: string]: unknown;
   }
 
   // CPU 사용률 콜백 타입 정의
@@ -128,7 +154,9 @@ declare global {
 
     // 디렉토리 기준으로 이미지 빌드
     buildDockerImage: (
-      contextPath: string
+      contextPath: string,
+      imageName?: string,
+      tag?: string
     ) => Promise<{ status: string; message?: string }>;
   }
 

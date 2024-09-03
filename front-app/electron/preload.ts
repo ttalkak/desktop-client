@@ -118,8 +118,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   joinPath: (...paths: string[]): string => path.join(...paths), // joinPath 함수 구현
   //----------------------unzip한 파일 이미지 빌드----------------
-  buildDockerImage: (contextPath: string) =>
-    ipcRenderer.invoke("build-docker-image", contextPath),
+  buildDockerImage: (contextPath: string, imageName?: string, tag?: string) =>
+    ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
 
   //---------------------- 포트 인바운드 관련 --------------------
   getInboundRules: () => {
