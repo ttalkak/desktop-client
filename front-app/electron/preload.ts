@@ -92,12 +92,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("close-window");
   },
 
-  //---------------------- zip 파일 다운로드 ---------------------
-  // downloadGithubRepo: (repoUrl: string, downloadPath: string) => {
-  //   console.log("git hubDownload 실행중");
-  //   return ipcRenderer.invoke("download-github-repo", repoUrl, downloadPath);
-  // },
-
   //----------------- zip 다운 하고 바로 unzip ------------------------
   downloadAndUnzip: (
     repoUrl: string,
@@ -120,6 +114,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // pgrok 다운로드
   downloadPgrok: () => {
     return ipcRenderer.invoke("download-pgrok");
+  },
+
+  runPgrok: (remoteAddr: string, forwardAddr: string, token: string) => {
+    return ipcRenderer.invoke("run-pgrok", remoteAddr, forwardAddr, token);
+  },
+
+  onPgrokLog: (callback: (log: string) => void) => {
+    ipcRenderer.on("pgrok-log", (_event, log) => callback(log));
   },
 });
 

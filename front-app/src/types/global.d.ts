@@ -1,9 +1,9 @@
 export {};
 declare global {
   // 콜백 타입 정의
-  type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
-  type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
-  type EndCallback = () => void; // 스트림 종료 콜백 타입
+  type LogCallback = (log: string) => void;
+  type ErrorCallback = (error: string) => void;
+  type EndCallback = () => void;
 
   // Docker Event Actor 정의 (예: 어떤 컨테이너나 이미지에 대한 이벤트인지)
   interface DockerEventActor {
@@ -29,8 +29,8 @@ declare global {
   interface DockerPort {
     IP: string;
     PrivatePort: number;
-    PublicPort?: number; // PublicPort는 옵션일 수 있음
-    Type: string; // 예: 'tcp', 'udp'
+    PublicPort?: number;
+    Type: string;
   }
 
   interface DockerImage {
@@ -99,8 +99,14 @@ declare global {
     getInboundRules: () => Promise<string>;
     togglePort: (name: string, newEnabled: string) => Promise<void>;
 
-    // pgrok 다운로드
+    // pgrok 다운로드 및 실행
     downloadPgrok: () => Promise<string>; // pgrok 파일 다운로드
+    runPgrok: (
+      remoteAddr: string,
+      forwardAddr: string,
+      token: string
+    ) => Promise<string>; // pgrok 실행 메서드
+    onPgrokLog: (callback: LogCallback) => void; // pgrok 로그 수신 메서드
 
     // 다운로드 하고 바로 upzip
     downloadAndUnzip: (

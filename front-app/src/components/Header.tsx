@@ -61,7 +61,9 @@ const Header = () => {
   const navContainer = `flex justify-between button ml-2.5 app-region-no-drag`;
   const navText = `text-color-10 text-sm px-6 py-1 mt-0.5 relative hover:text-color-5`;
   const pageBtn = `w-11 h-11 flex items-center justify-center hover:bg-color-2 cursor-pointer button app-region-no-drag`;
-  const signBtn = `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-11`;
+  const signBtn = isLoginModalOpen
+    ? `bg-color-11 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`
+    : `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`;
 
   const Additional = () => (
     <div
