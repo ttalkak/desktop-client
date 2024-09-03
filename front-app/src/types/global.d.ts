@@ -65,7 +65,9 @@ declare global {
 
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
-    createAndStartContainer: () => Promise<void>;
+    createAndStartContainer: (
+      containerOptions: Dockerode.ContainerCreateOptions
+    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
 
     // Docker 이벤트 감지 및 렌더러 연결
     sendDockerEventRequest: () => void;
@@ -129,13 +131,13 @@ declare global {
       ports: { [key: string]: string }
     ) => Promise<Dockerode.ContainerCreateOptions>;
 
-    createAndStartContainer: (
-      options: Dockerode.ContainerCreateOptions
-    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
-
     createContainer: (
       options: Dockerode.ContainerCreateOptions
     ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+
+    startContainer: (
+      containerId: string
+    ) => Promise<{ success: boolean; error?: string }>;
 
     createAndStartContainer: (
       options: ContainerCreateOptions

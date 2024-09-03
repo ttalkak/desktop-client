@@ -458,6 +458,7 @@ export function handleBuildDockerImage() {
   });
 }
 
+//--------Docker 컨테이너 생성/실행/정지/삭제
 // Docker 컨테이너 옵션 설정 함수
 export const createContainerOptions = (
   image: DockerImage,
@@ -483,7 +484,6 @@ export const createContainerOptions = (
   };
 };
 
-//--------Docker 컨테이너 생성 실행 정지 삭제
 export const createContainer = async (
   options: ContainerCreateOptions
 ): Promise<{ success: boolean; containerId?: string; error?: string }> => {

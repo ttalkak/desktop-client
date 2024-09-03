@@ -51,7 +51,7 @@ const DashBoard: React.FC = () => {
 
       for (const image of dockerImages) {
         const existingContainer = dockerContainers.find(
-          (container) => container.Image === image.Id
+          (container) => container.Image === image.RepoTags?.[0]
         );
 
         if (existingContainer) {
@@ -64,14 +64,16 @@ const DashBoard: React.FC = () => {
         // 컨테이너 생성 옵션 구성
         const containerOptions =
           await window.electronAPI.createContainerOptions(
-            image.Id,
+            image.RepoTags?.[0] || "", // 이미지 이름
             `${image.RepoTags?.[0]?.replace(/[:/]/g, "-")}-container`, // 컨테이너 이름 생성
             {
               "80/tcp": "8080", // 예시로 기본 포트 매핑 설정
             }
           );
 
-        const result = await window.electronAPI.createAndStartContainer();
+        const result = await window.electronAPI.createAndStartContainer(
+          containerOptions
+        );
 
         if (result.success) {
           console.log(
