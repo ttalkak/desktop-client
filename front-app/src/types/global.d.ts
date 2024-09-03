@@ -112,17 +112,35 @@ declare global {
     // path join을 위한 메서드
     joinPath: (...paths: string[]) => string;
 
-    // 디렉토리 기준으로 이미지 빌드
+    // 디렉토리 기준으로 이미지 빌드/삭제
     buildDockerImage: (
       contextPath: string,
       imageName?: string,
       tag?: string
     ) => Promise<{ status: string; message?: string }>;
+    removeImage: (
+      imageId: string
+    ) => Promise<{ success: boolean; error?: string }>;
 
-    //컨테이너 생성/정지/삭제
+    //컨테이너 생성/실행/정지/삭제
+    createContainerOptions: (
+      imageId: string,
+      containerName: string,
+      ports: { [key: string]: string }
+    ) => Promise<Dockerode.ContainerCreateOptions>;
+
+    createAndStartContainer: (
+      options: Dockerode.ContainerCreateOptions
+    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+
+    createContainer: (
+      options: Dockerode.ContainerCreateOptions
+    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+
     createAndStartContainer: (
       options: ContainerCreateOptions
-    ) => Promise<{ success: boolean; error?: string }>;
+    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+
     stopContainer: (
       containerId: string
     ) => Promise<{ success: boolean; error?: string }>;

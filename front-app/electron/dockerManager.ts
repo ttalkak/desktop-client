@@ -150,13 +150,12 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
 
 export function monitorAllContainersCpuUsage(mainWindow: BrowserWindow): void {
   docker.listContainers((err, containers) => {
-    if (err) {
-      console.error("Error listing containers:", err);
-      return;
-    }
-
     if (!containers || containers.length === 0) {
       console.error("No containers found.");
+      return;
+    }
+    if (err) {
+      console.error("Error listing containers:", err);
       return;
     }
 
@@ -391,7 +390,7 @@ export async function buildDockerImage(
     });
   });
 }
-
+//파일 경로 기반으로 이미지 빌드
 export async function processAndBuildImage(
   contextPath: string,
   imageName: string,
@@ -416,6 +415,22 @@ export async function processAndBuildImage(
   }
 }
 
+//이미지 삭제
+export const removeImage = async (
+  imageId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const image = docker.getImage(imageId);
+    await image.remove();
+    console.log(`Image ${imageId} removed successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error removing image ${imageId}:`, error);
+    return { success: false, error: (error as Error).message };
+  }
+};
+
+//이미지 IPC 핸들러
 export function handleBuildDockerImage() {
   ipcMain.handle(
     "build-docker-image",
@@ -437,14 +452,43 @@ export function handleBuildDockerImage() {
       }
     }
   );
+
+  ipcMain.handle("remove-image", async (_event, imageId: string) => {
+    return removeImage(imageId);
+  });
 }
 
-//--------Docker 컨테이너 생성 및 실행
-export const createAndStartContainer = async (
-  options: Docker.ContainerCreateOptions
-): Promise<void> => {
+// Docker 컨테이너 옵션 설정 함수
+export const createContainerOptions = (
+  image: DockerImage,
+  containerName: string,
+  ports: { [key: string]: string } // 예: { "80/tcp": "8080" }
+): ContainerCreateOptions => {
+  return {
+    Image: image.RepoTags?.[0] || "",
+    name: containerName,
+    ExposedPorts: Object.keys(ports).reduce((acc, port) => {
+      acc[port] = {};
+      return acc;
+    }, {} as { [key: string]: {} }),
+    HostConfig: {
+      PortBindings: Object.entries(ports).reduce(
+        (acc, [containerPort, hostPort]) => {
+          acc[containerPort] = [{ HostPort: hostPort }];
+          return acc;
+        },
+        {} as Docker.PortMap
+      ),
+    },
+  };
+};
+
+//--------Docker 컨테이너 생성 실행 정지 삭제
+export const createContainer = async (
+  options: ContainerCreateOptions
+): Promise<{ success: boolean; containerId?: string; error?: string }> => {
   try {
-    // 동일한 이름의 컨테이너가 있는지 확인
+    // 동일한 이름의 컨테이너가 이미 있는지 확인
     const existingContainers = await docker.listContainers({ all: true });
     const existingContainer = existingContainers.find((container) =>
       container.Names.includes(`/${options.name}`)
@@ -452,23 +496,41 @@ export const createAndStartContainer = async (
 
     if (existingContainer) {
       console.log(
-        `Container with the name "${options.name}" already exists. Skipping creation.`
+        `Container with name ${options.name} already exists with ID ${existingContainer.Id}.`
       );
-      return;
+      return {
+        success: false,
+        containerId: existingContainer.Id,
+        error: "Container with this name already exists",
+      };
     }
 
-    // 컨테이너 생성
+    // 새로운 컨테이너 생성
     const container = await docker.createContainer(options);
-    await container.start();
-    console.log(
-      `Container ${options.name || container.id} started successfully`
-    );
-  } catch (err) {
-    console.error("Error creating or starting container:", err);
+    console.log(`Container ${container.id} created successfully`);
+    return { success: true, containerId: container.id };
+  } catch (error) {
+    console.error("Error creating container:", error);
+    return { success: false, error: (error as Error).message };
   }
 };
 
-// 컨테이너 정지 함수
+//컨테이너 실행
+export const startContainer = async (
+  containerId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const container = docker.getContainer(containerId);
+    await container.start();
+    console.log(`Container ${containerId} started successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error starting container ${containerId}:`, error);
+    return { success: false, error: (error as Error).message };
+  }
+};
+
+// 컨테이너 정지
 export const stopContainer = async (containerId: string): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
@@ -493,16 +555,59 @@ export const removeContainer = async (
   }
 };
 
+//Container Ipc Handler
 export function registerContainerIpcHandlers() {
   ipcMain.handle(
-    "create-and-start-container",
-    async (_event, options: ContainerCreateOptions) => {
+    "create-container-options",
+    async (
+      _event,
+      imageId: string,
+      containerName: string,
+      ports: { [key: string]: string }
+    ) => {
       try {
-        await createAndStartContainer(options);
-        return { success: true };
-      } catch (err) {
-        console.error("Error creating or starting container:", err);
-        return { success: false, error: (err as Error).message };
+        const image = await docker.getImage(imageId).inspect();
+        return createContainerOptions(image, containerName, ports);
+      } catch (error) {
+        console.error(`Error creating container options:`, error);
+        throw error;
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "create-container",
+    async (_event, options: ContainerCreateOptions) => {
+      return createContainer(options);
+    }
+  );
+
+  ipcMain.handle("start-container", async (_event, containerId: string) => {
+    return startContainer(containerId);
+  });
+
+  //생성 및 시작
+  ipcMain.handle(
+    "create-and-start-container",
+    async (_event, containerOptions: ContainerCreateOptions) => {
+      try {
+        // 컨테이너 생성
+        const result = await createContainer(containerOptions);
+
+        if (result.success && result.containerId) {
+          // 컨테이너 실행
+          const startResult = await startContainer(result.containerId);
+          if (startResult.success) {
+            return { success: true, containerId: result.containerId };
+          } else {
+            throw new Error(startResult.error);
+          }
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error("Error during container creation and start:", error);
+        return { success: false, error: (error as Error).message };
       }
     }
   );

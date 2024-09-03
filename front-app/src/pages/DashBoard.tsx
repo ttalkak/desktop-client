@@ -29,10 +29,6 @@ const DashBoard: React.FC = () => {
       const downloadPath = window.electronAPI.joinPath(projectSourceDirectory);
       const extractDir = projectSourceDirectory; // 압축 해제 경로를 동일한 디렉토리로 설정
 
-      console.log("repoUrl:", repoUrl); // 확인용 콘솔 로그
-      console.log("downloadPath:", downloadPath); // 확인용 콘솔 로그
-      console.log("extractDir:", extractDir); // 확인용 콘솔 로그
-
       // ZIP 파일 다운로드 및 압축 해제
       await window.electronAPI.downloadAndUnzip(
         repoUrl,
@@ -45,6 +41,48 @@ const DashBoard: React.FC = () => {
       handleBuildImage(extractDir); // extractDir을 contextPath로 사용
     } catch (err) {
       console.log("Error during download and unzip:", err);
+    }
+  };
+
+  const createAndStartContainers = async () => {
+    try {
+      const dockerImages = await window.storeAPI.getAllDockerImages();
+      const dockerContainers = await window.storeAPI.getAllDockerContainers();
+
+      for (const image of dockerImages) {
+        const existingContainer = dockerContainers.find(
+          (container) => container.Image === image.Id
+        );
+
+        if (existingContainer) {
+          console.log(
+            `Container for image ${image.RepoTags?.[0]} already exists. Skipping creation.`
+          );
+          continue;
+        }
+
+        // 컨테이너 생성 옵션 구성
+        const containerOptions =
+          await window.electronAPI.createContainerOptions(
+            image.Id,
+            `${image.RepoTags?.[0]?.replace(/[:/]/g, "-")}-container`, // 컨테이너 이름 생성
+            {
+              "80/tcp": "8080", // 예시로 기본 포트 매핑 설정
+            }
+          );
+
+        const result = await window.electronAPI.createAndStartContainer();
+
+        if (result.success) {
+          console.log(
+            `Container started successfully with ID: ${result.containerId}`
+          );
+        } else {
+          console.error(`Failed to start container: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error creating and starting containers:", error);
     }
   };
 
@@ -66,11 +104,9 @@ const DashBoard: React.FC = () => {
 
             <button
               className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-              onClick={() => {
-                console.log("!나중에 할거지롱");
-              }}
+              onClick={createAndStartContainers}
             >
-              이미지 값으로 컨테이너 생성
+              이미지 값으로 컨테이너 생성 및 실행
             </button>
           </div>
         </div>

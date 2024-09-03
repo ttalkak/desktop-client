@@ -50,22 +50,45 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeAllListeners: () =>
     ipcRenderer.removeAllListeners("docker-event-response"),
 
-  //---------------------- 도커 로그 ------------------------
-  startLogStream: (containerId: string) => {
-    ipcRenderer.send("start-container-log-stream", containerId);
-  },
-  onLogStream: (callback: LogCallback) => {
-    ipcRenderer.on("container-logs-stream", (_event, log) => callback(log));
-  },
-  onLogError: (callback: ErrorCallback) => {
-    ipcRenderer.on("container-logs-error", (_event, error) => callback(error));
-  },
-  onLogEnd: (callback: EndCallback) => {
-    ipcRenderer.on("container-logs-end", () => callback());
-  },
-  stopLogStream: (containerId: string) => {
-    ipcRenderer.send("stop-container-log-stream", containerId);
-  },
+  //----------------- zip 다운 하고 바로 unzip ------------------
+  getProjectSourceDirectory: (): Promise<string> =>
+    ipcRenderer.invoke("get-project-source-directory"),
+  downloadAndUnzip: (
+    repoUrl: string,
+    downloadDir: string,
+    extractDir: string
+  ) =>
+    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
+
+  joinPath: (...paths: string[]): string => path.join(...paths),
+  //----------------------unzip한 파일 이미지 빌드----------------
+
+  buildDockerImage: (contextPath: string, imageName?: string, tag?: string) =>
+    ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
+  //-------------------- 컨테이너 생성 및 실행 ----------------
+
+  createContainerOptions: (
+    imageId: string,
+    containerName: string,
+    ports: { [key: string]: string }
+  ) =>
+    ipcRenderer.invoke(
+      "create-container-options",
+      imageId,
+      containerName,
+      ports
+    ),
+
+  createContainer: (options: ContainerCreateOptions) =>
+    ipcRenderer.invoke("create-container", options),
+
+  createAndStartContainer: (options: ContainerCreateOptions) =>
+    ipcRenderer.invoke("create-and-start-container", options),
+
+  startContainer: (containerId: string) =>
+    ipcRenderer.invoke("start-container", containerId),
+
+  removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
   //--------------------- CPU 사용률 -------------------------
   onCpuUsagePercent: (
@@ -84,13 +107,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => {
     ipcRenderer.on("average-cpu-usage", callback);
   },
-  //-------------------- 컨테이너 생성 및 실행 ----------------
-  createAndStartContainer: (options: ContainerCreateOptions) =>
-    ipcRenderer.invoke("create-and-start-container", options),
-  stopContainer: (containerId: string) =>
-    ipcRenderer.invoke("stop-container", containerId),
-  removeContainer: (containerId: string, options?: ContainerRemoveOptions) =>
-    ipcRenderer.invoke("remove-container", containerId, options),
+  //---------------------- 도커 로그 ------------------------
+  startLogStream: (containerId: string) => {
+    ipcRenderer.send("start-container-log-stream", containerId);
+  },
+  onLogStream: (callback: LogCallback) => {
+    ipcRenderer.on("container-logs-stream", (_event, log) => callback(log));
+  },
+  onLogError: (callback: ErrorCallback) => {
+    ipcRenderer.on("container-logs-error", (_event, error) => callback(error));
+  },
+  onLogEnd: (callback: EndCallback) => {
+    ipcRenderer.on("container-logs-end", () => callback());
+  },
+  stopLogStream: (containerId: string) => {
+    ipcRenderer.send("stop-container-log-stream", containerId);
+  },
 
   //---------------------- 창 조절 관련 -----------------------
   minimizeWindow: () => {
@@ -102,21 +134,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   closeWindow: () => {
     ipcRenderer.send("close-window");
   },
-
-  //----------------- zip 다운 하고 바로 unzip ------------------
-  getProjectSourceDirectory: (): Promise<string> =>
-    ipcRenderer.invoke("get-project-source-directory"),
-  downloadAndUnzip: (
-    repoUrl: string,
-    downloadDir: string,
-    extractDir: string
-  ) =>
-    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
-
-  joinPath: (...paths: string[]): string => path.join(...paths),
-  //----------------------unzip한 파일 이미지 빌드----------------
-  buildDockerImage: (contextPath: string, imageName?: string, tag?: string) =>
-    ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
 
   //---------------------- 포트 인바운드 관련 --------------------
   getInboundRules: () => {
