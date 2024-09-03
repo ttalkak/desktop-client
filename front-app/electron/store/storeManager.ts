@@ -1,5 +1,4 @@
 import Store from "electron-store";
-import Docker from "dockerode";
 import { DockerStoreSchema, schema } from "./dockerStoreSchema";
 
 const store = new Store<DockerStoreSchema>({ schema });
@@ -10,14 +9,14 @@ export function getDockerImage(imageId: string): DockerImage | undefined {
 }
 
 //store의 전체 이미지 목록 가져오기
-export function getAllDockerImages(): Docker.ImageInfo[] {
-  const images = store.get("dockerImages") as Record<string, Docker.ImageInfo>;
+export function getAllDockerImages(): DockerImage[] {
+  const images = store.get("dockerImages") as Record<string, DockerImage>;
   return Object.values(images);
 }
 
 //store의 도커 이미지 셋팅
-export function setDockerImage(image: Docker.ImageInfo): void {
-  const images = store.get("dockerImages") as Record<string, Docker.ImageInfo>;
+export function setDockerImage(image: DockerImage): void {
+  const images = store.get("dockerImages") as Record<string, DockerImage>;
   images[image.Id] = image;
   store.set("dockerImages", images);
 }
@@ -50,8 +49,8 @@ export function removeDockerContainer(containerId: string): void {
 }
 
 // 필요한 경우 추가 함수들
-export function getRunningContainers(): DockerContainer[] {
-  return getAllDockerContainers().filter(
-    (container) => container.State === "running"
-  );
-}
+// export function getRunningContainers(): DockerContainer[] {
+//   return getAllDockerContainers().filter(
+//     (container) => container.State === "running"
+//   );
+// }

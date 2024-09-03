@@ -8,7 +8,11 @@ import * as fs from "fs";
 import { IpcMainEvent } from "electron";
 import { Readable } from "stream";
 import { BrowserWindow } from "electron";
-import { getAllDockerImages, addDockerImageIfNew } from "./store/storeManager";
+import {
+  getAllDockerImages,
+  getDockerImage,
+  setDockerImage,
+} from "./store/storeManager";
 
 const execAsync = promisify(exec);
 
@@ -357,29 +361,29 @@ export async function buildDockerImage(
   imageName: string = "my-docker-image",
   tag: string = "latest" // 기본 태그 설정
 ): Promise<string> {
-  // 태그를 기본적으로 "latest"로 설정
   const fullTag = `${imageName}:${tag}`;
 
-  // 먼저 이미지가 이미 존재하는지 확인
-  const existingImages = await getAllDockerImages();
-  if (existingImages && existingImages.length > 0) {
-    const imageExists = existingImages.some((img) => {
-      // 태그로 확인
-      if (Array.isArray(img.RepoTags) && img.RepoTags.includes(tag)) {
-        return true;
-      }
-      // 이미지 이름으로 확인 (태그 없이)
-      return img.RepoTags?.some((repoTag) =>
-        repoTag.startsWith(`${imageName}:`)
-      );
-    });
+  // Electron Store에 저장된 이미지 확인
+  const storedImages = getAllDockerImages();
+  const imageInStore = storedImages.find((img) =>
+    img.RepoTags?.includes(fullTag)
+  );
 
-    if (imageExists) {
-      console.log(
-        `Image ${tag} or with similar name already exists. Skipping build.`
-      );
-      return "exists";
-    }
+  // Docker에서 실제 이미지 확인
+  const dockerImages = await docker.listImages();
+  const imageInDocker = dockerImages.find((img) =>
+    img.RepoTags?.includes(fullTag)
+  );
+
+  if (imageInStore && imageInDocker) {
+    console.log(
+      `Image ${fullTag} already exists in Electron Store and Docker. Skipping build.`
+    );
+    return "exists";
+  } else if (imageInStore && !imageInDocker) {
+    console.log(
+      `Image ${fullTag} exists in Electron Store but not in Docker. Proceeding to build.`
+    );
   }
 
   // Dockerfile이 위치한 디렉토리 경로를 컨텍스트로 설정
@@ -410,14 +414,17 @@ export async function buildDockerImage(
     stream.pipe(process.stdout, { end: true });
   }
 
-  // 빌드 완료를 기다림
   return new Promise<string>((resolve, reject) => {
     if (stream) {
       stream.on("end", async () => {
         console.log(`Docker image ${fullTag} built successfully`);
+
         try {
-          const builtImage = await docker.getImage(tag).inspect();
+          const builtImage = await docker.getImage(fullTag).inspect();
           console.log(`Image ID: ${builtImage.Id}`);
+          // 빌드된 이미지 Electron Store에 저장
+          setDockerImage(builtImage);
+          console.log(getAllDockerImages());
           resolve(builtImage.Id);
         } catch (error) {
           console.error("Error inspecting built image:", error);
@@ -461,7 +468,7 @@ export async function processAndBuildImage(
   }
 }
 
-// 도커 이미지 빌드를 위한 핸들러
+// 도커 이미지 빌드 핸들러
 export function handleBuildDockerImage() {
   ipcMain.handle(
     "build-docker-image",
@@ -485,14 +492,6 @@ export function handleBuildDockerImage() {
     }
   );
 }
-
-// function updateMetadata(dockerfilePath, status) {
-//   // 예: 메타데이터 업데이트 용
-//   console.log(
-//     `Updating metadata for: ${dockerfilePath} with status: ${status}`
-//   );
-//   // 실제 업데이트 로직을 여기에 추가
-// }
 
 // Docker 컨테이너 생성 및 실행 ------------------------------------
 //이미지 목록 전체 가져와서 실행시키는 기능으로 바꿔야함/ 이미 실행중이면

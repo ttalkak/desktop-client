@@ -1,3 +1,4 @@
+import Dockerode from "dockerode";
 export {};
 
 declare global {
@@ -39,56 +40,59 @@ declare global {
     Type: string; // 예: 'tcp', 'udp'
   }
 
-  interface DockerImage {
-    Containers: number;
-    Created: number;
-    Id: string;
-    Labels: Record<string, string>;
-    ParentId: string;
-    RepoDigests: string[];
-    RepoTags: string[];
-    SharedSize: number;
-    Size: number;
-  }
+  type DockerImage = Dockerode.ImageInspectInfo;
+  type DockerContainer = Dockerode.ContainerInspectInfo;
 
-  interface DockerContainer {
-    Id: string;
-    Names: string[];
-    Image: string;
-    ImageID: string;
-    Command: string;
-    Created: number;
-    Ports: DockerPort[]; // DockerPort 배열로 설정
-    State: string;
-    Status: string;
-    // 알려진 추가 속성들
-    Labels: Record<string, string>;
-    HostConfig: {
-      NetworkMode: string;
-      [key: string]: unknown;
-    };
-    NetworkSettings: {
-      Networks: Record<
-        string,
-        {
-          IPAddress: string;
-          Gateway: string;
-          MacAddress: string;
-        }
-      >;
-      [key: string]: unknown;
-    };
-    Mounts: Array<{
-      Type: string;
-      Source: string;
-      Destination: string;
-      Mode: string;
-      RW: boolean;
-      Propagation: string;
-    }>;
-    // 기타 알 수 없는 속성들을 위한 인덱스 시그니처
-    [key: string]: unknown;
-  }
+  // interface DockerImage {
+  //   Containers: number;
+  //   Created: number;
+  //   Id: string;
+  //   Labels: Record<string, string>;
+  //   ParentId: string;
+  //   RepoDigests: string[];
+  //   RepoTags: string[];
+  //   SharedSize: number;
+  //   Size: number;
+  // }
+
+  // interface DockerContainer {
+  //   Id: string;
+  //   Names: string[];
+  //   Image: string;
+  //   ImageID: string;
+  //   Command: string;
+  //   Created: number;
+  //   Ports: DockerPort[]; // DockerPort 배열로 설정
+  //   State: string;
+  //   Status: string;
+  //   // 알려진 추가 속성들
+  //   Labels: Record<string, string>;
+  //   HostConfig: {
+  //     NetworkMode: string;
+  //     [key: string]: unknown;
+  //   };
+  //   NetworkSettings: {
+  //     Networks: Record<
+  //       string,
+  //       {
+  //         IPAddress: string;
+  //         Gateway: string;
+  //         MacAddress: string;
+  //       }
+  //     >;
+  //     [key: string]: unknown;
+  //   };
+  //   Mounts: Array<{
+  //     Type: string;
+  //     Source: string;
+  //     Destination: string;
+  //     Mode: string;
+  //     RW: boolean;
+  //     Propagation: string;
+  //   }>;
+  //   // 기타 알 수 없는 속성들을 위한 인덱스 시그니처
+  //   [key: string]: unknown;
+  // }
 
   // CPU 사용률 콜백 타입 정의
   type CpuUsageCallback = (cpuUsage: number) => void;

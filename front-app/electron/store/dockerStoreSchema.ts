@@ -1,5 +1,4 @@
 import { Schema } from "electron-store";
-
 export interface DockerStoreSchema {
   dockerImages: {
     [imageId: string]: DockerImage;
@@ -15,17 +14,7 @@ export const schema: Schema<DockerStoreSchema> = {
     patternProperties: {
       "^.+$": {
         type: "object",
-        properties: {
-          Containers: { type: "number" },
-          Created: { type: "number" },
-          Id: { type: "string" },
-          Labels: { type: "object", additionalProperties: { type: "string" } },
-          ParentId: { type: "string" },
-          RepoDigests: { type: "array", items: { type: "string" } },
-          RepoTags: { type: "array", items: { type: "string" } },
-          SharedSize: { type: "number" },
-          Size: { type: "number" },
-        },
+        additionalProperties: true, // 모든 속성 허용
         required: ["Id", "Created", "Size"],
       },
     },
@@ -36,30 +25,8 @@ export const schema: Schema<DockerStoreSchema> = {
     patternProperties: {
       "^.+$": {
         type: "object",
-        properties: {
-          Id: { type: "string" },
-          Names: { type: "array", items: { type: "string" } },
-          Image: { type: "string" },
-          ImageID: { type: "string" },
-          Command: { type: "string" },
-          Created: { type: "number" },
-          Ports: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                IP: { type: "string" },
-                PrivatePort: { type: "number" },
-                PublicPort: { type: "number" },
-                Type: { type: "string" },
-              },
-            },
-          },
-          State: { type: "string" },
-          Status: { type: "string" },
-        },
+        additionalProperties: true, // 모든 속성 허용
         required: ["Id", "Image", "State"],
-        additionalProperties: true,
       },
     },
     default: {},
