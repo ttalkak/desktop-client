@@ -7,19 +7,22 @@ import iconv from "iconv-lite";
 import * as fs from "fs";
 import { githubDownLoadAndUnzip } from "./githubManager";
 import { getTtalkakDirectory, downloadFile, unzipFile } from "./utils";
-
+import { registerStoreIpcHandlers } from "./store/storeManager";
 import {
   handlecheckDockerStatus,
-  handleGetDockerEvent,
-  checkDockerStatus,
+  getDockerPath,
   handleStartDocker,
+  handleGetDockerEvent,
+  handleFetchDockerImageList,
   handleFetchDockerImages,
-  handleFetchDockerContainers,
+  handleFetchDockerContainerList,
+  handleFetchDockerContainer,
   handleFetchContainerLogs,
   handleBuildDockerImage,
-  calculateAverage,
+  // createAndStartContainer,
+  checkDockerStatus,
   monitorAllContainersCpuUsage,
-  // getContainerStatsStream,
+  registerContainerIpcHandlers,
 } from "./dockerManager";
 
 const execAsync = promisify(exec);
@@ -68,18 +71,24 @@ async function startDockerIfNotRunning(): Promise<void> {
 
 //DockerManager IPC handler 등록
 function registerIpcHandlers() {
-  githubDownLoadAndUnzip(); //zip다운 및 upzip
-  handleBuildDockerImage(); //unzip된 파일에서 도커파일 찾아서 빌드
-  //이미지 파일 기반 컨테이너 파일 빌드하기
-  handlecheckDockerStatus(); //도커현재상태 확인 => 실행안되고 있으면,
-  handleStartDocker(); //도커실행시키기
-  handleGetDockerEvent(); //도커 이벤트 감지[시작, 중지 포함]
-  handleFetchDockerImages(); //이미지 목록 가져오기
-  handleFetchDockerContainers(); //컨테이너 목록 가져오기
-  handleFetchContainerLogs(); //실행중인 컨테이너 로그 가져오기
+  handlecheckDockerStatus(); // Docker 상태 체크 핸들러 초기화
+  getDockerPath(); // Docker 경로 핸들러 초기화
+  handleStartDocker(); // Docker 데스크탑 시작 핸들러 초기화
+  handleGetDockerEvent(); // Docker 이벤트 핸들러 초기화
+  handleFetchDockerImageList(); // Docker 이미지 목록 핸들러 초기화
+  handleFetchDockerImages(); // Docker 단일 이미지 핸들러 초기화
+  handleFetchDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
+  handleFetchDockerContainer(); // Docker 단일 컨테이너 핸들러 초기화
+  handleFetchContainerLogs(); // Docker 컨테이너 로그 핸들러 초기화
+  handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
 
-  // getContainerStatsStream()//cpu사용률 가져오기
-  //웹소켓으로 로그, CPU 가용률, 실행중인 컨테이너 상태 전달
+  // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
+  // createAndStartContainer();
+  githubDownLoadAndUnzip();
+
+  registerStoreIpcHandlers();
+  //컨테이너 생성, 실행, 정지, 삭제
+  registerContainerIpcHandlers();
 }
 
 // 새로운 Electron 창 오픈

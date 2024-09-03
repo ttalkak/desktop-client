@@ -1,10 +1,6 @@
 import { ipcMain, IpcMainEvent } from "electron";
 import os from "os";
-import {
-  docker,
-  getContainerStatsStream,
-  calculateAverage,
-} from "./dockerManager";
+import { docker, getContainerStatsStream } from "./dockerManager";
 
 interface HealthData {
   timestamp: number;

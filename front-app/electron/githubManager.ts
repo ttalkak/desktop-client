@@ -29,7 +29,7 @@ async function downloadAndUnzip(
   repoUrl: string,
   downloadDir: string = getProjectSourceDirectory(),
   extractDir: string = getProjectSourceDirectory()
-): Promise<void> {
+): Promise<{ success: boolean; message?: string }> {
   try {
     const repoName = path.basename(repoUrl); // 레포지토리 이름 추출
     const zipFileName = `${repoName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
@@ -47,8 +47,11 @@ async function downloadAndUnzip(
     console.log("Unzipping file...");
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
+
+    return { success: true };
   } catch (error) {
     console.error("Error during download and unzip:", error);
+    return { success: false, message: (error as Error).message };
   }
 }
 

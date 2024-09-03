@@ -40,59 +40,11 @@ declare global {
     Type: string; // 예: 'tcp', 'udp'
   }
 
+  // 도커 이미지, 컨테이너 타입
   type DockerImage = Dockerode.ImageInspectInfo;
   type DockerContainer = Dockerode.ContainerInspectInfo;
-
-  // interface DockerImage {
-  //   Containers: number;
-  //   Created: number;
-  //   Id: string;
-  //   Labels: Record<string, string>;
-  //   ParentId: string;
-  //   RepoDigests: string[];
-  //   RepoTags: string[];
-  //   SharedSize: number;
-  //   Size: number;
-  // }
-
-  // interface DockerContainer {
-  //   Id: string;
-  //   Names: string[];
-  //   Image: string;
-  //   ImageID: string;
-  //   Command: string;
-  //   Created: number;
-  //   Ports: DockerPort[]; // DockerPort 배열로 설정
-  //   State: string;
-  //   Status: string;
-  //   // 알려진 추가 속성들
-  //   Labels: Record<string, string>;
-  //   HostConfig: {
-  //     NetworkMode: string;
-  //     [key: string]: unknown;
-  //   };
-  //   NetworkSettings: {
-  //     Networks: Record<
-  //       string,
-  //       {
-  //         IPAddress: string;
-  //         Gateway: string;
-  //         MacAddress: string;
-  //       }
-  //     >;
-  //     [key: string]: unknown;
-  //   };
-  //   Mounts: Array<{
-  //     Type: string;
-  //     Source: string;
-  //     Destination: string;
-  //     Mode: string;
-  //     RW: boolean;
-  //     Propagation: string;
-  //   }>;
-  //   // 기타 알 수 없는 속성들을 위한 인덱스 시그니처
-  //   [key: string]: unknown;
-  // }
+  type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
+  type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
 
   // CPU 사용률 콜백 타입 정의
   type CpuUsageCallback = (cpuUsage: number) => void;
@@ -105,8 +57,12 @@ declare global {
 
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<string>;
+
+    fetchDockerImage: (imageId: string) => Promise<DockerImage>;
+    fetchDockerContainer: (containerId: string) => Promise<DockerContainer>;
     getDockerImages: () => Promise<DockerImage[]>;
-    fetchDockerContainers: () => Promise<DockerContainer[]>;
+    getDockerContainers: () => Promise<DockerContainer[]>;
+
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
     createAndStartContainer: () => Promise<void>;
@@ -123,7 +79,7 @@ declare global {
     onLogStream: (callback: LogCallback) => void;
     onLogError: (callback: ErrorCallback) => void;
     onLogEnd: (callback: EndCallback) => void;
-    stopLogStream: (containerId: string) => void; // 로그 스트림 중지 추가
+    stopLogStream: (containerId: string) => void;
 
     // CPU 사용률 스트리밍 관련 메서드들
     onCpuUsagePercent: (
@@ -162,9 +118,37 @@ declare global {
       imageName?: string,
       tag?: string
     ) => Promise<{ status: string; message?: string }>;
+
+    //컨테이너 생성/정지/삭제
+    createAndStartContainer: (
+      options: ContainerCreateOptions
+    ) => Promise<{ success: boolean; error?: string }>;
+    stopContainer: (
+      containerId: string
+    ) => Promise<{ success: boolean; error?: string }>;
+    removeContainer: (
+      containerId: string,
+      options?: ContainerRemoveOptions
+    ) => Promise<{ success: boolean; error?: string }>;
   }
 
+  //일렉트론 store 용 API 타입 지정
+  interface storeAPI {
+    initializeStore(): Promise<void>;
+    getDockerImage(imageId: string): Promise<DockerImage | undefined>;
+    getAllDockerImages(): Promise<DockerImage[]>;
+    setDockerImage(image: DockerImage): Promise<void>;
+    removeDockerImage(imageId: string): Promise<void>;
+
+    getDockerContainer(
+      containerId: string
+    ): Promise<DockerContainer | undefined>;
+    getAllDockerContainers(): Promise<DockerContainer[]>;
+    setDockerContainer(container: DockerContainer): Promise<void>;
+    removeDockerContainer(containerId: string): Promise<void>;
+  }
   interface Window {
     electronAPI: ElectronAPI; // Electron API 인터페이스 지정
+    storeAPI: storeAPI;
   }
 }

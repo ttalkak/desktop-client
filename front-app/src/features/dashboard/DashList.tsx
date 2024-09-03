@@ -12,123 +12,109 @@ const DashList: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [_eventState, setEventState] = useState<DockerEvent | null>(null);
 
-  const fetchDockerContainers = async () => {
+  const loadDockerData = async () => {
     try {
-      const containers = await window.electronAPI.fetchDockerContainers();
-      setDockerContainers(containers);
+      setIsLoading(true);
+
+      // Electron Store에서 데이터 로드
+      const storedImages = await window.storeAPI.getAllDockerImages();
+      const storedContainers = await window.storeAPI.getAllDockerContainers();
+
+      // 실제 Docker에서 이미지 및 컨테이너 목록 가져오기
+      const [actualImages, actualContainers] = await Promise.all([
+        window.electronAPI.getDockerImages(),
+        window.electronAPI.getDockerContainers(),
+      ]);
+
+      // 이미지 비교 및 업데이트
+      const newImages = actualImages.filter(
+        (img) => !storedImages.some((storedImg) => storedImg.Id === img.Id)
+      );
+      const removedImages = storedImages.filter(
+        (storedImg) => !actualImages.some((img) => img.Id === storedImg.Id)
+      );
+
+      newImages.forEach((img) => window.storeAPI.setDockerImage(img));
+      removedImages.forEach((img) => window.storeAPI.removeDockerImage(img.Id));
+
+      // 컨테이너 비교 및 업데이트
+      const newContainers = actualContainers.filter(
+        (container) =>
+          !storedContainers.some(
+            (storedContainer) => storedContainer.Id === container.Id
+          )
+      );
+      const removedContainers = storedContainers.filter(
+        (storedContainer) =>
+          !actualContainers.some(
+            (container) => container.Id === storedContainer.Id
+          )
+      );
+
+      newContainers.forEach((container) =>
+        window.storeAPI.setDockerContainer(container)
+      );
+      removedContainers.forEach((container) =>
+        window.storeAPI.removeDockerContainer(container.Id)
+      );
+
+      // 상태 업데이트
+      setDockerImages(await window.storeAPI.getAllDockerImages());
+      setDockerContainers(await window.storeAPI.getAllDockerContainers());
+      setIsLoading(false);
     } catch (err) {
-      setError("Failed to fetch Docker containers. Please try again.");
-      console.error("Error fetching Docker containers:", err);
+      console.error("Failed to load Docker data:", err);
+      setError("Failed to load Docker data.");
+      setIsLoading(false);
     }
   };
 
-  const fetchDockerImages = async () => {
+  const handleDockerEvent = async (dockerEvent: DockerEvent) => {
+    console.log("Docker event received:", dockerEvent);
+
     try {
-      const images = await window.electronAPI.getDockerImages();
-      setDockerImages(images);
+      if (dockerEvent.Type === "container") {
+        const container = await window.electronAPI.fetchDockerContainer(
+          dockerEvent.id
+        );
+
+        if (["create", "start", "unpause"].includes(dockerEvent.status)) {
+          window.storeAPI.setDockerContainer(container);
+        } else if (
+          ["stop", "kill", "pause", "die", "destroy"].includes(
+            dockerEvent.status
+          )
+        ) {
+          if (dockerEvent.status === "destroy") {
+            window.storeAPI.removeDockerContainer(dockerEvent.id);
+          } else {
+            window.storeAPI.setDockerContainer(container);
+          }
+        }
+        setDockerContainers(await window.storeAPI.getAllDockerContainers());
+      } else if (dockerEvent.Type === "image") {
+        const image = await window.electronAPI.fetchDockerImage(dockerEvent.id);
+
+        if (["pull", "push", "tag"].includes(dockerEvent.status)) {
+          window.storeAPI.setDockerImage(image);
+        } else if (["untag", "delete"].includes(dockerEvent.status)) {
+          if (dockerEvent.status === "delete") {
+            window.storeAPI.removeDockerImage(dockerEvent.id);
+          } else {
+            window.storeAPI.setDockerImage(image);
+          }
+        }
+        setDockerImages(await window.storeAPI.getAllDockerImages());
+      }
     } catch (err) {
-      setError("Failed to fetch Docker images. Please try again.");
-      console.error("Error fetching Docker images:", err);
+      console.error("Error handling Docker event:", err);
+      setError("Error handling Docker event.");
     }
   };
 
   useEffect(() => {
-    // 초기 데이터 로드
-    const loadData = async () => {
-      try {
-        await Promise.all([fetchDockerContainers(), fetchDockerImages()]);
-        setIsLoading(false); // 데이터 로드 후 로딩 상태를 false로 변경
-      } catch (err) {
-        setError("Failed to load Docker data.");
-        setIsLoading(false); // 오류가 발생해도 로딩 상태를 false로 변경
-      }
-    };
-
-    loadData();
-
-    const handleDockerEvent = (dockerEvent: DockerEvent) => {
-      setEventState(dockerEvent);
-      console.log("Docker event received:", dockerEvent);
-
-      if (dockerEvent.Type === "container") {
-        setDockerContainers((prevContainers) => {
-          let updatedContainers = [...prevContainers];
-          const index = updatedContainers.findIndex(
-            (container) => container.Id === dockerEvent.id
-          );
-
-          switch (dockerEvent.status) {
-            case "create":
-            case "start":
-            case "unpause":
-              if (index === -1) {
-                fetchDockerContainers();
-              } else {
-                updatedContainers[index] = {
-                  ...updatedContainers[index],
-                  State: dockerEvent.status,
-                };
-              }
-              break;
-
-            case "stop":
-            case "kill":
-            case "pause":
-            case "die":
-              if (index !== -1) {
-                updatedContainers[index] = {
-                  ...updatedContainers[index],
-                  State: dockerEvent.status,
-                };
-              }
-              break;
-
-            case "restart":
-              if (index !== -1) {
-                updatedContainers[index] = {
-                  ...updatedContainers[index],
-                  State: "restarted",
-                };
-              }
-              break;
-
-            case "destroy":
-              if (index !== -1) {
-                updatedContainers.splice(index, 1);
-              }
-              break;
-
-            default:
-              console.warn(
-                "Unhandled Docker container event status:",
-                dockerEvent.status
-              );
-              break;
-          }
-
-          return updatedContainers;
-        });
-      } else if (dockerEvent.Type === "image") {
-        switch (dockerEvent.status) {
-          case "pull":
-          case "push":
-          case "tag":
-          case "untag":
-          case "delete":
-            fetchDockerImages();
-            break;
-
-          default:
-            console.warn(
-              "Unhandled Docker image event status:",
-              dockerEvent.status
-            );
-            break;
-        }
-      }
-    };
+    loadDockerData();
 
     // Docker 이벤트 리스너 설정
     window.electronAPI.onDockerEventResponse(handleDockerEvent);
@@ -196,6 +182,21 @@ const DashList: React.FC = () => {
               onClick={() => setActiveView("images")}
             >
               Images
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-red-500 text-white shadow"
+              onClick={async () => {
+                await window.storeAPI.initializeStore();
+                await loadDockerData();
+              }}
+            >
+              Reset Store
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-blue-500 text-white shadow"
+              onClick={loadDockerData}
+            >
+              Refresh Data
             </button>
           </div>
         </div>

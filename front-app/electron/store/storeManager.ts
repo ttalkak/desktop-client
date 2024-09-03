@@ -1,7 +1,15 @@
 import Store from "electron-store";
 import { DockerStoreSchema, schema } from "./dockerStoreSchema";
+import { ipcMain } from "electron";
 
 const store = new Store<DockerStoreSchema>({ schema });
+
+// Store 초기화 함수
+export function initializeStore() {
+  store.clear(); // 기존 데이터를 모두 삭제하고 초기화
+  store.set("dockerImages", {}); // 초기값 설정
+  store.set("dockerContainers", {}); // 초기값 설정
+}
 
 // Docker 이미지 관련 함수들
 export function getDockerImage(imageId: string): DockerImage | undefined {
@@ -48,9 +56,43 @@ export function removeDockerContainer(containerId: string): void {
   store.set("dockerContainers", containers);
 }
 
-// 필요한 경우 추가 함수들
-// export function getRunningContainers(): DockerContainer[] {
-//   return getAllDockerContainers().filter(
-//     (container) => container.State === "running"
-//   );
-// }
+export function registerStoreIpcHandlers() {
+  // store 초기화 핸들러
+  ipcMain.handle("initialize-store", () => {
+    initializeStore();
+  });
+
+  // Docker 이미지 관련 IPC 핸들러 등록
+  ipcMain.handle("get-docker-image", (_event, imageId: string) => {
+    return getDockerImage(imageId);
+  });
+
+  ipcMain.handle("get-all-docker-images", () => {
+    return getAllDockerImages();
+  });
+
+  ipcMain.handle("set-docker-image", (_event, image) => {
+    setDockerImage(image);
+  });
+
+  ipcMain.handle("remove-docker-image", (_event, imageId: string) => {
+    removeDockerImage(imageId);
+  });
+
+  // Docker 컨테이너 관련 IPC 핸들러 등록
+  ipcMain.handle("get-docker-container", (_event, containerId: string) => {
+    return getDockerContainer(containerId);
+  });
+
+  ipcMain.handle("get-all-docker-containers", () => {
+    return getAllDockerContainers();
+  });
+
+  ipcMain.handle("set-docker-container", (_event, container) => {
+    setDockerContainer(container);
+  });
+
+  ipcMain.handle("remove-docker-container", (_event, containerId: string) => {
+    removeDockerContainer(containerId);
+  });
+}
