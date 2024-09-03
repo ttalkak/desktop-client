@@ -1,15 +1,59 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../axios/constants";
 import { login } from "../axios/auth";
+import { SlArrowDown, SlArrowUp } from "react-icons/sl";
 
 const SignUp = () => {
-  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null); // 아이디 길이
+  const [pwLengthError, setPwLengthError] = useState<string | null>(null); // 비밀번호 길이
+  const [passwordError, setPasswordError] = useState<string | null>(null); // 비밀번호 불일치
+  const [emailError, setEmailError] = useState<string | null>(null); // 이메일 유효성
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAgreed, setIsAgreed] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false); // 토글 상태
+  const [isAgreementHighlighted, setIsAgreementHighlighted] = useState(false); // 동의하지 않으면 하이라이트
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (username.length > 0 && username.length < 8) {
+      setUsernameError("아이디는 8자 이상이어야 합니다");
+    } else {
+      setUsernameError(null);
+    }
+  }, [username]);
+
+  useEffect(() => {
+    if (password1.length > 0 && password1.length < 8) {
+      setPwLengthError("비밀번호는 8자 이상이어야 합니다");
+    } else {
+      setPwLengthError(null);
+    }
+  }, [password1]);
+
+  useEffect(() => {
+    if (email.length > 0 && !email.includes("@")) {
+      setEmailError("이메일 형식이 아닙니다");
+    } else {
+      setEmailError(null);
+    }
+  }, [email]);
+
+  useEffect(() => {
+    if (
+      password1.length > 0 &&
+      password2.length > 0 &&
+      password1 !== password2
+    ) {
+      setPasswordError("비밀번호가 일치하지 않습니다");
+    } else {
+      setPasswordError(null);
+    }
+  }, [password1, password2]);
 
   const signUp = async () => {
     try {
@@ -27,7 +71,7 @@ const SignUp = () => {
           navigate("/");
         }
       } else {
-        setErrorMessage(message || "회원가입에 실패했습니다.");
+        setErrorMessage(message);
       }
     } catch (error) {
       console.log(error);
@@ -37,68 +81,157 @@ const SignUp = () => {
 
   const handleSignUp = (event: React.FormEvent) => {
     event.preventDefault();
-    if (password1 !== password2) {
-      setErrorMessage("비밀번호가 일치하지 않습니다.");
+    if (!isAgreed) {
+      setIsAgreementHighlighted(true);
       return;
     }
-    setErrorMessage(null); // 이전 에러 메시지 초기화
+    if (passwordError) {
+      return;
+    }
+    if (usernameError) {
+      return;
+    }
+    setErrorMessage(null);
     signUp();
   };
 
+  const lbl = "text-sm mb-1";
+  const ipt =
+    "shadow-inner border border-color-2 p-2 mb-2 w-full rounded text-sm";
+  const haveMsg = "flex items-center";
+  const btn = `rounded mt-5 w-full bg-color-5 text-white py-2 mb-1.5`;
+  const errorMsg = "ml-2 text-color-8 text-sm";
+
   return (
-    <>
-      <div>회원가입 페이지</div>
+    <div className="w-4/12 min-w-96 mx-auto mt-16">
+      <div className="text-center mb-3 text-2xl">회원가입</div>
       <form onSubmit={handleSignUp}>
-        <div>
-          <label htmlFor="userId">아이디</label>
+        <div className="flex flex-col">
+          <label className={`${lbl} ${haveMsg}`} htmlFor="userId">
+            <div>
+              아이디
+              <span className="text-color-8 no-drag"> *</span>
+            </div>
+            {usernameError && <div className={errorMsg}>{usernameError}</div>}
+          </label>
           <input
             id="userId"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            className={ipt}
           />
         </div>
 
-        <div>
-          <label htmlFor="email">이메일</label>
+        <div className="flex flex-col">
+          <label className={`${lbl} ${haveMsg}`} htmlFor="email">
+            <div>
+              이메일
+              <span className="text-color-8 no-drag"> *</span>
+            </div>
+            {email && <div className={errorMsg}>{emailError}</div>}
+          </label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            className={ipt}
           />
         </div>
 
-        <div>
-          <label htmlFor="password1">비밀번호</label>
+        <div className="flex flex-col">
+          <label className={`${lbl} ${haveMsg}`} htmlFor="password1">
+            <div>
+              비밀번호
+              <span className="text-color-8 no-drag"> *</span>
+            </div>
+            {pwLengthError && <div className={errorMsg}>{pwLengthError}</div>}
+          </label>
           <input
             id="password1"
             type="password"
             value={password1}
             onChange={(e) => setPassword1(e.target.value)}
             required
+            className={ipt}
           />
         </div>
 
-        <div>
-          <label htmlFor="password2">비밀번호 확인</label>
+        <div className="flex flex-col">
+          <label className={`${lbl} ${haveMsg}`} htmlFor="password2">
+            <div>
+              비밀번호 확인
+              <span className="text-color-8 no-drag"> *</span>
+            </div>
+            {passwordError && <div className={errorMsg}>{passwordError}</div>}
+          </label>
           <input
             id="password2"
             type="password"
             value={password2}
             onChange={(e) => setPassword2(e.target.value)}
             required
+            className={ipt}
           />
         </div>
-        {errorMessage && <div style={{ color: "red" }}>{errorMessage}</div>}
+
+        <hr className="mt-2 mb-2 border-color-2" />
+
+        <div
+          className={`mt-4 border rounded px-4 py-2.5 ${
+            isAgreementHighlighted && !isAgreed
+              ? "border-color-8"
+              : "border-color-2"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <label className="flex items-center cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={isAgreed}
+                onChange={(e) => {
+                  setIsAgreed(e.target.checked);
+                  setIsAgreementHighlighted(false); // 동의하면 하이라이트 제거
+                }}
+                className="mr-2"
+              />
+              [필수] 인증 약관 전체동의
+            </label>
+            <button
+              type="button"
+              className="flex items-center"
+              onClick={() => setIsTermsOpen(!isTermsOpen)}
+            >
+              {isTermsOpen ? (
+                <SlArrowUp size={12} color="#919191" />
+              ) : (
+                <SlArrowDown size={12} color="#919191" />
+              )}
+            </button>
+          </div>
+
+          {isTermsOpen && (
+            <div className="mt-4 border-l-4 border-color-3 pl-4 text-sm">
+              <div className="mb-1.5">컴퓨터 자원 사용 및 로그 수집</div>
+              <div className="mb-1.5">프로그램 자동 설치 및 실행</div>
+              <div>수익 배분 및 수수료 부과</div>
+            </div>
+          )}
+        </div>
+
+        {errorMessage && (
+          <div className="text-color-8 text-sm mt-2.5">{errorMessage}</div>
+        )}
         <div>
-          <button type="submit">가입하기</button>
+          <button className={btn} type="submit">
+            가입하기
+          </button>
         </div>
       </form>
-      <Link to={"/login"}>로그인</Link>
-    </>
+    </div>
   );
 };
 

@@ -30,15 +30,18 @@ export default {
         ".app-region-no-drag": {
           "-webkit-app-region": "no-drag",
         },
+        ".no-drag": {
+          "user-select": "none",
+        },
       };
 
       const newComponents = {
         ".card": {
           "background-color": "#fff",
           "border-radius": "0.5rem",
-          "padding": "1rem",
-          "border": `1px solid ${theme('colors.color-3')}`,
-        }
+          padding: "1rem",
+          border: `1px solid ${theme("colors.color-3")}`,
+        },
       };
 
       addUtilities(newUtilities);

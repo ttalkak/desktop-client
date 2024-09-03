@@ -62,15 +62,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     onClose("modal");
   };
 
-  const ipt = "border px-2 py-1.5 w-72 rounded";
-  const loginBtn = "border w-full py-1 rounded";
+  const ipt =
+    "shadow-inner border border-color-2 px-2 py-1.5 mb-2 w-72 rounded placeholder:text-sm";
+  const loginBtn = "bg-color-6 text-white w-full py-1.5 rounded mt-1.5";
 
   if (!isOpen) return null;
 
   return (
     <div
       ref={modalRef}
-      className="absolute top-full right-4 bg-white px-4 py-6 rounded shadow-lg z-50 mt-1 border border-color-1"
+      className="absolute top-full right-4 bg-white px-4 pt-8 pb-5 rounded shadow-lg z-50 mt-1 border border-color-2"
     >
       <form onSubmit={handleLogin}>
         <input
@@ -90,13 +91,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           required
         />
         {errorMessage && (
-          <div className="text-color-8 mt-2">{errorMessage}</div>
+          <div className="text-color-8 text-sm">{errorMessage}</div>
         )}
         <button className={loginBtn} type="submit">
-          로그인
+          Login
         </button>
       </form>
-      <button onClick={handleSignupClick} className="text-blue-500 mt-4 block">
+      <button
+        onClick={handleSignupClick}
+        className="px-2 mx-auto text-center text-color-10 mt-4 block text-sm flex items-center"
+      >
         회원가입
       </button>
     </div>
