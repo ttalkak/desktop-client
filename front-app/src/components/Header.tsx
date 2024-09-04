@@ -1,14 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
 import { IoMdClose } from "react-icons/io";
 import { FaRegSquare } from "react-icons/fa";
+import { IoSettingsSharp } from "react-icons/io5";
 import { FiMinus } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import LoginModal from "./../features/auth/LoginModal";
 import { useAuthStore } from "../stores/authStore";
+import SettingModal from "../features/auth/SettingModal";
 
 const Header = () => {
   const location = useLocation();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
   const [isFromModal, setIsFromModal] = useState(false);
 
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -28,6 +31,20 @@ const Header = () => {
 
   const handleLogout = () => {
     clearTokens();
+  };
+
+  const toggleSettingModal = (source: string) => {
+    console.log("toggle", source);
+    if (source === "modal") {
+      setIsFromModal(true);
+      setIsSettingModalOpen(false);
+    } else {
+      if (isFromModal) {
+        setIsFromModal(false);
+      } else {
+        setIsSettingModalOpen(true);
+      }
+    }
   };
 
   const toggleLoginModal = (source: string) => {
@@ -94,7 +111,24 @@ const Header = () => {
           {location.pathname === "/port" && <Additional />}
         </Link>
       </div>
-      <div className="flex flex-wrap items-center ">
+
+      <div className="flex flex-wrap items-center">
+        <div className="mr-4 relative">
+          {accessToken ? (
+            <>
+              <div
+                className="app-region-no-drag"
+                onClick={() => toggleSettingModal("header")}
+              >
+                <IoSettingsSharp size={24} color="#c5c5c5" />
+              </div>
+              <SettingModal
+                isOpen={isSettingModalOpen}
+                onClose={toggleSettingModal}
+              />
+            </>
+          ) : null}
+        </div>
         <div className="relative">
           {accessToken ? (
             <div onClick={handleLogout} className={signBtn}>
