@@ -1,13 +1,16 @@
-import React from 'react';
+import React from "react";
 
 interface ImageListProps {
   images: DockerImage[];
 }
 
 const ImageList: React.FC<ImageListProps> = ({ images }) => {
-
   if (images.length === 0) {
-    return <div className="text-center mt-8">사용 가능한 Docker 이미지가 없습니다.</div>;
+    return (
+      <div className="text-center mt-8">
+        사용 가능한 Docker 이미지가 없습니다.
+      </div>
+    );
   }
 
   return (
@@ -23,25 +26,29 @@ const ImageList: React.FC<ImageListProps> = ({ images }) => {
         </thead>
         <tbody>
           {images.map((image, index) => {
-            const { RepoTags, Id, Size, Containers } = image;
-            const name = RepoTags ? RepoTags[0].split(':')[0] : 'None';
-            const tag = RepoTags ? RepoTags[0].split(':')[1] : 'None';
-            const status = Containers > 0 ? 'In use' : 'Unused';
+            const { RepoTags, Id, Size, Container } = image;
+            const name = RepoTags ? RepoTags[0].split(":")[0] : "None";
+            const tag = RepoTags ? RepoTags[0].split(":")[1] : "None";
+
             return (
               <tr key={index} className="hover:bg-gray-100">
                 <td className="py-2 px-4 border-b text-color-6">
                   <a href="#" className="hover:underline">
                     {name}
                   </a>
-                  <div className="text-sm text-gray-500">{Id.split(':')[1].slice(0, 12)}</div>
+                  <div className="text-sm text-gray-500">
+                    {Id.split(":")[1].slice(0, 12)}
+                  </div>
                 </td>
                 <td className="py-2 px-4 border-b">{tag}</td>
                 <td className="py-2 px-4 border-b text-color-6">
                   <a href="#" className="hover:underline">
-                    {status}
+                    {Container}
                   </a>
                 </td>
-                <td className="py-2 px-4 border-b">{(Size / (1024 * 1024)).toFixed(2)} MB</td>
+                <td className="py-2 px-4 border-b">
+                  {(Size / (1024 * 1024)).toFixed(2)} MB
+                </td>
               </tr>
             );
           })}

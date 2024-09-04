@@ -7,15 +7,22 @@ import iconv from "iconv-lite";
 import * as fs from "fs";
 import { githubDownLoadAndUnzip } from "./githubManager";
 import { getTtalkakDirectory, downloadFile, unzipFile } from "./utils";
-
+import { registerStoreIpcHandlers } from "./store/storeManager";
 import {
   handlecheckDockerStatus,
-  handleGetDockerEvent,
-  checkDockerStatus,
+  getDockerPath,
   handleStartDocker,
+  handleGetDockerEvent,
+  handleFetchDockerImageList,
   handleFetchDockerImages,
-  handleFetchDockerContainers,
+  handleFetchDockerContainerList,
+  handleFetchDockerContainer,
   handleFetchContainerLogs,
+  handleBuildDockerImage,
+  // createAndStartContainer,
+  checkDockerStatus,
+  monitorAllContainersCpuUsage,
+  registerContainerIpcHandlers,
 } from "./dockerManager";
 
 const execAsync = promisify(exec);
@@ -47,6 +54,8 @@ async function startDockerIfNotRunning(): Promise<void> {
 
       // Docker Desktop 실행
       await execAsync(`"${resolvedPath}"`);
+      await checkDockerStatus();
+
       console.log("Docker started successfully.");
     } catch (error) {
       console.error("Failed to start Docker:", error);
@@ -102,16 +111,26 @@ async function runPgrok(
   });
 }
 
-// DockerManager IPC handler 등록
+//DockerManager IPC handler 등록
 function registerIpcHandlers() {
-  //zip 다운로드 및 압축 해제
+  handlecheckDockerStatus(); // Docker 상태 체크 핸들러 초기화
+  getDockerPath(); // Docker 경로 핸들러 초기화
+  handleStartDocker(); // Docker 데스크탑 시작 핸들러 초기화
+  handleGetDockerEvent(); // Docker 이벤트 핸들러 초기화
+  handleFetchDockerImageList(); // Docker 이미지 목록 핸들러 초기화
+  handleFetchDockerImages(); // Docker 단일 이미지 핸들러 초기화
+  handleFetchDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
+  handleFetchDockerContainer(); // Docker 단일 컨테이너 핸들러 초기화
+  handleFetchContainerLogs(); // Docker 컨테이너 로그 핸들러 초기화
+  handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
+
+  // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
+  // createAndStartContainer();
   githubDownLoadAndUnzip();
-  handlecheckDockerStatus(); // 도커 현재 상태 확인 => 실행 안 되고 있으면,
-  handleStartDocker(); // 도커 실행시키기
-  handleGetDockerEvent(); // 도커 이벤트 감지 [시작, 중지 포함]
-  handleFetchDockerImages(); // 이미지 목록 가져오기
-  handleFetchDockerContainers(); // 컨테이너 목록 가져오기
-  handleFetchContainerLogs(); // 실행 중인 컨테이너 로그 가져오기
+
+  registerStoreIpcHandlers();
+  //컨테이너 생성, 실행, 정지, 삭제
+  registerContainerIpcHandlers();
 }
 
 // 새로운 Electron 창 오픈
@@ -135,6 +154,11 @@ async function createWindow() {
     await win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
+
+  // 컨테이너 CPU 사용률 모니터링 시작
+  if (win !== null) {
+    monitorAllContainersCpuUsage(win);
   }
 
   // IPC 핸들러 설정: inbound-rule

@@ -5,36 +5,33 @@ interface ContainerLogsProps {
 }
 
 const ContainerLogs: React.FC<ContainerLogsProps> = ({ container }) => {
-  const [logs, setLogs] = useState<string>('');
-  const [cpuUsage, setCpuUsage] = useState<number>(0);
+  const [logs, setLogs] = useState<string>("");
 
   useEffect(() => {
-    setLogs(''); // 로그 초기화
-    setCpuUsage(0); // CPU 사용률 초기화
+    setLogs(""); // 로그 초기화
 
+    // 로그 스트림 시작
     window.electronAPI.startLogStream(container.Id);
 
+    // 핸들러 함수들 정의
     const handleLog = (log: string) => {
       setLogs((prevLogs) => prevLogs + log);
     };
 
-    const handleCpuUsage = (usage: number) => {
-      setCpuUsage(usage);
-    };
-
     const handleError = (error: string) => {
-      console.error('Error fetching logs:', error);
+      console.error("Error fetching logs:", error);
     };
 
     const handleEnd = () => {
-      console.log('Log stream ended');
+      console.log("Log stream ended");
     };
 
+    // 핸들러 등록
     window.electronAPI.onLogStream(handleLog);
-    window.electronAPI.onCpuUsageData(handleCpuUsage); 
     window.electronAPI.onLogError(handleError);
     window.electronAPI.onLogEnd(handleEnd);
 
+    // 컴포넌트 언마운트 시 로그 스트림 중지
     return () => {
       window.electronAPI.stopLogStream(container.Id);
     };
@@ -42,8 +39,9 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ container }) => {
 
   return (
     <div className="mt-8">
-      <h2 className="text-xl font-semibold mb-4">Logs for Container: {container.Id}</h2>
-      <p><strong>CPU Usage:</strong> {cpuUsage.toFixed(2)}%</p>
+      <h2 className="text-xl font-semibold mb-4">
+        Logs for Container: {container.Id}
+      </h2>
       <pre className="bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words">
         {logs}
       </pre>
