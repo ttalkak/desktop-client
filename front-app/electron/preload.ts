@@ -1,11 +1,12 @@
 import { ipcRenderer, contextBridge } from "electron";
+import path from "path";
+import { IpcRendererEvent } from "electron";
 
 console.log("Preload script loaded");
 
 contextBridge.exposeInMainWorld("electronAPI", {
   // ------------------------------ 도커 실행 -----------------------------
   checkDockerStatus: async () => {
-    //상태확인
     try {
       const status = await ipcRenderer.invoke("check-docker-status");
       return status;
@@ -15,42 +16,98 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
   getDockerExecutablePath: () => {
-    //도커 실행파일 경로
     return ipcRenderer.invoke("get-docker-path");
   },
   openDockerDesktop: (dockerPath: string | null) => {
-    // 도커 데스크탑 시작
     ipcRenderer.invoke("open-docker-desktop", dockerPath);
   },
 
-  // -----------------------도커 이벤트 감지 -------------------------------
-  sendDockerEventRequest: () => ipcRenderer.send("get-docker-event"),
-  onDockerEventResponse: (callback: (data: DockerEvent) => void) => {
-    return ipcRenderer.on(
+  //컨테이너, 이미지 로드
+  fetchDockerImage: (imageId: string) =>
+    ipcRenderer.invoke("fetch-docker-image", imageId),
+  fetchDockerContainer: (containerId: string) =>
+    ipcRenderer.invoke("fetch-docker-container", containerId),
+  getDockerImages: () => ipcRenderer.invoke("get-docker-images"),
+  getDockerContainers: () => ipcRenderer.invoke("fetch-docker-containers"),
+
+  //도커 이벤트 감지
+  sendDockerEventRequest: () => ipcRenderer.send("docker-event-request"),
+
+  onDockerEventResponse: (callback: (event: DockerEvent) => void) =>
+    ipcRenderer.on(
       "docker-event-response",
-      (_event, data: DockerEvent) => callback(data)
-    );
-  },
+      (_event: IpcRendererEvent, dockerEvent: DockerEvent) =>
+        callback(dockerEvent)
+    ),
+
   onDockerEventError: (callback: ErrorCallback) =>
     ipcRenderer.on("docker-event-error", (_event, error) => callback(error)),
-  onDockerEventEnd: () => ipcRenderer.invoke("docker-event-end"),
-  removeAllListeners: () => {
-    ipcRenderer.removeAllListeners("docker-event-response");
-    ipcRenderer.removeAllListeners("docker-event-error");
-    ipcRenderer.removeAllListeners("docker-event-end");
+
+  onDockerEventEnd: (callback: () => void) => {
+    ipcRenderer.on("docker-event-end", () => callback());
   },
 
-  //--------------------컨테이너, 이미지 로드-----------------------
-  getDockerImages: () => {
-    // console.log("fetching..img preload");
-    return ipcRenderer.invoke("get-docker-images");
-  },
-  fetchDockerContainers: () => {
-    // console.log("fetchingDocker.. preload");
-    return ipcRenderer.invoke("fetch-docker-containers");
-  },
+  removeAllListeners: () =>
+    ipcRenderer.removeAllListeners("docker-event-response"),
 
-  //---------------------- 도커 로그 -----------------------
+  //----------------- zip 다운 하고 바로 unzip ------------------
+  getProjectSourceDirectory: (): Promise<string> =>
+    ipcRenderer.invoke("get-project-source-directory"),
+  downloadAndUnzip: (
+    repoUrl: string,
+    downloadDir: string,
+    extractDir: string
+  ) =>
+    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
+
+  joinPath: (...paths: string[]): string => path.join(...paths),
+  //----------------------unzip한 파일 이미지 빌드----------------
+
+  buildDockerImage: (contextPath: string, imageName?: string, tag?: string) =>
+    ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
+  //-------------------- 컨테이너 생성 및 실행 ----------------
+
+  createContainerOptions: (
+    imageId: string,
+    containerName: string,
+    ports: { [key: string]: string }
+  ) =>
+    ipcRenderer.invoke(
+      "create-container-options",
+      imageId,
+      containerName,
+      ports
+    ),
+
+  createContainer: (options: ContainerCreateOptions) =>
+    ipcRenderer.invoke("create-container", options),
+
+  createAndStartContainer: (options: ContainerCreateOptions) =>
+    ipcRenderer.invoke("create-and-start-container", options),
+
+  startContainer: (containerId: string) =>
+    ipcRenderer.invoke("start-container", containerId),
+
+  removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
+
+  //--------------------- CPU 사용률 -------------------------
+  onCpuUsagePercent: (
+    callback: (
+      event: Electron.IpcRendererEvent,
+      data: { containerId: string; cpuUsagePercent: number }
+    ) => void
+  ) => {
+    ipcRenderer.on("cpu-usage-percent", callback);
+  },
+  onAverageCpuUsage: (
+    callback: (
+      event: Electron.IpcRendererEvent,
+      data: { averageCpuUsage: number }
+    ) => void
+  ) => {
+    ipcRenderer.on("average-cpu-usage", callback);
+  },
+  //---------------------- 도커 로그 ------------------------
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);
   },
@@ -67,21 +124,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("stop-container-log-stream", containerId);
   },
 
-  //--------------------- CPU 사용률 --------------------------
-  startContainerStatsStream: (containerId: string) =>
-    ipcRenderer.send("start-container-stats-stream", containerId),
-  onCpuUsageData: (callback: (cpuUsage: number) => void) =>
-    ipcRenderer.on("cpu-usage-data", (_event, cpuUsage) => callback(cpuUsage)),
-  onCpuUsageError: (callback: (error: string) => void) =>
-    ipcRenderer.on("cpu-usage-error", (_event, error) => callback(error)),
-  onCpuUsageEnd: (callback: () => void) =>
-    ipcRenderer.on("cpu-usage-end", () => callback()),
-
-  //-------------------- 컨테이너 생성 및 실행 -----------------
-  createAndStartContainer: () =>
-    ipcRenderer.invoke("create-and-start-container"),
-
-  //---------------------- 창 조절 관련 ------------------------
+  //---------------------- 창 조절 관련 -----------------------
   minimizeWindow: () => {
     ipcRenderer.send("minimize-window");
   },
@@ -92,19 +135,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("close-window");
   },
 
-  //----------------- zip 다운 하고 바로 unzip ------------------------
-  downloadAndUnzip: (
-    repoUrl: string,
-    downloadDir: string,
-    extractDir: string
-  ) =>
-    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
-
   //---------------------- 포트 인바운드 관련 ----------------------
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return ipcRenderer.invoke("get-inbound-rules");
-    8;
   },
   togglePort: (name: string, newEnabled: string) => {
     console.log(`Toggling port ${name} to ${newEnabled}`);
@@ -123,6 +157,37 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onPgrokLog: (callback: (log: string) => void) => {
     ipcRenderer.on("pgrok-log", (_event, log) => callback(log));
   },
+});
+
+//electron store용 API
+contextBridge.exposeInMainWorld("storeAPI", {
+  initializeStore: (): Promise<void> => ipcRenderer.invoke("initialize-store"),
+
+  getDockerImage: (imageId: string): Promise<DockerImage | undefined> =>
+    ipcRenderer.invoke("get-docker-image", imageId),
+
+  getAllDockerImages: (): Promise<DockerImage[]> =>
+    ipcRenderer.invoke("get-all-docker-images"),
+
+  setDockerImage: (image: DockerImage): Promise<void> =>
+    ipcRenderer.invoke("set-docker-image", image),
+
+  removeDockerImage: (imageId: string): Promise<void> =>
+    ipcRenderer.invoke("remove-docker-image", imageId),
+
+  getDockerContainer: (
+    containerId: string
+  ): Promise<DockerContainer | undefined> =>
+    ipcRenderer.invoke("get-docker-container", containerId),
+
+  getAllDockerContainers: (): Promise<DockerContainer[]> =>
+    ipcRenderer.invoke("get-all-docker-containers"),
+
+  setDockerContainer: (container: DockerContainer): Promise<void> =>
+    ipcRenderer.invoke("set-docker-container", container),
+
+  removeDockerContainer: (containerId: string): Promise<void> =>
+    ipcRenderer.invoke("remove-docker-container", containerId),
 });
 
 // --------- Expose some API to the Renderer process ---------
