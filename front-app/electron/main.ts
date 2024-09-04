@@ -73,23 +73,19 @@ async function runPgrok(
   token: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
-  const pgrokExePath = path.join(
-    ttalkakDirectory,
-    "pgrok_1.4.1_windows_amd64",
-    "pgrok.exe"
-  );
+  const pgrokExePath = path.join(ttalkakDirectory, "pgrok.exe");
 
   if (!fs.existsSync(pgrokExePath)) {
-    throw new Error("pgrok.exe not found. Please download and unzip it first.");
+    throw new Error("pgrok.exe not found. Please download it first.");
   }
 
   const command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token}`;
 
-  // 명령 프롬프트를 사용하여 pgrok 명령어 실행
+  // 명령 프롬프트를 사용하여 pgrok 실행
   const child = execFile(
     "cmd.exe",
     ["/c", command],
-    { cwd: path.dirname(pgrokExePath) } // 명령어 실행 경로를 정확히 설정
+    { cwd: path.dirname(pgrokExePath) } // 명령어 실행 경로 설정
   );
 
   console.log("실행 명령어", command);
@@ -211,10 +207,7 @@ async function createWindow() {
         fs.mkdirSync(ttalkakDirectory, { recursive: true });
       }
 
-      const downloadPath = path.join(
-        ttalkakDirectory,
-        "pgrok_1.4.1_windows_amd64.zip"
-      );
+      const downloadPath = path.join(ttalkakDirectory, "pgrok.exe");
 
       // 이미 파일이 있는 경우
       if (fs.existsSync(downloadPath)) {
@@ -222,11 +215,9 @@ async function createWindow() {
       }
 
       await downloadFile(
-        "https://github.com/pgrok/pgrok/releases/download/v1.4.1/pgrok_1.4.1_windows_amd64.zip",
+        "https://d1do0lnmj06xbc.cloudfront.net/pgrok.exe",
         downloadPath
       );
-
-      await unzipFile(downloadPath, downloadPath.split(".zip")[0]);
 
       return "Download Completed";
     } catch (error) {
