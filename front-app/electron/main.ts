@@ -1,6 +1,5 @@
 import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
-import { promisify } from "util";
 import path from "node:path";
 import { exec, execFile } from "child_process";
 import iconv from "iconv-lite";
@@ -20,12 +19,9 @@ import {
   handleFetchContainerLogs,
   handleBuildDockerImage,
   // createAndStartContainer,
-  checkDockerStatus,
   monitorAllContainersCpuUsage,
   registerContainerIpcHandlers,
 } from "./dockerManager";
-
-const execAsync = promisify(exec);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,29 +38,6 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
-
-async function startDockerIfNotRunning(): Promise<void> {
-  const status = await checkDockerStatus();
-
-  if (status !== "running") {
-    console.log("Docker is not running. Starting Docker...");
-    try {
-      const resolvedPath =
-        "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe";
-
-      // Docker Desktop 실행
-      await execAsync(`"${resolvedPath}"`);
-      await checkDockerStatus();
-
-      console.log("Docker started successfully.");
-    } catch (error) {
-      console.error("Failed to start Docker:", error);
-      throw new Error("Docker failed to start");
-    }
-  } else {
-    console.log("Docker is already running.");
-  }
-}
 
 // pgrok 실행 함수
 async function runPgrok(
@@ -307,7 +280,6 @@ function createTray() {
 
 app
   .whenReady()
-  .then(startDockerIfNotRunning) // Docker 상태 확인 및 필요시 실행
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(handleGetDockerEvent) // Docker 이벤트 감지 핸들러 실행
   .then(createWindow) // 윈도우 생성

@@ -124,6 +124,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("stop-container-log-stream", containerId);
   },
 
+  clearLogListeners: () => {
+    ipcRenderer.removeAllListeners("container-logs-stream");
+    ipcRenderer.removeAllListeners("container-logs-error");
+    ipcRenderer.removeAllListeners("container-logs-end");
+  },
   //---------------------- 창 조절 관련 -----------------------
   minimizeWindow: () => {
     ipcRenderer.send("minimize-window");

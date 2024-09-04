@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 
@@ -11,7 +11,6 @@ const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
     null
   );
 
-  //선택된 컨테이너
   const handleContainerSelect = (containerId: string) => {
     if (selectedContainerId === containerId) {
       setSelectedContainerId(null);
@@ -53,24 +52,32 @@ const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
             const { Id, Name, Image, Created, NetworkSettings, State } =
               container;
             const isSelected = selectedContainerId === Id;
+
+            // Created 시간이 Unix Epoch라면 표시를 하지 않도록 수정
+            const createdTime = Created
+              ? new Date(Number(Created) * 1000).toLocaleString()
+              : "Unknown";
+
             return (
               <React.Fragment key={Id}>
                 <tr>
                   <td className="py-2 px-4 border-b">{Name}</td>
                   <td className="py-2 px-4 border-b">{Image}</td>
-                  <td className="py-2 px-4 border-b">
-                    {new Date(Created).toLocaleString()}
-                  </td>
+                  <td className="py-2 px-4 border-b">{createdTime}</td>
                   <td className="py-2 px-4 border-b">
                     {NetworkSettings.Ports &&
                     Object.keys(NetworkSettings.Ports).length > 0 ? (
                       Object.entries(NetworkSettings.Ports).map(
                         ([port, bindings], idx) =>
-                          bindings.map((binding, bIdx) => (
+                          bindings?.map((binding, bIdx) => (
                             <div key={`${idx}-${bIdx}`} className="text-sm">
                               {binding.HostIp}:{binding.HostPort} → {port}
                             </div>
-                          ))
+                          )) || (
+                            <span className="text-sm text-gray-500">
+                              No Ports
+                            </span>
+                          )
                       )
                     ) : (
                       <span className="text-sm text-gray-500">No Ports</span>
@@ -95,7 +102,7 @@ const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
                 {isSelected && (
                   <tr>
                     <td colSpan={10} className="p-4 bg-gray-100 border-b">
-                      <ContainerLogs container={container} />
+                      <ContainerLogs containerId={Id} />
                     </td>
                   </tr>
                 )}
