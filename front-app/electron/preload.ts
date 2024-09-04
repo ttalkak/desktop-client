@@ -107,6 +107,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => {
     ipcRenderer.on("average-cpu-usage", callback);
   },
+
+  getCpuUsage: async () => {
+    try {
+      const cpuUsage = await ipcRenderer.invoke("get-cpu-usage");
+      return cpuUsage;
+    } catch (error) {
+      console.error("Error getting CPU usage:", error);
+      throw error;
+    }
+  },
   //---------------------- 도커 로그 ------------------------
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);
