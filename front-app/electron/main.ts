@@ -78,7 +78,6 @@ async function runPgrok(
     "pgrok_1.4.1_windows_amd64",
     "pgrok.exe"
   );
-
   if (!fs.existsSync(pgrokExePath)) {
     throw new Error("pgrok.exe not found. Please download and unzip it first.");
   }
@@ -89,6 +88,7 @@ async function runPgrok(
   const child = execFile(
     "cmd.exe",
     ["/c", command],
+
     { cwd: path.dirname(pgrokExePath) } // 명령어 실행 경로를 정확히 설정
   );
 
