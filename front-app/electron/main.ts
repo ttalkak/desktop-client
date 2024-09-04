@@ -4,9 +4,10 @@ import { promisify } from "util";
 import path from "node:path";
 import { exec, execFile } from "child_process";
 import iconv from "iconv-lite";
+import * as os from "os";
 import * as fs from "fs";
 import { githubDownLoadAndUnzip } from "./githubManager";
-import { getTtalkakDirectory, downloadFile, unzipFile } from "./utils";
+import { getTtalkakDirectory, downloadFile } from "./utils";
 import { registerStoreIpcHandlers } from "./store/storeManager";
 import {
   handlecheckDockerStatus,
@@ -129,6 +130,29 @@ function registerIpcHandlers() {
   registerContainerIpcHandlers();
 }
 
+function calculateCpuUsage() {
+  const cpus = os.cpus();
+  let user = 0,
+    nice = 0,
+    sys = 0,
+    idle = 0,
+    irq = 0,
+    total = 0;
+
+  for (const cpu of cpus) {
+    user += cpu.times.user;
+    nice += cpu.times.nice;
+    sys += cpu.times.sys;
+    idle += cpu.times.idle;
+    irq += cpu.times.irq;
+  }
+
+  total = user + nice + sys + idle + irq;
+  const cpuUsage = ((total - idle) / total) * 100;
+
+  return parseFloat(cpuUsage.toFixed(2));
+}
+
 // 새로운 Electron 창 오픈
 async function createWindow() {
   win = new BrowserWindow({
@@ -237,6 +261,16 @@ async function createWindow() {
       }
     }
   );
+
+  ipcMain.handle("get-cpu-usage", async () => {
+    try {
+      const cpuUsage = calculateCpuUsage();
+      return cpuUsage;
+    } catch (error) {
+      console.error("Failed to get CPU usage:", error);
+      throw error;
+    }
+  });
 
   win.on("close", (event) => {
     if (!isQuiting) {
