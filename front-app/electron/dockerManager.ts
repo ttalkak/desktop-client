@@ -463,7 +463,7 @@ export function handleBuildDockerImage() {
 export const createContainerOptions = (
   image: DockerImage,
   containerName: string,
-  ports: { [key: string]: string } // 예: { "80/tcp": "8080" }
+  ports: { [key: string]: string }
 ): ContainerCreateOptions => {
   return {
     Image: image.RepoTags?.[0] || "",
