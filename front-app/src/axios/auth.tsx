@@ -6,7 +6,7 @@ export const login = async (username: string, password: string) => {
   const setTokens = useAuthStore.getState().setTokens;
 
   try {
-    const response = await axiosInstance.post("/auth/sign-in", {
+    const response = await axiosInstance.post("/v1/auth/sign-in", {
       username,
       password,
     });

@@ -15,6 +15,7 @@ const Header = () => {
   const [isFromModal, setIsFromModal] = useState(false);
 
   const accessToken = useAuthStore((state) => state.accessToken);
+  const refreshToken = useAuthStore((state) => state.refreshToken);
   const clearTokens = useAuthStore((state) => state.clearTokens);
 
   const handleMinimize = () => {
@@ -31,6 +32,17 @@ const Header = () => {
 
   const handleLogout = () => {
     clearTokens();
+  };
+
+  const handleDownloadPgrok = () => {
+    window.electronAPI
+      .downloadPgrok()
+      .then((message) => {
+        console.log(`download-pgrok: ${message}`);
+      })
+      .catch((error) => {
+        console.log(`Failed to download pgrok: ${error}`);
+      });
   };
 
   const toggleSettingModal = (source: string) => {
@@ -69,6 +81,12 @@ const Header = () => {
       return () => clearTimeout(timer);
     }
   }, [isFromModal]);
+
+  useEffect(() => {
+    if (refreshToken) {
+      handleDownloadPgrok();
+    }
+  }, [refreshToken]);
 
   const isActive = (path: string) =>
     location.pathname === path
