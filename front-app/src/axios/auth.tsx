@@ -27,22 +27,27 @@ export const login = async (username: string, password: string) => {
   }
 };
 
-// 사용자의 초기 설정(포트 대역, 최대 프로젝트 수) 가져오기
+// 사용자 설정 정보 저장
 export const getUserSettings = async () => {
-  try {
-    const response = await axiosInstance.get("/api/user/settings");
+  const setUserSettings = useAuthStore.getState().setUserSettings;
 
+  try {
+    const response = await axiosInstance.get("/v1/compute/status");
     const { success, data } = response.data;
+
     if (success) {
-      return { success: true, settings: data };
+      const userSettings = {
+        userId: data.userId,
+        maxCompute: data.maxCompute,
+        availablePortStart: data.availablePortStart,
+        availablePortEnd: data.availablePortEnd,
+      };
+
+      setUserSettings(userSettings);
     } else {
-      return { success: false, message: "설정을 불러오지 못했습니다." };
+      console.log("설정을 불러오지 못했습니다.");
     }
   } catch (error) {
     console.log("설정 불러오기 실패:", error);
-    return {
-      success: false,
-      message: "설정을 불러오는 중 오류가 발생했습니다.",
-    };
   }
 };

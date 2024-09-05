@@ -71,17 +71,7 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const response = await getUserSettings(); // getUserSettings 함수 호출
-      if (response.success) {
-        const { maxProjects, portRange } = response.settings;
-
-        setMaxProjects(maxProjects);
-        setInitialMaxProjects(maxProjects);
-        setPortRange(portRange);
-        setInitialPortRange(portRange);
-      } else {
-        console.error(response.message);
-      }
+      console.log("세션 값 불러오기");
     };
 
     if (isOpen) {
