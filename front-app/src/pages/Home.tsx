@@ -27,7 +27,6 @@ const Home = () => {
     window.electronAPI.onPgrokLog(handlePgrokLog);
 
     return () => {
-      // Clean up listener on component unmount
       window.electronAPI.onPgrokLog(() => {});
     };
   }, []);

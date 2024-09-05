@@ -1,3 +1,5 @@
+import { usePortStore } from "../../stores/authStore";
+
 export interface InboundRuleDto {
   name: string;
   localIP: string;
@@ -51,4 +53,44 @@ export function parseInboundRule(data: string): InboundRuleDto[] {
   });
 
   return rules;
+}
+
+// 포트 관리를 위한 setPort 생성
+export function parsePortNumber(rules: string[]): void {
+  const portSet = new Set<number>();
+
+  rules.forEach((rule) => {
+    if (rule !== "모두") {
+      // ','로 나눠서 각각의 포트 숫자 처리
+      const ports = rule.split(",").map((port) => Number(port.trim()));
+
+      // 각 포트 번호를 Set에 추가 (중복 제거)
+      ports.forEach((port) => {
+        if (!isNaN(port)) {
+          portSet.add(port);
+        }
+      });
+    }
+  });
+
+  const setPortSet = usePortStore.getState().setPortSet;
+  setPortSet(portSet); // 전역 상태 업데이트
+
+  console.log(portSet);
+}
+
+// 사용 중인 포트인지 확인하고 처리
+export function checkAndAddPortToSet(port: number): string {
+  const { portSet, setPortSet } = usePortStore.getState();
+
+  // 이미 포트가 있는 경우
+  if (portSet.has(port)) {
+    return `${port}는 사용할 수 없는 포트번호입니다.`;
+  }
+
+  const updatedPortSet = new Set(portSet);
+  updatedPortSet.add(port);
+  setPortSet(updatedPortSet);
+
+  return `${port}는 사용 가능한 포트번호입니다.`;
 }

@@ -7,6 +7,10 @@ import { useEffect, useState } from "react";
 import LoginModal from "./../features/auth/LoginModal";
 import { useAuthStore } from "../stores/authStore";
 import SettingModal from "../features/auth/SettingModal";
+import {
+  parseInboundRule,
+  parsePortNumber,
+} from "../features/port/parseInboundRule";
 
 const Header = () => {
   const location = useLocation();
@@ -72,6 +76,18 @@ const Header = () => {
     }
   };
 
+  const fetchInboundRules = async () => {
+    try {
+      const result = await window.electronAPI.getInboundRules();
+      const parsedRules = parseInboundRule(result).map(
+        (rule) => rule.localPort
+      );
+      parsePortNumber(parsedRules);
+    } catch (error) {
+      console.error("Failed to load inbound rules:", error);
+    }
+  };
+
   useEffect(() => {
     if (isFromModal) {
       const timer = setTimeout(() => {
@@ -85,6 +101,7 @@ const Header = () => {
   useEffect(() => {
     if (refreshToken) {
       handleDownloadPgrok();
+      fetchInboundRules();
     }
   }, [refreshToken]);
 
