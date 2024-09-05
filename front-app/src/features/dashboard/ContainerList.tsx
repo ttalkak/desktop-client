@@ -1,25 +1,22 @@
 import React, { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
+import { useAppStore } from "./../../stores/appStatusStore";
 
-interface ContainerListProps {
-  containers: DockerContainer[];
-}
-
-const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
+const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
 
+  const dockerContainers = useAppStore((state) => state.dockerContainers);
+
   const handleContainerSelect = (containerId: string) => {
-    if (selectedContainerId === containerId) {
-      setSelectedContainerId(null);
-    } else {
-      setSelectedContainerId(containerId);
-    }
+    setSelectedContainerId((prevId) =>
+      prevId === containerId ? null : containerId
+    );
   };
 
-  if (containers.length === 0) {
+  if (dockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-xl text-gray-500">
@@ -48,12 +45,11 @@ const ContainerList: React.FC<ContainerListProps> = ({ containers }) => {
           </tr>
         </thead>
         <tbody>
-          {containers.map((container) => {
+          {dockerContainers.map((container) => {
             const { Id, Name, Image, Created, NetworkSettings, State } =
               container;
             const isSelected = selectedContainerId === Id;
 
-            // Created 시간이 Unix Epoch라면 표시를 하지 않도록 수정
             const createdTime = Created
               ? new Date(Number(Created) * 1000).toLocaleString()
               : "Unknown";

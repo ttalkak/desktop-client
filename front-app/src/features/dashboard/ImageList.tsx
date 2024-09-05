@@ -1,60 +1,41 @@
 import React from "react";
+import { useAppStore } from "../../stores/appStatusStore";
 
-interface ImageListProps {
-  images: DockerImage[];
-}
+const ImageList: React.FC = () => {
+  const dockerImages = useAppStore((state) => state.dockerImages);
 
-const ImageList: React.FC<ImageListProps> = ({ images }) => {
-  if (images.length === 0) {
+  if (dockerImages.length === 0) {
     return (
-      <div className="text-center mt-8">
-        사용 가능한 Docker 이미지가 없습니다.
+      <div className="flex flex-col items-center justify-center mt-8">
+        <p className="text-center text-xl text-gray-500">
+          현재 할당된 Docker Image가 없습니다.
+        </p>
+        <div className="mt-4">
+          <span className="text-gray-400">새로운 이미지를 요청합니다.</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <table className="min-w-full bg-white border border-gray-300 mt-2">
-        <thead>
-          <tr>
-            <th className="py-2 px-4 border-b text-left">Name</th>
-            <th className="py-2 px-4 border-b text-left">Tag</th>
-            <th className="py-2 px-4 border-b text-left">Status</th>
-            <th className="py-2 px-4 border-b text-left">Size</th>
+    <table className="min-w-full bg-white border border-gray-300 mt-2">
+      <thead>
+        <tr>
+          <th className="py-2 px-4 border-b">Repository</th>
+          <th className="py-2 px-4 border-b">Tag</th>
+          <th className="py-2 px-4 border-b">ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {dockerImages.map((image) => (
+          <tr key={image.Id}>
+            <td className="py-2 px-4 border-b">{image.RepoTags?.[0]}</td>
+            <td className="py-2 px-4 border-b">{image.RepoTags?.[1]}</td>
+            <td className="py-2 px-4 border-b">{image.Id}</td>
           </tr>
-        </thead>
-        <tbody>
-          {images.map((image, index) => {
-            const { RepoTags, Id, Size, Container } = image;
-            const name = RepoTags ? RepoTags[0].split(":")[0] : "None";
-            const tag = RepoTags ? RepoTags[0].split(":")[1] : "None";
-
-            return (
-              <tr key={index} className="hover:bg-gray-100">
-                <td className="py-2 px-4 border-b text-color-6">
-                  <a href="#" className="hover:underline">
-                    {name}
-                  </a>
-                  <div className="text-sm text-gray-500">
-                    {Id.split(":")[1].slice(0, 12)}
-                  </div>
-                </td>
-                <td className="py-2 px-4 border-b">{tag}</td>
-                <td className="py-2 px-4 border-b text-color-6">
-                  <a href="#" className="hover:underline">
-                    {Container}
-                  </a>
-                </td>
-                <td className="py-2 px-4 border-b">
-                  {(Size / (1024 * 1024)).toFixed(2)} MB
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 };
 
