@@ -1,19 +1,26 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ContainerLogsProps {
-  container: DockerContainer;
+  containerId: string;
 }
 
-const ContainerLogs: React.FC<ContainerLogsProps> = ({ container }) => {
+const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
   const [logs, setLogs] = useState<string>("");
 
   useEffect(() => {
-    setLogs(""); // 로그 초기화
+    const {
+      startLogStream,
+      onLogStream,
+      onLogError,
+      onLogEnd,
+      stopLogStream,
+      clearLogListeners,
+    } = window.electronAPI;
 
-    // 로그 스트림 시작
-    window.electronAPI.startLogStream(container.Id);
+    // 로그 스트리밍 시작
+    startLogStream(containerId);
 
-    // 핸들러 함수들 정의
+    // 로그 스트림 수신 처리
     const handleLog = (log: string) => {
       setLogs((prevLogs) => prevLogs + log);
     };
@@ -26,21 +33,22 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ container }) => {
       console.log("Log stream ended");
     };
 
-    // 핸들러 등록
-    window.electronAPI.onLogStream(handleLog);
-    window.electronAPI.onLogError(handleError);
-    window.electronAPI.onLogEnd(handleEnd);
+    // IPC 이벤트 리스너 설정
+    onLogStream(handleLog);
+    onLogError(handleError);
+    onLogEnd(handleEnd);
 
-    // 컴포넌트 언마운트 시 로그 스트림 중지
+    // 컴포넌트 언마운트 시 로그 스트리밍 중지
     return () => {
-      window.electronAPI.stopLogStream(container.Id);
+      stopLogStream(containerId);
+      clearLogListeners();
     };
-  }, [container.Id]);
+  }, [containerId]);
 
   return (
     <div className="mt-8">
       <h2 className="text-xl font-semibold mb-4">
-        Logs for Container: {container.Id}
+        Logs for Container: {containerId}
       </h2>
       <pre className="bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words">
         {logs}

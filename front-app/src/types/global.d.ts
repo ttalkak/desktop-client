@@ -56,7 +56,7 @@ declare global {
     closeWindow: () => void;
 
     // Docker 관련 메서드들
-    checkDockerStatus: () => Promise<string>;
+    checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 
     fetchDockerImage: (imageId: string) => Promise<DockerImage>;
     fetchDockerContainer: (containerId: string) => Promise<DockerContainer>;
@@ -82,6 +82,7 @@ declare global {
     onLogError: (callback: ErrorCallback) => void;
     onLogEnd: (callback: EndCallback) => void;
     stopLogStream: (containerId: string) => void;
+    clearLogListeners: () => void;
 
     // CPU 사용률 스트리밍 관련 메서드들
     getCpuUsage: () => Promise<number>; // 전체 CPU 사용률

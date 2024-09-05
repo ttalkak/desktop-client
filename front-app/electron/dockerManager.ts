@@ -17,7 +17,9 @@ export const docker = new Docker();
 export const logStreams: Record<string, Readable> = {};
 
 //------------------- 도커 상태 체크 -----------------------------
-export async function checkDockerStatus(): Promise<string> {
+export async function checkDockerStatus(): Promise<
+  "running" | "not running" | "unknown"
+> {
   try {
     await execAsync("docker info");
     return "running";
@@ -463,7 +465,7 @@ export function handleBuildDockerImage() {
 export const createContainerOptions = (
   image: DockerImage,
   containerName: string,
-  ports: { [key: string]: string } // 예: { "80/tcp": "8080" }
+  ports: { [key: string]: string }
 ): ContainerCreateOptions => {
   return {
     Image: image.RepoTags?.[0] || "",
