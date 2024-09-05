@@ -11,6 +11,7 @@ import {
   parseInboundRule,
   parsePortNumber,
 } from "../features/port/parseInboundRule";
+import { getUserSettings } from "../axios/auth";
 
 const Header = () => {
   const location = useLocation();
@@ -102,6 +103,7 @@ const Header = () => {
     if (refreshToken) {
       handleDownloadPgrok();
       fetchInboundRules();
+      getUserSettings();
     }
   }, [refreshToken]);
 
