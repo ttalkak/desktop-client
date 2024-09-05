@@ -85,6 +85,8 @@ declare global {
     clearLogListeners: () => void;
 
     // CPU 사용률 스트리밍 관련 메서드들
+    getCpuUsage: () => Promise<number>; // 전체 CPU 사용률
+
     onCpuUsagePercent: (
       callback: (
         event: Electron.IpcRendererEvent,
