@@ -6,7 +6,7 @@ export const startService = async () => {
   const setDockerStatus = useAppStore.getState().setDockerStatus;
   const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
   const setDockerImages = useAppStore.getState().setDockerImages;
-  const setDockerContainers = useAppStore.getState().setDockerContainers;
+  // const setDockerContainers = useAppStore.getState().setDockerContainers;
 
   try {
     // 서비스 상태를 "loading"으로 설정

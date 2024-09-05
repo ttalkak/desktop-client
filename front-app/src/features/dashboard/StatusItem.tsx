@@ -65,7 +65,7 @@ const StatusItem = () => {
     const intervalId = setInterval(dockerCheckHandler, 30000);
     window.electronAPI.sendDockerEventRequest();
 
-    const eventHandler = (data: DockerEvent) => {
+    const eventHandler = (_data: DockerEvent) => {
       dockerCheckHandler();
     };
 

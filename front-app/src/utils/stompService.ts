@@ -1,4 +1,4 @@
-import { Client, Message } from "@stomp/stompjs";
+import { Client } from "@stomp/stompjs";
 import { useAuthStore } from "./../stores/authStore";
 
 const client = new Client({
@@ -24,5 +24,3 @@ client.onStompError = (frame) => {
 export const connectWebSocket = () => {
   client.activate();
 };
-
-const;
