@@ -55,6 +55,8 @@ declare global {
     maximizeWindow: () => void;
     closeWindow: () => void;
 
+    //OS확인용
+    getOsType: () => Promise<string>;
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 

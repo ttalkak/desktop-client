@@ -13,19 +13,69 @@ interface AppState {
   setServiceStatus: (status: "running" | "loading" | "stopped") => void;
   setDockerImages: (images: DockerImage[]) => void;
   setDockerContainers: (containers: DockerContainer[]) => void;
+  clearDockerImages: () => void;
+  clearDockerContainers: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   dockerStatus: "unknown",
   websocketStatus: "disconnected",
   serviceStatus: "stopped",
   dockerImages: [],
   dockerContainers: [],
+
   setDockerStatus: (status) => set({ dockerStatus: status }),
   setWebsocketStatus: (status) => set({ websocketStatus: status }),
   setServiceStatus: (status) => set({ serviceStatus: status }),
-  setDockerImages: (images) => set({ dockerImages: images }),
-  setDockerContainers: (containers) => set({ dockerContainers: containers }),
+
+  setDockerImages: (images) => {
+    sessionStorage.setItem("images", JSON.stringify(images));
+    set({ dockerImages: images });
+  },
+
+  updateDockerImage: (updatedImage: DockerImage) => {
+    const currentImages = get().dockerImages;
+    const updatedImages = currentImages.map((img) =>
+      img.Id === updatedImage.Id ? { ...img, ...updatedImage } : img
+    );
+    sessionStorage.setItem("images", JSON.stringify(updatedImages));
+    set({ dockerImages: updatedImages });
+  },
+
+  setDockerContainers: (containers) => {
+    sessionStorage.setItem("containers", JSON.stringify(containers));
+    set({ dockerContainers: containers });
+  },
+
+  updateDockerContainer: (updatedContainer: DockerContainer) => {
+    const currentContainers = get().dockerContainers;
+    const updatedContainers = currentContainers.map((container) =>
+      container.Id === updatedContainer.Id
+        ? { ...container, ...updatedContainer }
+        : container
+    );
+    sessionStorage.setItem("containers", JSON.stringify(updatedContainers));
+    set({ dockerContainers: updatedContainers });
+  },
+
+  removeDockerContainer: (containerId: string) => {
+    const currentContainers = get().dockerContainers;
+    const updatedContainers = currentContainers.filter(
+      (container) => container.Id !== containerId
+    );
+    sessionStorage.setItem("containers", JSON.stringify(updatedContainers));
+    set({ dockerContainers: updatedContainers });
+  },
+
+  clearDockerImages: () => {
+    sessionStorage.removeItem("images");
+    set({ dockerImages: [] });
+  },
+
+  clearDockerContainers: () => {
+    sessionStorage.removeItem("containers");
+    set({ dockerContainers: [] });
+  },
 }));
 
 interface CpuState {

@@ -61,6 +61,21 @@ function registerIpcHandlers() {
   // pgrok 관련 IPC 핸들러 등록
   registerPgrokIpcHandlers();
 }
+//OS 종류 확인 후 전달
+ipcMain.handle("get-os-type", async () => {
+  const platform = os.platform();
+
+  switch (platform) {
+    case "win32":
+      return "WINDOWS";
+    case "darwin":
+      return "MACOS";
+    case "linux":
+      return "LINUX";
+    default:
+      return "Unknown";
+  }
+});
 
 function calculateCpuUsage() {
   const cpus = os.cpus();

@@ -5,6 +5,11 @@ import { IpcRendererEvent } from "electron";
 console.log("Preload script loaded");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  //-------------OS 종류 확인
+  getOsType: async (): Promise<string> => {
+    return ipcRenderer.invoke("get-os-type");
+  },
+
   // ------------------------------ 도커 실행 -----------------------------
   checkDockerStatus: async () => {
     try {

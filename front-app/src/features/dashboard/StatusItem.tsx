@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { FaCircle, FaPlay } from "react-icons/fa";
 import { useAppStore } from "../../stores/appStatusStore";
-import { startService } from "../../utils/dockerUtils";
+import { startService } from "../../utils/startService";
+import { disconnectWebSocket } from "../../utils/stompService";
 
 const StatusItem = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
@@ -31,9 +32,9 @@ const StatusItem = () => {
     "connected" | "connecting" | "disconnected",
     string
   > = {
-    connected: "text-color-5",
-    connecting: "text-color-4",
-    disconnected: "text-color-3",
+    connected: "text-color-7",
+    connecting: "text-color-6",
+    disconnected: "text-color-8",
   } as const;
 
   const serviceStatusColor: Record<"running" | "loading" | "stopped", string> =
@@ -63,17 +64,8 @@ const StatusItem = () => {
   useEffect(() => {
     dockerCheckHandler();
     const intervalId = setInterval(dockerCheckHandler, 30000);
-    window.electronAPI.sendDockerEventRequest();
-
-    const eventHandler = (_data: DockerEvent) => {
-      dockerCheckHandler();
-    };
-
-    window.electronAPI.onDockerEventResponse(eventHandler);
-
     return () => {
       clearInterval(intervalId);
-      window.electronAPI.removeAllListeners();
     };
   }, []);
 
@@ -91,10 +83,17 @@ const StatusItem = () => {
                 serviceStatus as "running" | "loading" | "stopped"
               ]
             } `}
-            onClick={startService} // 버튼 클릭 시 startService 함수 실행
+            onClick={startService}
           >
             <p className="mr-3">{buttonText}</p>
             <FaPlay />
+          </div>
+          {/* WebSocket 연결 해지 버튼 */}
+          <div
+            className={`${startbtn} bg-red-500`} // 버튼 스타일 (빨간색 배경)
+            onClick={disconnectWebSocket} // 클릭 시 WebSocket 연결 해지
+          >
+            <p className="mr-3">Disconnect WebSocket</p>
           </div>
         </div>
 

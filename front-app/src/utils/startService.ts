@@ -1,10 +1,10 @@
 // utils/dockerUtils.ts
 import { useAppStore } from "../stores/appStatusStore";
+import { connectWebSocket } from "./stompService";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
-  const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
   const setDockerImages = useAppStore.getState().setDockerImages;
   // const setDockerContainers = useAppStore.getState().setDockerContainers;
 
@@ -21,8 +21,8 @@ export const startService = async () => {
     setDockerStatus("running");
 
     // 2. WebSocket 연결 (더미 데이터로 대체)
+    connectWebSocket();
     const dummyDockerData = await fetchDummyDockerData();
-    setWebsocketStatus("connected");
 
     // 3. 더미 데이터 기반으로 ZIP 파일 다운로드 및 해제, 이미지 빌드, 컨테이너 빌드
     const repoUrls = dummyDockerData.images.map((image) => image.repoUrl);
