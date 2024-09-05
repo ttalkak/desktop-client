@@ -57,7 +57,7 @@ const SignUp = () => {
 
   const signUp = async () => {
     try {
-      const response = await axiosInstance.post("/auth/sign-up", {
+      const response = await axiosInstance.post("/v1/auth/sign-up", {
         username,
         email,
         password: password1,
