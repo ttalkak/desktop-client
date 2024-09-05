@@ -501,7 +501,7 @@ export const createContainer = async (
         `Container with name ${options.name} already exists with ID ${existingContainer.Id}.`
       );
       return {
-        success: false,
+        success: true,
         containerId: existingContainer.Id,
         error: "Container with this name already exists",
       };
