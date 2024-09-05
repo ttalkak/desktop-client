@@ -18,6 +18,7 @@ import {
   // createAndStartContainer,
   monitorAllContainersCpuUsage,
   registerContainerIpcHandlers,
+  handleFindDockerFile,
 } from "./dockerManager";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
@@ -49,7 +50,7 @@ function registerIpcHandlers() {
   handleFetchDockerContainer(); // Docker 단일 컨테이너 핸들러 초기화
   handleFetchContainerLogs(); // Docker 컨테이너 로그 핸들러 초기화
   handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
-
+  handleFindDockerFile(); //도커 파일 위치 경로 찾기
   // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
   // createAndStartContainer();
   githubDownLoadAndUnzip();

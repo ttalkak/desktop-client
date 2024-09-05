@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useAppStore } from "./../../stores/appStatusStore";
@@ -7,8 +7,39 @@ const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
+  const [localDockerContainers, setLocalDockerContainers] = useState<
+    DockerContainer[]
+  >([]);
+  const setDockerContainers = useAppStore((state) => state.setDockerContainers);
 
-  const dockerContainers = useAppStore((state) => state.dockerContainers);
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedContainers = sessionStorage.getItem("containers");
+      if (storedContainers) {
+        try {
+          const parsedContainers = JSON.parse(storedContainers);
+          setLocalDockerContainers(parsedContainers);
+          setDockerContainers(parsedContainers); // 전역 상태도 업데이트
+        } catch (error) {
+          console.error("Failed to parse stored containers:", error);
+        }
+      }
+    };
+
+    // 초기 로드
+    handleStorageChange();
+
+    // storage 이벤트 리스너 추가
+    window.addEventListener("storage", handleStorageChange);
+
+    // 주기적으로 sessionStorage 확인 (옵션)
+    const intervalId = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, [setDockerContainers]);
 
   const handleContainerSelect = (containerId: string) => {
     setSelectedContainerId((prevId) =>
@@ -16,7 +47,22 @@ const ContainerList: React.FC = () => {
     );
   };
 
-  if (dockerContainers.length === 0) {
+  // 이미지 이름을 짧게 표시하는 함수
+  const shortenImageName = (imageName: string) => {
+    const parts = imageName.split("/");
+    return parts[parts.length - 1].split(":")[0];
+  };
+
+  // 생성 시간을 포맷팅하는 함수
+  const formatCreatedTime = (created: string | number | undefined) => {
+    if (created === undefined) return "Unknown";
+    const date = new Date(
+      typeof created === "string" ? created : Number(created) * 1000
+    );
+    return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+  };
+
+  if (localDockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-xl text-gray-500">
@@ -45,21 +91,21 @@ const ContainerList: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {dockerContainers.map((container) => {
+          {localDockerContainers.map((container) => {
             const { Id, Name, Image, Created, NetworkSettings, State } =
               container;
             const isSelected = selectedContainerId === Id;
-
-            const createdTime = Created
-              ? new Date(Number(Created) * 1000).toLocaleString()
-              : "Unknown";
 
             return (
               <React.Fragment key={Id}>
                 <tr>
                   <td className="py-2 px-4 border-b">{Name}</td>
-                  <td className="py-2 px-4 border-b">{Image}</td>
-                  <td className="py-2 px-4 border-b">{createdTime}</td>
+                  <td className="py-2 px-4 border-b" title={Image}>
+                    {shortenImageName(Image)}
+                  </td>
+                  <td className="py-2 px-4 border-b">
+                    {formatCreatedTime(Created)}
+                  </td>
                   <td className="py-2 px-4 border-b">
                     {NetworkSettings.Ports &&
                     Object.keys(NetworkSettings.Ports).length > 0 ? (
@@ -80,7 +126,6 @@ const ContainerList: React.FC = () => {
                     )}
                   </td>
                   <td className="py-2 px-4 border-b">{State.Status}</td>
-
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}
