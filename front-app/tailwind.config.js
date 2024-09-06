@@ -7,7 +7,7 @@ export default {
         sans: ['"Noto Sans"', '"Noto Sans KR"', "sans-serif"],
       },
       colors: {
-        "color-1": "#F4F4F5",
+        "color-1": "#F6F6F6",
         "color-2": "#E4E4E7",
         "color-3": "#D1D1D1",
         "color-4": "#71717A",
@@ -18,6 +18,8 @@ export default {
         "color-9": "#383838",
         "color-10": "#A5A5A5",
         "color-11": "#2A69D0",
+        "color-12": "#3A91D1",
+        "color-13": "#3385C1",
       },
     },
   },

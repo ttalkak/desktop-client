@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getUserSettings } from "./../../axios/auth";
-import axios from "axios";
+import { axiosInstance } from "../../axios/constants";
 
 interface SettingModalProps {
   isOpen: boolean;
@@ -9,42 +8,77 @@ interface SettingModalProps {
 
 const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // 상태 관리
-  const [maxProjects, setMaxProjects] = useState<number>(4);
-  const [portRange, setPortRange] = useState({ min: 10000, max: 15000 });
-  const [isEditing, setIsEditing] = useState(false); // 하나의 편집/저장 버튼
+  const [maxCompute, setMaxCompute] = useState<string>("0");
+  const [portRange, setPortRange] = useState({ min: "0", max: "0" });
 
-  const [initialMaxProjects, setInitialMaxProjects] = useState<number>(4);
+  const [initialMaxCompute, setInitialMaxCompute] = useState<number>(0);
   const [initialPortRange, setInitialPortRange] = useState({
-    min: 10000,
-    max: 15000,
+    min: 0,
+    max: 0,
   });
 
-  // 값 변경 핸들러
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  useEffect(() => {
+    const userSettings = sessionStorage.getItem("userSettings");
+
+    if (userSettings) {
+      const parsedSettings = JSON.parse(userSettings);
+
+      setMaxCompute(String(parsedSettings.maxCompute));
+      setPortRange({
+        min: String(parsedSettings.availablePortStart),
+        max: String(parsedSettings.availablePortEnd),
+      });
+
+      setInitialMaxCompute(parsedSettings.maxCompute);
+      setInitialPortRange({
+        min: parsedSettings.availablePortStart,
+        max: parsedSettings.availablePortEnd,
+      });
+    }
+  }, [isOpen]);
+
   const handleMaxProjectsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMaxProjects(Number(e.target.value));
+    const value = e.target.value;
+    if (isNaN(Number(value))) {
+      setErrorMessage("숫자만 입력 가능합니다.");
+    } else {
+      setErrorMessage("");
+      setMaxCompute(value);
+    }
   };
 
   const handlePortRangeChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "min" | "max"
   ) => {
-    setPortRange({
-      ...portRange,
-      [field]: Number(e.target.value),
-    });
+    const value = e.target.value;
+    if (isNaN(Number(value))) {
+      setErrorMessage("숫자만 입력 가능합니다.");
+    } else {
+      setErrorMessage("");
+      setPortRange({
+        ...portRange,
+        [field]: value,
+      });
+    }
   };
 
-  // 저장 버튼 클릭 시 두 값을 백엔드로 전송하는 로직
   const handleSave = async () => {
-    // 변경된 값이 있는지 확인
-    const isMaxProjectsChanged = maxProjects !== initialMaxProjects;
-    const isPortRangeChanged =
-      portRange.min !== initialPortRange.min ||
-      portRange.max !== initialPortRange.max;
+    if (errorMessage) return;
 
-    // 변경된 값이 없으면 저장하지 않음
+    console.log(maxCompute, portRange);
+
+    // 변경된 값이 있는지 확인
+    const isMaxProjectsChanged = Number(maxCompute) !== initialMaxCompute;
+    const isPortRangeChanged =
+      Number(portRange.min) !== initialPortRange.min ||
+      Number(portRange.max) !== initialPortRange.max;
+
+    // 변경된 값이 없으면 종료
     if (!isMaxProjectsChanged && !isPortRangeChanged) {
       console.log("변경사항이 없습니다.");
       setIsEditing(false);
@@ -52,32 +86,38 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     }
 
     try {
-      // 변경된 값이 있는 경우 백엔드로 전송
-      await axios.post("/api/user/settings", {
-        maxProjects: isMaxProjectsChanged ? maxProjects : undefined,
-        portRange: isPortRangeChanged ? portRange : undefined,
-      });
+      const response = await axiosInstance.post(
+        "https://ttalkak.com/v1/compute/status",
+        {
+          maxCompute: Number(maxCompute),
+          availablePortStart: Number(portRange.min),
+          availablePortEnd: Number(portRange.max),
+        }
+      );
 
-      // 성공적으로 저장 후 상태 변경
-      setInitialMaxProjects(maxProjects);
-      setInitialPortRange(portRange);
-      setIsEditing(false);
-      alert("설정이 저장되었습니다.");
+      if (response.data.status === 200) {
+        alert("설정이 저장되었습니다.");
+
+        const updatedSettings = {
+          maxCompute: Number(maxCompute),
+          availablePortStart: Number(portRange.min),
+          availablePortEnd: Number(portRange.max),
+        };
+
+        sessionStorage.setItem("userSettings", JSON.stringify(updatedSettings));
+
+        setInitialMaxCompute(Number(maxCompute));
+        setInitialPortRange({
+          min: Number(portRange.min),
+          max: Number(portRange.max),
+        });
+        setIsEditing(false);
+      }
     } catch (error) {
       console.error("설정을 저장하는 중 오류가 발생했습니다.", error);
       alert("설정을 저장하는 중 오류가 발생했습니다.");
     }
   };
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      console.log("세션 값 불러오기");
-    };
-
-    if (isOpen) {
-      fetchSettings();
-    }
-  }, [isOpen]);
 
   // 외부 클릭 시 모달 닫기
   useEffect(() => {
@@ -115,11 +155,13 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
           </label>
           <div className="flex items-center space-x-2">
             <input
-              type="number"
-              value={maxProjects}
+              type="text"
+              value={maxCompute}
               onChange={handleMaxProjectsChange}
               disabled={!isEditing}
-              className="border p-1 rounded w-16 text-center"
+              className={`border p-1 rounded w-16 text-center ${
+                !isEditing ? "text-gray-400" : ""
+              }`}
             />
           </div>
         </div>
@@ -130,22 +172,28 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
           </label>
           <div className="flex items-center space-x-2">
             <input
-              type="number"
+              type="text"
               value={portRange.min}
               onChange={(e) => handlePortRangeChange(e, "min")}
               disabled={!isEditing}
-              className="border p-1 rounded w-24 text-center"
+              className={`border p-1 rounded w-24 text-center ${
+                !isEditing ? "text-gray-400" : ""
+              }`}
             />
             <span>~</span>
             <input
-              type="number"
+              type="text"
               value={portRange.max}
               onChange={(e) => handlePortRangeChange(e, "max")}
               disabled={!isEditing}
-              className="border p-1 rounded w-24 text-center"
+              className={`border p-1 rounded w-24 text-center ${
+                !isEditing ? "text-gray-400" : ""
+              }`}
             />
           </div>
         </div>
+
+        {errorMessage && <p className="text-red-500 text-sm">{errorMessage}</p>}
 
         <div className="flex justify-end">
           <button

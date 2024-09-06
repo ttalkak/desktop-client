@@ -1,11 +1,18 @@
 import create from "zustand";
 
+interface SettingState {
+  userId: number;
+  maxCompute: number;
+  availablePortStart: number;
+  availablePortEnd: number;
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   userSettings: object | null;
   setTokens: (accessToken: string, refreshToken: string) => void;
-  setUserSettings: (settings: object) => void;
+  setUserSettings: (settings: SettingState) => void;
   clearTokens: () => void;
 }
 
@@ -26,8 +33,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   setUserSettings: (settings) => {
-    sessionStorage.setItem("userSettings", JSON.stringify(settings)); // 세션에 저장
-    set({ userSettings: settings }); // zustand 상태에 저장
+    sessionStorage.setItem("userSettings", JSON.stringify(settings));
+    set({ userSettings: settings });
   },
 
   clearTokens: () => {

@@ -1,4 +1,3 @@
-import { Link, useLocation } from "react-router-dom";
 import { IoMdClose } from "react-icons/io";
 import { FaRegSquare } from "react-icons/fa";
 import { IoSettingsSharp } from "react-icons/io5";
@@ -12,9 +11,9 @@ import {
   parsePortNumber,
 } from "../features/port/parseInboundRule";
 import { getUserSettings } from "../axios/auth";
+import logoImg from "./../assets/images/logo.png";
 
 const Header = () => {
-  const location = useLocation();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
   const [isFromModal, setIsFromModal] = useState(false);
@@ -107,46 +106,23 @@ const Header = () => {
     }
   }, [refreshToken]);
 
-  const isActive = (path: string) =>
-    location.pathname === path
-      ? "text-color-5 bg-white rounded-t-lg font-semibold"
-      : "text-color-10";
-
-  const navContainer = `flex justify-between button ml-2.5 app-region-no-drag`;
-  const navText = `text-color-10 text-sm px-6 py-1 mt-0.5 relative hover:text-color-5`;
-  const pageBtn = `w-11 h-11 flex items-center justify-center hover:bg-color-2 cursor-pointer button app-region-no-drag`;
+  const pageBtn = `w-10 h-10 flex items-center justify-center hover:bg-color-1 cursor-pointer button app-region-no-drag`;
   const signBtn = isLoginModalOpen
-    ? `bg-color-11 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`
-    : `bg-color-6 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag`;
+    ? `bg-color-13 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-13`
+    : `bg-color-12 text-white text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-13`;
 
-  const Additional = () => (
-    <div
-      style={{ width: `calc(100% + 16px)` }}
-      className="absolute bg-white w-full h-3.5 left-1/2 transform -translate-x-1/2"
-    >
-      <div className="absolute left-0 top-0 w-2 h-2.5 bg-color-1 rounded-br-lg"></div>
-      <div className="absolute right-0 top-0 w-2 h-2.5 bg-color-1 rounded-bl-lg"></div>
-    </div>
-  );
+  const logoutBtn =
+    "bg-color-1 text-color-4 text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-2";
 
   return (
-    <div className="w-full flex justify-between items-center bg-color-1 app-region-drag relative">
-      <div className={navContainer}>
-        <Link to="/" className={`${navText} ${isActive("/")}`}>
-          Home
-          {location.pathname === "/" && <Additional />}
-        </Link>
-        <Link
-          to="/dashboard"
-          className={`${navText} ${isActive("/dashboard")}`}
-        >
-          Dashboard
-          {location.pathname === "/dashboard" && <Additional />}
-        </Link>
-        <Link to="/port" className={`${navText} ${isActive("/port")}`}>
-          Port
-          {location.pathname === "/port" && <Additional />}
-        </Link>
+    <div className="bg-white fixed top-0 left-0 w-full flex justify-between items-center border-b border-color-2 app-region-drag relative">
+      <div className="ml-5 flex flex-wrap items-center">
+        <img
+          style={{ width: "26px", height: "15px" }}
+          src={logoImg}
+          alt="Ttalkak"
+        />
+        <div className="ml-3 mt-0.5 font-bold">Ttalkak</div>
       </div>
 
       <div className="flex flex-wrap items-center">
@@ -154,10 +130,10 @@ const Header = () => {
           {accessToken ? (
             <>
               <div
-                className="app-region-no-drag"
+                className="app-region-no-drag cursor-pointer"
                 onClick={() => toggleSettingModal("header")}
               >
-                <IoSettingsSharp size={24} color="#c5c5c5" />
+                <IoSettingsSharp size={24} color="#3A91D1" />
               </div>
               <SettingModal
                 isOpen={isSettingModalOpen}
@@ -168,7 +144,7 @@ const Header = () => {
         </div>
         <div className="relative">
           {accessToken ? (
-            <div onClick={handleLogout} className={signBtn}>
+            <div onClick={handleLogout} className={logoutBtn}>
               Logout
             </div>
           ) : (
