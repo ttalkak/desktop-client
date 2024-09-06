@@ -6,7 +6,6 @@ import { EventEmitter } from "events";
 import path from "node:path";
 import * as fs from "fs";
 import { Readable } from "stream";
-import { getAllDockerImages, setDockerImage } from "./store/storeManager";
 
 const execAsync = promisify(exec);
 
@@ -150,7 +149,7 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
   return statsEmitter;
 }
 
-export function monitorAllContainersCpuUsage(mainWindow: BrowserWindow): void {
+export function monitorAllContainersCpuUsage(): void {
   docker.listContainers((err, containers) => {
     if (!containers || containers.length === 0) {
       console.error("No containers found.");
@@ -163,6 +162,7 @@ export function monitorAllContainersCpuUsage(mainWindow: BrowserWindow): void {
 
     let totalCpuUsage = 0;
     let containerCount = containers.length;
+    const mainWindow = BrowserWindow.getAllWindows()[0]; // 첫 번째 창을 가져옴
 
     containers.forEach((container) => {
       const statsEmitter = getContainerStatsStream(container.Id);
@@ -191,11 +191,19 @@ export function monitorAllContainersCpuUsage(mainWindow: BrowserWindow): void {
       statsEmitter.on("end", ({ containerId }) => {
         console.log(`Monitoring ended for container ${containerId}`);
         containerCount--;
-        totalCpuUsage -= 0; // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
+        // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
+        // totalCpuUsage -= 해당 컨테이너의 cpuUsagePercent;
       });
     });
   });
 }
+
+// Docker 컨테이너 CPU 사용량 모니터링 핸들러
+export const handleMonitorContainersCpuUsage = (): void => {
+  ipcMain.handle("monitor-cpu-usage", () => {
+    monitorAllContainersCpuUsage();
+  });
+};
 
 //----------Docker 이미지 및 컨테이너 Fetch
 
@@ -232,7 +240,7 @@ export const handleFetchDockerContainer = (): void => {
 export const handleFetchDockerImageList = (): void => {
   ipcMain.handle("get-docker-images", async () => {
     try {
-      const images = await getAllDockerImages();
+      const images = await docker.listImages();
       return images;
     } catch (err) {
       console.error("Failed to fetch Docker images:", err);
@@ -309,6 +317,7 @@ ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
 });
 
 //------------------- Docker 이미지 생성
+
 //도커파일 찾기
 export function findDockerfile(directory: string): string | null {
   const files = fs.readdirSync(directory);
@@ -351,18 +360,12 @@ export async function buildDockerImage(
 }> {
   const fullTag = `${imageName}:${tag}`;
 
-  // Docker 이미지가 이미 존재하는지 확인
-  const storedImages = getAllDockerImages();
-  const imageInStore = storedImages.find((img) =>
-    img.RepoTags?.includes(fullTag)
-  );
-
   const dockerImages = await docker.listImages();
   const imageInDocker = dockerImages.find((img) =>
     img.RepoTags?.includes(fullTag)
   );
 
-  if (imageInStore && imageInDocker) {
+  if (imageInDocker) {
     console.log(`Image ${fullTag} already exists. Skipping build.`);
     const imageInspect = await docker.getImage(fullTag).inspect();
     return { status: "exists", image: imageInspect };
@@ -398,7 +401,6 @@ export async function buildDockerImage(
 
       try {
         const builtImage = await docker.getImage(fullTag).inspect();
-        setDockerImage(builtImage);
         resolve({ status: "success", image: builtImage });
       } catch (error) {
         console.error("Error inspecting built image:", error);
@@ -505,17 +507,17 @@ export function handleBuildDockerImage() {
 export const createContainerOptions = (
   name: string,
   containerName: string,
-  ports: { [key: string]: string }
+  port: { [key: string]: string }
 ): ContainerCreateOptions => {
   return {
     Image: name,
     name: containerName,
-    ExposedPorts: Object.keys(ports).reduce((acc, port) => {
+    ExposedPorts: Object.keys(port).reduce((acc, port) => {
       acc[port] = {};
       return acc;
     }, {} as { [key: string]: {} }),
     HostConfig: {
-      PortBindings: Object.entries(ports).reduce(
+      PortBindings: Object.entries(port).reduce(
         (acc, [containerPort, hostPort]) => {
           acc[containerPort] = [{ HostPort: hostPort }];
           return acc;

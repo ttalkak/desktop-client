@@ -1,40 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useAppStore } from "../../stores/appStatusStore";
+import React from "react";
+import { useDockerStore } from "../../stores/appStatusStore"; // 분리된 dockerStore를 사용
 
 const ImageList: React.FC = () => {
-  const [localDockerImages, setLocalDockerImages] = useState<DockerImage[]>([]);
-  const setDockerImages = useAppStore((state) => state.setDockerImages);
+  const dockerImages = useDockerStore((state) => state.dockerImages);
 
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const storedImages = sessionStorage.getItem("images");
-      if (storedImages) {
-        try {
-          const parsedImages = JSON.parse(storedImages);
-          setLocalDockerImages(parsedImages);
-          setDockerImages(parsedImages); // 전역 상태도 업데이트
-        } catch (error) {
-          console.error("Failed to parse stored images:", error);
-        }
-      }
-    };
-
-    // 초기 로드
-    handleStorageChange();
-
-    // storage 이벤트 리스너 추가
-    window.addEventListener("storage", handleStorageChange);
-
-    // 주기적으로 sessionStorage 확인 (옵션)
-    const intervalId = setInterval(handleStorageChange, 1000);
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      clearInterval(intervalId);
-    };
-  }, [setDockerImages]);
-
-  if (localDockerImages.length === 0) {
+  if (dockerImages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-xl text-gray-500">
@@ -57,7 +27,7 @@ const ImageList: React.FC = () => {
         </tr>
       </thead>
       <tbody>
-        {localDockerImages.map((image) => (
+        {dockerImages.map((image: DockerImage) => (
           <tr key={image.Id}>
             <td className="py-2 px-4 border-b">
               {image.RepoTags?.[0]?.split(":")[0]}

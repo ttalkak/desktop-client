@@ -39,10 +39,8 @@ async function downloadAndUnzip(
     console.log("Downloading from:", repoUrl);
     console.log("Saving to:", zipFilePath);
 
-    const zipUrl = `${repoUrl}/archive/refs/heads/main.zip`;
-
     console.log("Downloading ZIP file...");
-    await downloadFile(zipUrl, zipFilePath);
+    await downloadFile(repoUrl, zipFilePath);
     console.log("Download completed:", zipFilePath);
 
     console.log("Unzipping file...");
