@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import DashButtons from "../features/dashboard/DashButtons";
 
 const Home = () => {
   const [pgrokLogs, setPgrokLogs] = useState<string[]>([]);
@@ -31,27 +30,29 @@ const Home = () => {
     };
   }, []);
 
-  const pTag = `text-yellow-300`;
-
   return (
     <>
-      <p className={pTag}>This is a</p>
-      <p className="bg-color-1">paragraph styled with Tailwind.</p>
-      <div>Home 페이지</div>
-      <DashButtons />
-      <button onClick={handleRunPgrok}>pgrok 실행</button>
-      <div>
-        <h2>pgrok Logs:</h2>
-        <div
-          style={{
-            whiteSpace: "pre-wrap",
-            backgroundColor: "#333",
-            color: "#eee",
-            padding: "10px",
-            borderRadius: "5px",
-          }}
-        >
-          {pgrokLogs.length > 0 ? pgrokLogs.join("\n") : "No logs yet."}
+      <div className="m-10">
+        <div className="border-2 min-w-1 min-h-10">
+          <div>코인영역</div>
+        </div>
+        {/* pgrok 영역 */}
+        <div>
+          <button onClick={handleRunPgrok}>pgrok 실행</button>
+          <div>
+            <h2>pgrok Logs:</h2>
+            <div
+              style={{
+                whiteSpace: "pre-wrap",
+                backgroundColor: "#333",
+                color: "#eee",
+                padding: "10px",
+                borderRadius: "5px",
+              }}
+            >
+              {pgrokLogs.length > 0 ? pgrokLogs.join("\n") : "No logs yet."}
+            </div>
+          </div>
         </div>
       </div>
     </>
