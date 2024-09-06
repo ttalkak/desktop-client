@@ -1,45 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
-import { useAppStore } from "./../../stores/appStatusStore";
+import { useDockerStore } from "./../../stores/appStatusStore";
+import { registerDockerEventHandlers } from "../../utils/dockerEventListner";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
-  const [localDockerContainers, setLocalDockerContainers] = useState<
-    DockerContainer[]
-  >([]);
-  const setDockerContainers = useAppStore((state) => state.setDockerContainers);
+  const [cpuUsages, setCpuUsages] = useState<{ [key: string]: number }>({});
+  const dockerContainers = useDockerStore((state) => state.dockerContainers);
 
   useEffect(() => {
-    const handleStorageChange = () => {
-      const storedContainers = sessionStorage.getItem("containers");
-      if (storedContainers) {
-        try {
-          const parsedContainers = JSON.parse(storedContainers);
-          setLocalDockerContainers(parsedContainers);
-          setDockerContainers(parsedContainers); // 전역 상태도 업데이트
-        } catch (error) {
-          console.error("Failed to parse stored containers:", error);
-        }
+    // Docker 이벤트 핸들러 등록
+    registerDockerEventHandlers();
+
+    // Docker 컨테이너 CPU 사용량 모니터링 시작
+    window.electronAPI.monitorCpuUsage();
+
+    // CPU 사용량 업데이트 핸들러
+    window.electronAPI.onCpuUsagePercent(
+      (
+        _event: Electron.IpcRendererEvent,
+        data: { containerId: string; cpuUsagePercent: number }
+      ) => {
+        setCpuUsages((prevCpuUsages) => ({
+          ...prevCpuUsages,
+          [data.containerId]: data.cpuUsagePercent,
+        }));
       }
+    );
+
+    // CPU 사용량 업데이트 핸들러 등록
+    const handleCpuUsagePercent = (
+      _event: Electron.IpcRendererEvent,
+      data: { containerId: string; cpuUsagePercent: number }
+    ) => {
+      setCpuUsages((prevCpuUsages) => ({
+        ...prevCpuUsages,
+        [data.containerId]: data.cpuUsagePercent,
+      }));
     };
 
-    // 초기 로드
-    handleStorageChange();
-
-    // storage 이벤트 리스너 추가
-    window.addEventListener("storage", handleStorageChange);
-
-    // 주기적으로 sessionStorage 확인 (옵션)
-    const intervalId = setInterval(handleStorageChange, 1000);
+    window.electronAPI.onCpuUsagePercent(handleCpuUsagePercent);
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      clearInterval(intervalId);
+      window.electronAPI.removeAllCpuListeners();
     };
-  }, [setDockerContainers]);
+  }, []);
 
   const handleContainerSelect = (containerId: string) => {
     setSelectedContainerId((prevId) =>
@@ -62,7 +70,7 @@ const ContainerList: React.FC = () => {
     return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
   };
 
-  if (localDockerContainers.length === 0) {
+  if (dockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-xl text-gray-500">
@@ -87,14 +95,16 @@ const ContainerList: React.FC = () => {
             <th className="py-2 px-4 border-b">Created</th>
             <th className="py-2 px-4 border-b">Ports</th>
             <th className="py-2 px-4 border-b">State</th>
+            <th className="py-2 px-4 border-b">CPU Usage</th>
             <th className="py-2 px-4 border-b">Logs</th>
           </tr>
         </thead>
         <tbody>
-          {localDockerContainers.map((container) => {
+          {dockerContainers.map((container) => {
             const { Id, Name, Image, Created, NetworkSettings, State } =
               container;
             const isSelected = selectedContainerId === Id;
+            const cpuUsage = cpuUsages[Id] || 0;
 
             return (
               <React.Fragment key={Id}>
@@ -126,6 +136,7 @@ const ContainerList: React.FC = () => {
                     )}
                   </td>
                   <td className="py-2 px-4 border-b">{State.Status}</td>
+                  <td className="py-2 px-4 border-b">{cpuUsage.toFixed(2)}%</td>
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}

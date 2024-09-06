@@ -52,7 +52,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("docker-event-end", () => callback());
   },
 
-  removeAllListeners: () =>
+  removeAllDockerEventListeners: () =>
     ipcRenderer.removeAllListeners("docker-event-response"),
 
   //----------------- zip 다운 하고 바로 unzip
@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => {
     ipcRenderer.on("cpu-usage-percent", callback);
   },
+
   onAverageCpuUsage: (
     callback: (
       event: Electron.IpcRendererEvent,
@@ -123,7 +124,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => {
     ipcRenderer.on("average-cpu-usage", callback);
   },
+  // 전체 컨테이너들의 사용량
 
+  //데스크탑 cpu 사용량
   getCpuUsage: async () => {
     try {
       const cpuUsage = await ipcRenderer.invoke("get-cpu-usage");
@@ -132,6 +135,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
       console.error("Error getting CPU usage:", error);
       throw error;
     }
+  },
+  //컨테이너별 사용량 전체 스트림 연결 함수
+  monitorCpuUsage: () => ipcRenderer.invoke("monitor-cpu-usage"),
+
+  removeAllCpuListeners: () => {
+    ipcRenderer.removeAllListeners("average-cpu-usage");
+    ipcRenderer.removeAllListeners("get-cpu-usage");
+    ipcRenderer.removeAllListeners("get-cpu-usage");
   },
   //---------------------- 도커 로그
   startLogStream: (containerId: string) => {

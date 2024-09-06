@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import * as os from "os";
 import { githubDownLoadAndUnzip } from "./githubManager";
-import { registerStoreIpcHandlers } from "./store/storeManager";
 import {
   handlecheckDockerStatus,
   getDockerPath,
@@ -19,6 +18,7 @@ import {
   monitorAllContainersCpuUsage,
   registerContainerIpcHandlers,
   handleFindDockerFile,
+  handleMonitorContainersCpuUsage,
 } from "./dockerManager";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
@@ -54,8 +54,8 @@ function registerIpcHandlers() {
   // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
   // createAndStartContainer();
   githubDownLoadAndUnzip();
+  handleMonitorContainersCpuUsage();
 
-  registerStoreIpcHandlers();
   //컨테이너 생성, 실행, 정지, 삭제
   registerContainerIpcHandlers();
 
@@ -128,7 +128,7 @@ async function createWindow() {
 
   // 컨테이너 CPU 사용률 모니터링 시작
   if (win !== null) {
-    monitorAllContainersCpuUsage(win);
+    monitorAllContainersCpuUsage();
   }
 
   ipcMain.handle("get-cpu-usage", async () => {

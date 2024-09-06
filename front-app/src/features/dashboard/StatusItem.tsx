@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { FaCircle, FaPlay } from "react-icons/fa";
 import { useAppStore } from "../../stores/appStatusStore";
-import { startService } from "../../utils/startService";
+import { startService } from "../../utils/serviceUtils";
 import { disconnectWebSocket } from "../../utils/stompService";
 
 const StatusItem = () => {

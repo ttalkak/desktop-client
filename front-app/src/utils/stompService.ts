@@ -1,27 +1,21 @@
 import { Client, Message } from "@stomp/stompjs";
-import { useAppStore } from "../stores/appStatusStore";
-
-interface DeployCommandParams {
-  gitRepoUrl: string;
-  imageName: string;
-  tag: string;
-  containerName: string;
-  ports: { [key: string]: string }; // 포트 매핑을 위한 객체 타입
-  dockerfileRootDir: string;
-}
+import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 
 const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
+
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
+
+const userId = sessionData.userId;
 
 // STOMP 클라이언트 설정
 export const client = new Client({
   brokerURL: "wss://ttalkak.com/ws",
   connectHeaders: {
-    "X-USER-ID": sessionData.userId || "", // userId가 없을 경우 빈 문자열로 대체
+    "X-USER-ID": userId, // userId가 없을 경우 빈 문자열로 대체
   },
-  debug: (str) => {
-    console.log(new Date(), str);
-  },
+  // debug: (str) => {
+  //   console.log(new Date(), str);
+  // },
 });
 
 // WebSocket 연결 및 초기 설정
@@ -79,8 +73,8 @@ const subscribeToDockerEvents = () => {
   client.subscribe("/topic/docker/updates", (message: Message) => {
     const dockerData = JSON.parse(message.body);
     console.log("Received Docker data:", dockerData);
-    useAppStore.getState().setDockerImages(dockerData.images);
-    useAppStore.getState().setDockerContainers(dockerData.containers);
+    useDockerStore.getState().setDockerImages(dockerData.images);
+    useDockerStore.getState().setDockerContainers(dockerData.containers);
   });
 
   client.subscribe("/topic/docker/events", (message: Message) => {
@@ -116,33 +110,33 @@ const handleDockerCommand = async (message: Message) => {
 };
 
 const handleDeployCommand = async ({
-  gitRepoUrl,
   imageName,
   tag,
   containerName,
-  ports,
-  dockerfileRootDir,
-}: DeployCommandParams) => {
+  port,
+  dockerRootDirectory,
+  sourceCodeLink,
+}: DeployCommandDto) => {
   try {
     const setServiceStatus = useAppStore.getState().setServiceStatus;
     setServiceStatus("loading");
 
     const downloadResult = await window.electronAPI.downloadAndUnzip(
-      gitRepoUrl
+      sourceCodeLink
     );
     if (!downloadResult.success) {
       throw new Error(
-        `Failed to download and unzip the repository: ${gitRepoUrl}`
+        `Failed to download and unzip the repository: ${sourceCodeLink}`
       );
     }
 
     const extractedPath = downloadResult.extractDir;
     if (!extractedPath) {
-      throw new Error(`downloaded.. not found in\ ${extractedPath}`);
+      throw new Error(`downloaded.. not found in ${extractedPath}`);
     }
     const fullDockerfilePath = window.electronAPI.joinPath(
       extractedPath,
-      dockerfileRootDir
+      dockerRootDirectory
     );
 
     const dockerfilePath = await window.electronAPI.findDockerfile(
@@ -166,7 +160,7 @@ const handleDeployCommand = async ({
     const containerOptions = await window.electronAPI.createContainerOptions(
       buildResult.image.RepoTags[0], // 이미지 ID 사용
       containerName,
-      ports
+      port
     );
     const startResult = await window.electronAPI.createAndStartContainer(
       containerOptions
@@ -198,7 +192,7 @@ const handleContainerCommand = async ({
       break;
     case "REMOVE":
       await window.electronAPI.removeContainer(containerId);
-      useAppStore.getState().removeDockerContainer(containerId);
+      useDockerStore.getState().removeDockerContainer(containerId);
       break;
     default:
       console.error("Unknown container action:", action);
@@ -215,7 +209,7 @@ const handleImageCommand = async ({
   switch (action) {
     case "REMOVE":
       await window.electronAPI.removeImage(imageId);
-      useAppStore.getState().removeDockerImage(imageId);
+      useDockerStore.getState().removeDockerImage(imageId);
       break;
     default:
       console.error("Unknown image action:", action);
@@ -241,8 +235,8 @@ const handleShutdownCommand = async () => {
     }
 
     setServiceStatus("stopped");
-    useAppStore.getState().clearDockerContainers();
-    useAppStore.getState().clearDockerImages();
+    useDockerStore.getState().clearDockerContainers();
+    useDockerStore.getState().clearDockerImages();
 
     console.log("All Docker services have been shut down");
   } catch (error) {

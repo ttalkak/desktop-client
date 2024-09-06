@@ -2,6 +2,18 @@ import Dockerode from "dockerode";
 export {};
 
 declare global {
+  export interface DeployCommandDto {
+    hasDockerImage: boolean;
+    imageName?: string;
+    tag?: string;
+    port?: { [key: string]: string }; // 포트 매핑을 위한 객체 타입
+    containerName?: string;
+    subdomainName: string;
+    subdomainKey: string;
+    sourceCodeLink: string;
+    dockerRootDirectory: string;
+  }
+
   // 콜백 타입 정의
   type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
   type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
@@ -85,7 +97,7 @@ declare global {
     onDockerEventResponse: (callback: EventCallback) => void;
     onDockerEventError: (callback: ErrorCallback) => void;
     onDockerEventEnd: (callback: EndCallback) => void;
-    removeAllListeners: () => void;
+    removeAllDockerEventListeners: () => void;
 
     // Docker 로그 스트리밍 관련 메서드들
     startLogStream: (containerId: string) => void;
@@ -97,13 +109,16 @@ declare global {
 
     // CPU 사용률 스트리밍 관련 메서드들
     getCpuUsage: () => Promise<number>; // 전체 CPU 사용률
-
+    removeAllCpuListeners: () => void; // 컨테이너 cpu 사용률 리스너 제거
+    monitorCpuUsage: () => void; // 컨테이너별 cpu 사용률 스트림 가져오는
+    //아래 두개 무시하기
     onCpuUsagePercent: (
       callback: (
         event: Electron.IpcRendererEvent,
         data: { containerId: string; cpuUsagePercent: number }
       ) => void
     ) => void;
+
     onAverageCpuUsage: (
       callback: (
         event: Electron.IpcRendererEvent,
@@ -147,8 +162,8 @@ declare global {
     //컨테이너 생성/실행/정지/삭제
     createContainerOptions: (
       image: string,
-      containerName: string,
-      ports: { [key: string]: string }
+      containerName?: string,
+      port?: { [key: string]: string }
     ) => Promise<Dockerode.ContainerCreateOptions>;
 
     createContainer: (
