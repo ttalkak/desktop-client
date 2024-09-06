@@ -152,7 +152,7 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
 export function monitorAllContainersCpuUsage(): void {
   docker.listContainers((err, containers) => {
     if (!containers || containers.length === 0) {
-      console.error("No containers found.");
+      console.error("1. No containers found.");
       return;
     }
     if (err) {
