@@ -109,7 +109,7 @@ async function createWindow() {
     minWidth: 1024,
     minHeight: 400,
     height: 650,
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path.join(process.env.VITE_PUBLIC, "favicon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
@@ -173,7 +173,7 @@ async function createWindow() {
 
 // Create the system tray icon and menu
 function createTray() {
-  tray = new Tray(path.join(process.env.VITE_PUBLIC, "tray.png"));
+  tray = new Tray(path.join(process.env.VITE_PUBLIC, "favicon.png"));
 
   const contextMenu = Menu.buildFromTemplate([
     {
