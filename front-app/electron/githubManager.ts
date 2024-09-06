@@ -26,11 +26,12 @@ ipcMain.handle("get-project-source-directory", async () => {
 
 // 다운로드 하고 바로 unzip
 async function downloadAndUnzip(
-  repoUrl: string,
-  downloadDir: string = getProjectSourceDirectory(),
-  extractDir: string = getProjectSourceDirectory()
-): Promise<{ success: boolean; message?: string }> {
+  repoUrl: string
+): Promise<{ success: boolean; message?: string; extractDir?: string }> {
   try {
+    const downloadDir = getProjectSourceDirectory();
+    const extractDir = getProjectSourceDirectory();
+
     const repoName = path.basename(repoUrl); // 레포지토리 이름 추출
     const zipFileName = `${repoName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
@@ -48,7 +49,8 @@ async function downloadAndUnzip(
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
 
-    return { success: true };
+    // 성공 시 압축 해제된 폴더 경로와 함께 반환
+    return { success: true, extractDir };
   } catch (error) {
     console.error("Error during download and unzip:", error);
     return { success: false, message: (error as Error).message };
@@ -57,15 +59,7 @@ async function downloadAndUnzip(
 
 // IPC 핸들러를 설정하여 다운로드 및 압축 해제를 처리
 export const githubDownLoadAndUnzip = (): void => {
-  ipcMain.handle(
-    "download-and-unzip",
-    async (
-      _,
-      repoUrl: string,
-      downloadDir: string = getProjectSourceDirectory(),
-      extractDir: string = getProjectSourceDirectory()
-    ) => {
-      return await downloadAndUnzip(repoUrl, downloadDir, extractDir);
-    }
-  );
+  ipcMain.handle("download-and-unzip", async (_, repoUrl: string) => {
+    return await downloadAndUnzip(repoUrl);
+  });
 };

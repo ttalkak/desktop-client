@@ -1,31 +1,94 @@
 import create from "zustand";
+import type { ImageInspectInfo, ContainerInspectInfo } from "dockerode";
 
+// Docker 관련 상태를 관리하는 store
 interface AppState {
   dockerStatus: "running" | "not running" | "unknown";
   websocketStatus: "connected" | "connecting" | "disconnected";
   serviceStatus: "running" | "loading" | "stopped";
-  dockerImages: DockerImage[];
-  dockerContainers: DockerContainer[];
+  dockerImages: ImageInspectInfo[]; // DockerImage 대신 ImageInspectInfo 사용
+  dockerContainers: ContainerInspectInfo[]; // DockerContainer 대신 ContainerInspectInfo 사용
   setDockerStatus: (status: "running" | "not running" | "unknown") => void;
   setWebsocketStatus: (
     status: "connected" | "connecting" | "disconnected"
   ) => void;
   setServiceStatus: (status: "running" | "loading" | "stopped") => void;
-  setDockerImages: (images: DockerImage[]) => void;
-  setDockerContainers: (containers: DockerContainer[]) => void;
+  setDockerImages: (images: ImageInspectInfo[]) => void;
+  updateDockerImage: (updatedImage: ImageInspectInfo) => void;
+  removeDockerImage: (imageId: string) => void;
+  setDockerContainers: (containers: ContainerInspectInfo[]) => void;
+  updateDockerContainer: (updatedContainer: ContainerInspectInfo) => void;
+  removeDockerContainer: (containerId: string) => void;
+  clearDockerImages: () => void;
+  clearDockerContainers: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   dockerStatus: "unknown",
   websocketStatus: "disconnected",
   serviceStatus: "stopped",
   dockerImages: [],
   dockerContainers: [],
+
   setDockerStatus: (status) => set({ dockerStatus: status }),
   setWebsocketStatus: (status) => set({ websocketStatus: status }),
   setServiceStatus: (status) => set({ serviceStatus: status }),
-  setDockerImages: (images) => set({ dockerImages: images }),
-  setDockerContainers: (containers) => set({ dockerContainers: containers }),
+
+  setDockerImages: (images) => {
+    sessionStorage.setItem("images", JSON.stringify(images));
+    set({ dockerImages: images });
+  },
+
+  updateDockerImage: (updatedImage) => {
+    const currentImages = get().dockerImages;
+    const updatedImages = currentImages.map((img) =>
+      img.Id === updatedImage.Id ? { ...img, ...updatedImage } : img
+    );
+    sessionStorage.setItem("images", JSON.stringify(updatedImages));
+    set({ dockerImages: updatedImages });
+  },
+
+  setDockerContainers: (containers) => {
+    sessionStorage.setItem("containers", JSON.stringify(containers));
+    set({ dockerContainers: containers });
+  },
+
+  updateDockerContainer: (updatedContainer) => {
+    const currentContainers = get().dockerContainers;
+    const updatedContainers = currentContainers.map((container) =>
+      container.Id === updatedContainer.Id
+        ? { ...container, ...updatedContainer }
+        : container
+    );
+    sessionStorage.setItem("containers", JSON.stringify(updatedContainers));
+    set({ dockerContainers: updatedContainers });
+  },
+
+  removeDockerImage: (imageId) => {
+    const currentImages = get().dockerImages;
+    const updatedImages = currentImages.filter((image) => image.Id !== imageId);
+    sessionStorage.setItem("images", JSON.stringify(updatedImages));
+    set({ dockerImages: updatedImages });
+  },
+
+  removeDockerContainer: (containerId) => {
+    const currentContainers = get().dockerContainers;
+    const updatedContainers = currentContainers.filter(
+      (container) => container.Id !== containerId
+    );
+    sessionStorage.setItem("containers", JSON.stringify(updatedContainers));
+    set({ dockerContainers: updatedContainers });
+  },
+
+  clearDockerImages: () => {
+    sessionStorage.removeItem("images");
+    set({ dockerImages: [] });
+  },
+
+  clearDockerContainers: () => {
+    sessionStorage.removeItem("containers");
+    set({ dockerContainers: [] });
+  },
 }));
 
 interface CpuState {

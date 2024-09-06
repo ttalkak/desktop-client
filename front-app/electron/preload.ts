@@ -5,6 +5,11 @@ import { IpcRendererEvent } from "electron";
 console.log("Preload script loaded");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  //-------------OS 종류 확인
+  getOsType: async (): Promise<string> => {
+    return ipcRenderer.invoke("get-os-type");
+  },
+
   // ------------------------------ 도커 실행 -----------------------------
   checkDockerStatus: async () => {
     try {
@@ -50,25 +55,36 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeAllListeners: () =>
     ipcRenderer.removeAllListeners("docker-event-response"),
 
-  //----------------- zip 다운 하고 바로 unzip ------------------
+  //----------------- zip 다운 하고 바로 unzip
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
-  downloadAndUnzip: (
-    repoUrl: string,
-    downloadDir: string,
-    extractDir: string
-  ) =>
-    ipcRenderer.invoke("download-and-unzip", repoUrl, downloadDir, extractDir),
+  downloadAndUnzip: async (
+    repoUrl: string
+  ): Promise<{ success: boolean; message?: string; extractDir?: string }> => {
+    return await ipcRenderer.invoke("download-and-unzip", repoUrl);
+  },
 
   joinPath: (...paths: string[]): string => path.join(...paths),
-  //----------------------unzip한 파일 이미지 빌드----------------
+  //--------------unzip한 파일 이미지 빌드
 
-  buildDockerImage: (contextPath: string, imageName?: string, tag?: string) =>
-    ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
-  //-------------------- 컨테이너 생성 및 실행 ----------------
+  //도커파일 경로찾기
+  findDockerfile: (directory: string) =>
+    ipcRenderer.invoke("find-dockerfile", directory),
+
+  buildDockerImage: (
+    contextPath: string,
+    imageName: string = "my-docker-image",
+    tag: string = "latest"
+  ): Promise<{
+    success: boolean;
+    image?: DockerImage;
+    message?: string;
+  }> => ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
+
+  //-------------------- 컨테이너 생성 및 실행
 
   createContainerOptions: (
-    imageId: string,
+    imageId: DockerImage,
     containerName: string,
     ports: { [key: string]: string }
   ) =>
@@ -90,7 +106,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
-  //--------------------- CPU 사용률 -------------------------
+  //--------------------- CPU 사용률
   onCpuUsagePercent: (
     callback: (
       event: Electron.IpcRendererEvent,
@@ -117,7 +133,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  //---------------------- 도커 로그 ------------------------
+  //---------------------- 도커 로그
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);
   },

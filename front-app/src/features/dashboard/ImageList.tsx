@@ -1,10 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAppStore } from "../../stores/appStatusStore";
 
 const ImageList: React.FC = () => {
-  const dockerImages = useAppStore((state) => state.dockerImages);
+  const [localDockerImages, setLocalDockerImages] = useState<DockerImage[]>([]);
+  const setDockerImages = useAppStore((state) => state.setDockerImages);
 
-  if (dockerImages.length === 0) {
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedImages = sessionStorage.getItem("images");
+      if (storedImages) {
+        try {
+          const parsedImages = JSON.parse(storedImages);
+          setLocalDockerImages(parsedImages);
+          setDockerImages(parsedImages); // 전역 상태도 업데이트
+        } catch (error) {
+          console.error("Failed to parse stored images:", error);
+        }
+      }
+    };
+
+    // 초기 로드
+    handleStorageChange();
+
+    // storage 이벤트 리스너 추가
+    window.addEventListener("storage", handleStorageChange);
+
+    // 주기적으로 sessionStorage 확인 (옵션)
+    const intervalId = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, [setDockerImages]);
+
+  if (localDockerImages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-xl text-gray-500">
@@ -27,11 +57,15 @@ const ImageList: React.FC = () => {
         </tr>
       </thead>
       <tbody>
-        {dockerImages.map((image) => (
+        {localDockerImages.map((image) => (
           <tr key={image.Id}>
-            <td className="py-2 px-4 border-b">{image.RepoTags?.[0]}</td>
-            <td className="py-2 px-4 border-b">{image.RepoTags?.[1]}</td>
-            <td className="py-2 px-4 border-b">{image.Id}</td>
+            <td className="py-2 px-4 border-b">
+              {image.RepoTags?.[0]?.split(":")[0]}
+            </td>
+            <td className="py-2 px-4 border-b">
+              {image.RepoTags?.[0]?.split(":")[1]}
+            </td>
+            <td className="py-2 px-4 border-b">{image.Id.slice(7, 19)}</td>
           </tr>
         ))}
       </tbody>

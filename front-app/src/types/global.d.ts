@@ -49,12 +49,21 @@ declare global {
   // CPU 사용률 콜백 타입 정의
   type CpuUsageCallback = (cpuUsage: number) => void;
 
+  //도커 이미지 빌드 결과 반환
+  interface BuildDockerImageResult {
+    status: string;
+    image?: DockerImage;
+    message?: string;
+  }
+
   // Electron API의 타입 지정
   interface ElectronAPI {
     minimizeWindow: () => void;
     maximizeWindow: () => void;
     closeWindow: () => void;
 
+    //OS확인용
+    getOsType: () => Promise<string>;
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 
@@ -63,11 +72,13 @@ declare global {
     getDockerImages: () => Promise<DockerImage[]>;
     getDockerContainers: () => Promise<DockerContainer[]>;
 
+    //도커파일 경로찾기
+    findDockerfile: (directory: string) => Promise<string | null>;
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
     createAndStartContainer: (
       containerOptions: Dockerode.ContainerCreateOptions
-    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+    ) => Promise<{ success: boolean; containerId: string; error?: string }>;
 
     // Docker 이벤트 감지 및 렌더러 연결
     sendDockerEventRequest: () => void;
@@ -116,10 +127,8 @@ declare global {
     // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
-      repoUrl: string,
-      downloadDir: string,
-      extractDir: string
-    ) => Promise<{ success: boolean; message: string }>;
+      repoUrl: string
+    ) => Promise<{ success: boolean; message?: string; extractDir: string }>;
 
     // path join을 위한 메서드
     joinPath: (...paths: string[]) => string;
@@ -129,14 +138,15 @@ declare global {
       contextPath: string,
       imageName?: string,
       tag?: string
-    ) => Promise<{ status: string; message?: string }>;
+    ) => Promise<BuildDockerImageResult>;
+
     removeImage: (
       imageId: string
     ) => Promise<{ success: boolean; error?: string }>;
 
     //컨테이너 생성/실행/정지/삭제
     createContainerOptions: (
-      imageId: string,
+      image: string,
       containerName: string,
       ports: { [key: string]: string }
     ) => Promise<Dockerode.ContainerCreateOptions>;
