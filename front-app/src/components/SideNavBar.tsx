@@ -13,7 +13,7 @@ const SideNavBar = () => {
     <div className={navContainer}>
       <div className="flex flex-col justify-center">
         <div className="text-xl text-center font-bold">
-          Click to run Ttalkak
+          Click to run TTalkak
         </div>
         <button className="bg-color-12 rounded text-white py-1 my-4  hover:bg-color-13">
           start
