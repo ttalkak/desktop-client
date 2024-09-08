@@ -21,6 +21,9 @@ export default {
         "color-12": "#3A91D1",
         "color-13": "#3385C1",
       },
+      fontSize: {
+        tiny: "0.5rem",
+      },
     },
   },
   plugins: [

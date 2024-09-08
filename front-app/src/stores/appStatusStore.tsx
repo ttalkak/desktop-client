@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { ImageInspectInfo, ContainerInspectInfo } from "dockerode";
 
-// 앱 상태 관련 인터페이스 정의
+// App State
 interface AppState {
   dockerStatus: "running" | "not running" | "unknown";
   websocketStatus: "connected" | "connecting" | "disconnected";
@@ -14,7 +14,6 @@ interface AppState {
   setServiceStatus: (status: "running" | "loading" | "stopped") => void;
 }
 
-// 앱 상태를 관리하는 store
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -27,12 +26,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "app-status-storage",
-      getStorage: () => sessionStorage,
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
 
-// Docker 관련 상태를 관리하는 인터페이스
+// Docker State
 interface DockerState {
   dockerImages: ImageInspectInfo[];
   dockerContainers: ContainerInspectInfo[];
@@ -41,7 +40,6 @@ interface DockerState {
   updateDockerImage: (updatedImage: ImageInspectInfo) => void;
   removeDockerImage: (imageId: string) => void;
   clearDockerImages: () => void;
-
   setDockerContainers: (containers: ContainerInspectInfo[]) => void;
   addDockerContainer: (newContainer: ContainerInspectInfo) => void;
   updateDockerContainer: (updatedContainer: ContainerInspectInfo) => void;
@@ -49,44 +47,35 @@ interface DockerState {
   clearDockerContainers: () => void;
 }
 
-// Docker 상태를 관리하는 store
 export const useDockerStore = create<DockerState>()(
   persist(
     (set) => ({
       dockerImages: [],
       dockerContainers: [],
-
       setDockerImages: (images) => set({ dockerImages: images }),
-
       addDockerImage: (newImage) =>
         set((state) => ({
           dockerImages: [...state.dockerImages, newImage],
         })),
-
       updateDockerImage: (updatedImage) =>
         set((state) => ({
           dockerImages: state.dockerImages.map((img) =>
             img.Id === updatedImage.Id ? { ...img, ...updatedImage } : img
           ),
         })),
-
       removeDockerImage: (imageId) =>
         set((state) => ({
           dockerImages: state.dockerImages.filter(
             (image) => image.Id !== imageId
           ),
         })),
-
       clearDockerImages: () => set({ dockerImages: [] }),
-
       setDockerContainers: (containers) =>
         set({ dockerContainers: containers }),
-
       addDockerContainer: (newContainer) =>
         set((state) => ({
           dockerContainers: [...state.dockerContainers, newContainer],
         })),
-
       updateDockerContainer: (updatedContainer) =>
         set((state) => ({
           dockerContainers: state.dockerContainers.map((container) =>
@@ -95,25 +84,22 @@ export const useDockerStore = create<DockerState>()(
               : container
           ),
         })),
-
       removeDockerContainer: (containerId) =>
         set((state) => ({
           dockerContainers: state.dockerContainers.filter(
             (container) => container.Id !== containerId
           ),
         })),
-
       clearDockerContainers: () => set({ dockerContainers: [] }),
     }),
     {
       name: "docker-store",
-      getStorage: () => sessionStorage,
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
 
-//--------------------------------------- CPU 사용 정보
-
+// CPU State
 type CpuState = {
   containerCpuUsages: CpuUsageData[];
   setContainerCpuUsages: (cpuUsages: CpuUsageData[]) => void;
@@ -128,25 +114,18 @@ export const useCpuStore = create<CpuState>()(
   persist(
     (set) => ({
       containerCpuUsages: [],
-
-      // 전체 CPU 사용량 정보를 설정
       setContainerCpuUsages: (cpuUsages: CpuUsageData[]) =>
         set({ containerCpuUsages: cpuUsages }),
-
-      // 특정 컨테이너의 CPU 사용량을 업데이트
       updateContainerCpuUsage: (containerId: string, cpuUsagePercent: number) =>
         set((state) => {
           const existingUsageIndex = state.containerCpuUsages.findIndex(
             (container) => container.containerId === containerId
           );
-
           if (existingUsageIndex >= 0) {
-            // 기존 컨테이너의 CPU 사용량 업데이트
             const updatedUsages = [...state.containerCpuUsages];
             updatedUsages[existingUsageIndex].cpuUsagePercent = cpuUsagePercent;
             return { containerCpuUsages: updatedUsages };
           } else {
-            // 새로운 컨테이너의 CPU 사용량 추가
             return {
               containerCpuUsages: [
                 ...state.containerCpuUsages,
@@ -155,8 +134,6 @@ export const useCpuStore = create<CpuState>()(
             };
           }
         }),
-
-      // 특정 컨테이너의 CPU 사용량 정보를 제거
       removeContainerCpuUsage: (containerId: string) =>
         set((state) => ({
           containerCpuUsages: state.containerCpuUsages.filter(
@@ -166,7 +143,7 @@ export const useCpuStore = create<CpuState>()(
     }),
     {
       name: "cpu-usage-storage",
-      getStorage: () => sessionStorage,
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );

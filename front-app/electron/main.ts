@@ -15,7 +15,6 @@ import {
   handleFetchContainerLogs,
   handleBuildDockerImage,
   // createAndStartContainer,
-  monitorAllContainersCpuUsage,
   registerContainerIpcHandlers,
   handleFindDockerFile,
   handleMonitorContainersCpuUsage,
@@ -114,6 +113,7 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: true,
+      webSecurity: true,
     },
     autoHideMenuBar: true,
   });
@@ -125,11 +125,6 @@ async function createWindow() {
   }
 
   setMainWindow(win); // pgrokManager에 메인 윈도우 설정
-
-  // 컨테이너 CPU 사용률 모니터링 시작
-  if (win !== null) {
-    monitorAllContainersCpuUsage();
-  }
 
   ipcMain.handle("get-cpu-usage", async () => {
     try {
@@ -202,7 +197,6 @@ function createTray() {
 app
   .whenReady()
   .then(registerIpcHandlers) // IPC 핸들러 등록
-  .then(handleGetDockerEvent) // Docker 이벤트 감지 핸들러 실행
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
   .catch((error) => {

@@ -32,8 +32,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("fetch-docker-image", imageId),
   fetchDockerContainer: (containerId: string) =>
     ipcRenderer.invoke("fetch-docker-container", containerId),
-  getDockerImages: () => ipcRenderer.invoke("get-docker-images"),
-  getDockerContainers: () => ipcRenderer.invoke("fetch-docker-containers"),
+  getDockerImages: () => ipcRenderer.invoke("get-all-docker-images"),
+  getDockerContainers: (all: boolean) =>
+    ipcRenderer.invoke("get-all-docker-containers", all),
 
   //도커 이벤트 감지
   sendDockerEventRequest: () => ipcRenderer.send("docker-event-request"),
@@ -59,9 +60,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
   downloadAndUnzip: async (
-    repoUrl: string
-  ): Promise<{ success: boolean; message?: string; extractDir?: string }> => {
-    return await ipcRenderer.invoke("download-and-unzip", repoUrl);
+    repoUrl: string,
+    branch: string,
+    dockerRootDirectory: string
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    dockerfilePath?: string;
+    contextPath: string;
+  }> => {
+    return await ipcRenderer.invoke(
+      "download-and-unzip",
+      repoUrl,
+      branch,
+      dockerRootDirectory
+    );
   },
 
   joinPath: (...paths: string[]): string => path.join(...paths),
@@ -72,6 +85,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("find-dockerfile", directory),
 
   buildDockerImage: (
+    dockerfilePath: string,
     contextPath: string,
     imageName: string = "my-docker-image",
     tag: string = "latest"
@@ -79,20 +93,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
     success: boolean;
     image?: DockerImage;
     message?: string;
-  }> => ipcRenderer.invoke("build-docker-image", contextPath, imageName, tag),
+  }> =>
+    ipcRenderer.invoke(
+      "build-docker-image",
+      dockerfilePath,
+      contextPath,
+      imageName,
+      tag
+    ),
 
   //-------------------- 컨테이너 생성 및 실행
 
   createContainerOptions: (
     imageId: DockerImage,
     containerName: string,
-    ports: { [key: string]: string }
+    inboundPort: number,
+    outboundPort: number
   ) =>
     ipcRenderer.invoke(
       "create-container-options",
       imageId,
       containerName,
-      ports
+      inboundPort,
+      outboundPort
     ),
 
   createContainer: (options: ContainerCreateOptions) =>

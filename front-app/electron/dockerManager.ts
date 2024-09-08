@@ -152,7 +152,7 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
 export function monitorAllContainersCpuUsage(): void {
   docker.listContainers((err, containers) => {
     if (!containers || containers.length === 0) {
-      console.error("No containers found.");
+      console.error("1. No containers found.");
       return;
     }
     if (err) {
@@ -238,9 +238,9 @@ export const handleFetchDockerContainer = (): void => {
 
 //이미지리스트[실제 실행중인 전체목록]
 export const handleFetchDockerImageList = (): void => {
-  ipcMain.handle("get-docker-images", async () => {
+  ipcMain.handle("get-all-docker-images", async () => {
     try {
-      const images = await docker.listImages();
+      const images = await docker.listImages({ all: true });
       return images;
     } catch (err) {
       console.error("Failed to fetch Docker images:", err);
@@ -249,10 +249,10 @@ export const handleFetchDockerImageList = (): void => {
   });
 };
 //컨테이너리스트[실제 실행중인 전체목록]
-export const handleFetchDockerContainerList = (): void => {
-  ipcMain.handle("fetch-docker-containers", async () => {
+export const handleFetchDockerContainerList = (all: boolean = false): void => {
+  ipcMain.handle("get-all-docker-containers", async () => {
     try {
-      const containers = await docker.listContainers();
+      const containers = await docker.listContainers({ all, size: true });
       return containers;
     } catch (err) {
       console.error("Failed to fetch Docker containers:", err);
@@ -261,7 +261,7 @@ export const handleFetchDockerContainerList = (): void => {
   });
 };
 
-//------------------- Docker 컨테이너 로그 스트리밍 --------------------------
+//------------------- Docker 컨테이너 로그 스트리밍
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
@@ -351,6 +351,7 @@ export function handleFindDockerFile() {
   });
 }
 export async function buildDockerImage(
+  contextPath: string,
   dockerfilePath: string,
   imageName: string,
   tag: string
@@ -365,15 +366,16 @@ export async function buildDockerImage(
     img.RepoTags?.includes(fullTag)
   );
 
+  //이미 목록에 있는 경우
   if (imageInDocker) {
-    console.log(`Image ${fullTag} already exists. Skipping build.`);
+    console.log(`Image ${fullTag} already exists. delete and rebuild`);
     const imageInspect = await docker.getImage(fullTag).inspect();
     return { status: "exists", image: imageInspect };
   }
 
-  const contextPath = path.dirname(dockerfilePath);
   const dockerfileRelativePath = path.basename(dockerfilePath);
-
+  // console.log("1111.Context Path:", contextPath);
+  // console.log("2222.Dockerfile Relative Path:", dockerfileRelativePath);
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: [dockerfileRelativePath] },
@@ -418,18 +420,18 @@ export async function buildDockerImage(
 // 파일 경로 기반으로 이미지 빌드
 export async function processAndBuildImage(
   contextPath: string,
+  dockerfilePath: string,
   imageName: string,
   tag: string
 ): Promise<{
   status: "success" | "exists" | "failed";
   image?: DockerImage;
 }> {
-  const dockerfilePath = findDockerfile(contextPath);
-
   if (dockerfilePath) {
     console.log(`Dockerfile found at: ${dockerfilePath}`);
     try {
       const buildStatus = await buildDockerImage(
+        contextPath,
         dockerfilePath,
         imageName,
         tag
@@ -468,6 +470,7 @@ export function handleBuildDockerImage() {
     async (
       _event,
       contextPath: string,
+      dockerfilePath: string,
       imageName: string = "my-docker-image",
       tag: string = "latest"
     ) => {
@@ -478,15 +481,11 @@ export function handleBuildDockerImage() {
         // 이미지 빌드 및 결과 반환
         const buildResult = await processAndBuildImage(
           contextPath,
+          dockerfilePath,
           imageName,
           tag
         );
-
-        if (buildResult.status !== "success" || !buildResult.image) {
-          throw new Error("Failed to build or retrieve the Docker image.");
-        }
-
-        // 빌드 및 이미지 가져오기 성공 시
+        console.log(buildResult.status);
         return { success: true, image: buildResult.image };
       } catch (error) {
         console.error("Error processing Docker image:", error);
@@ -507,23 +506,24 @@ export function handleBuildDockerImage() {
 export const createContainerOptions = (
   name: string,
   containerName: string,
-  port: { [key: string]: string }
+  inboundPort: number = 80,
+  outboundPort: number = 8080
 ): ContainerCreateOptions => {
   return {
     Image: name,
     name: containerName,
-    ExposedPorts: Object.keys(port).reduce((acc, port) => {
-      acc[port] = {};
-      return acc;
-    }, {} as { [key: string]: {} }),
+    ExposedPorts: inboundPort
+      ? {
+          [`${inboundPort}/tcp`]: {},
+        }
+      : {},
     HostConfig: {
-      PortBindings: Object.entries(port).reduce(
-        (acc, [containerPort, hostPort]) => {
-          acc[containerPort] = [{ HostPort: hostPort }];
-          return acc;
-        },
-        {} as { [port: string]: Array<{ HostPort: string }> }
-      ),
+      PortBindings:
+        inboundPort && outboundPort
+          ? {
+              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort + "" }],
+            }
+          : {},
     },
   };
 };
@@ -531,6 +531,7 @@ export const createContainerOptions = (
 export const createContainer = async (
   options: ContainerCreateOptions
 ): Promise<{ success: boolean; containerId?: string; error?: string }> => {
+  console.log("djfkjshlfkjdshkjafhasdk options!!!!!!!!!!!!!!", options);
   try {
     // 동일한 이름의 컨테이너가 이미 있는지 확인
     const existingContainers = await docker.listContainers({ all: true });
@@ -607,10 +608,16 @@ export function registerContainerIpcHandlers() {
       _event,
       repoTag: string,
       containerName: string,
-      ports: { [key: string]: string }
+      inboundPort?: number,
+      outboundPort?: number
     ) => {
       try {
-        return createContainerOptions(repoTag, containerName, ports);
+        return createContainerOptions(
+          repoTag,
+          containerName,
+          inboundPort,
+          outboundPort
+        );
       } catch (error) {
         console.error(`Error creating container options:`, error);
         throw error;
