@@ -4,12 +4,18 @@ import { FaCircle } from "react-icons/fa";
 import { startService } from "../utils/serviceUtils";
 import { disconnectWebSocket } from "../utils/stompService";
 import { useAppStore } from "../stores/appStatusStore";
+import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
   const websocketStatus = useAppStore((state) => state.websocketStatus);
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const setDockerStatus = useAppStore((state) => state.setDockerStatus);
+  const setDockerImages = useDockerStore((state) => state.setDockerImages);
+  const setDockerContainers = useDockerStore(
+    (state) => state.setDockerContainers
+  );
+  const setCpuStore = useCpuStore((state) => state.setContainerCpuUsages);
 
   const location = useLocation();
 
@@ -56,6 +62,9 @@ const SideNavBar = () => {
 
   useEffect(() => {
     dockerCheckHandler();
+    setDockerImages([]);
+    setDockerContainers([]);
+    setCpuStore([]);
     const intervalId = setInterval(dockerCheckHandler, 30000);
     return () => {
       clearInterval(intervalId);

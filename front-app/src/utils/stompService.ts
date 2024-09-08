@@ -1,6 +1,7 @@
 import { Client, Message } from "@stomp/stompjs";
 import { useAppStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
+import { registerDockerEventHandlers } from "./dockerEventListner";
 
 const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
 
@@ -30,6 +31,8 @@ client.onConnect = (frame) => {
   client.subscribe(
     `/sub/compute-create/${userId}`,
     async (message: Message) => {
+      //도커 이벤트 핸들러 등록
+      // registerDockerEventHandlers();
       const computes = JSON.parse(message.body);
       computes.forEach(async (compute: DeploymentCommand) => {
         if (compute.hasDockerImage) {
@@ -109,7 +112,6 @@ export const disconnectWebSocket = () => {
 
 const sendComputeConnectMessage = async () => {
   const platform = await window.electronAPI.getOsType();
-
   const usedCompute = await window.electronAPI.getDockerContainers(true); // 전체 컨테이너 목록 가져옴
   const usedCPU = await window.electronAPI.getCpuUsage();
   const images = await window.electronAPI.getDockerImages();
@@ -126,6 +128,7 @@ const sendComputeConnectMessage = async () => {
     usedCPU: usedCPU || 0,
     deployments: deployCompute.length || [],
   };
+
   client.publish({
     destination: "/pub/compute/connect",
     body: JSON.stringify(createComputeRequest),
