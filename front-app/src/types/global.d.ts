@@ -11,6 +11,7 @@ declare global {
     subdomainKey: string;
     sourceCodeLink: string;
     dockerRootDirectory: string;
+    branch: string;
   }
 
   // 콜백 타입 정의
@@ -141,8 +142,15 @@ declare global {
     // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
-      repoUrl: string
-    ) => Promise<{ success: boolean; message?: string; extractDir: string }>;
+      repoUrl: string,
+      branch: string,
+      dockerRootDirectory: string
+    ) => Promise<{
+      success: boolean;
+      message?: string;
+      dockerfilePath: string;
+      contextPath: string;
+    }>;
 
     // path join을 위한 메서드
     joinPath: (...paths: string[]) => string;
@@ -150,6 +158,7 @@ declare global {
     // 디렉토리 기준으로 이미지 빌드/삭제
     buildDockerImage: (
       contextPath: string,
+      dockerfilePath?: string,
       imageName?: string,
       tag?: string
     ) => Promise<BuildDockerImageResult>;
@@ -162,8 +171,8 @@ declare global {
     createContainerOptions: (
       image: string,
       containerName?: string,
-      inboundPort?: number,
-      outboundPort?: number
+      inboundPort: number,
+      outboundPort: number
     ) => Promise<Dockerode.ContainerCreateOptions>;
 
     createContainer: (

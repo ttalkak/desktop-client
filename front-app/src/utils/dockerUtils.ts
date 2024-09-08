@@ -49,6 +49,7 @@ export const waitForDockerToStart = async (
 //이미지 빌드함수
 export const handleBuildImage = async (
   contextPath: string,
+  dockerfilePath: string,
   name: string = "my-docker-image",
   tag: string = "latest"
 ) => {
@@ -56,8 +57,9 @@ export const handleBuildImage = async (
     console.log(`Building Docker image: ${name}:${tag} from ${contextPath}`);
     const result = await window.electronAPI.buildDockerImage(
       contextPath,
-      name,
-      tag
+      dockerfilePath
+      // name,
+      // tag
     );
     console.log(`Docker build status: ${result.status}`);
     if (result.message) {
@@ -65,7 +67,7 @@ export const handleBuildImage = async (
     }
     return {
       success: result.status === "success" || result.status === "exists",
-      image: { RepoTags: [`${name}:${tag}`] },
+      image: result.image,
       message: result.message,
     };
   } catch (error) {
@@ -76,7 +78,9 @@ export const handleBuildImage = async (
 
 //컨테이너 생성 및 시작
 export const createAndStartContainers = async (
-  dockerImages: DockerImage[]
+  dockerImages: DockerImage[],
+  inboundPort: number,
+  outboundPort: number
 ): Promise<DockerContainer[]> => {
   try {
     console.log("Starting createAndStartContainers function");
@@ -101,6 +105,7 @@ export const createAndStartContainers = async (
       const imageExists = existingImages.some((img) =>
         img.RepoTags?.includes(repoTag)
       );
+
       if (!imageExists) {
         console.log("Image does not exist, skipping:", repoTag);
         continue;
@@ -121,7 +126,8 @@ export const createAndStartContainers = async (
             await window.electronAPI.createContainerOptions(
               repoTag,
               containerName,
-              { "80/tcp": "8080" }
+              inboundPort,
+              outboundPort
             );
           console.log("Created container options:", containerOptions);
 

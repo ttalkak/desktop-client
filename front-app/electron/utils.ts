@@ -46,7 +46,7 @@ export async function unzipFile(
     const entries = await zip.entries();
     for (const entry of Object.values(entries)) {
       const filePath = path.join(destDir, entry.name);
-      console.log(`Extracting ${entry.name} to ${filePath}`);
+      // console.log(`Extracting ${entry.name} to ${filePath}`);
 
       if (entry.isDirectory) {
         // 디렉토리 생성
@@ -55,8 +55,8 @@ export async function unzipFile(
         }
       } else {
         // 파일 압축 해제
+        // console.log(`Successfully extracted ${entry.name}`);
         await zip.extract(entry.name, filePath);
-        console.log(`Successfully extracted ${entry.name}`);
       }
     }
 

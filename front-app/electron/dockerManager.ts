@@ -238,7 +238,7 @@ export const handleFetchDockerContainer = (): void => {
 
 //이미지리스트[실제 실행중인 전체목록]
 export const handleFetchDockerImageList = (): void => {
-  ipcMain.handle("get-docker-images", async () => {
+  ipcMain.handle("get-all-docker-images", async () => {
     try {
       const images = await docker.listImages({ all: true });
       return images;
@@ -250,7 +250,7 @@ export const handleFetchDockerImageList = (): void => {
 };
 //컨테이너리스트[실제 실행중인 전체목록]
 export const handleFetchDockerContainerList = (all: boolean = false): void => {
-  ipcMain.handle("fetch-docker-containers", async () => {
+  ipcMain.handle("get-all-docker-containers", async () => {
     try {
       const containers = await docker.listContainers({ all, size: true });
       return containers;
@@ -351,6 +351,7 @@ export function handleFindDockerFile() {
   });
 }
 export async function buildDockerImage(
+  contextPath: string,
   dockerfilePath: string,
   imageName: string,
   tag: string
@@ -365,15 +366,16 @@ export async function buildDockerImage(
     img.RepoTags?.includes(fullTag)
   );
 
+  //이미 목록에 있는 경우
   if (imageInDocker) {
-    console.log(`Image ${fullTag} already exists. Skipping build.`);
+    console.log(`Image ${fullTag} already exists. delete and rebuild`);
     const imageInspect = await docker.getImage(fullTag).inspect();
     return { status: "exists", image: imageInspect };
   }
 
-  const contextPath = path.dirname(dockerfilePath);
   const dockerfileRelativePath = path.basename(dockerfilePath);
-
+  // console.log("1111.Context Path:", contextPath);
+  // console.log("2222.Dockerfile Relative Path:", dockerfileRelativePath);
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: [dockerfileRelativePath] },
@@ -418,18 +420,18 @@ export async function buildDockerImage(
 // 파일 경로 기반으로 이미지 빌드
 export async function processAndBuildImage(
   contextPath: string,
+  dockerfilePath: string,
   imageName: string,
   tag: string
 ): Promise<{
   status: "success" | "exists" | "failed";
   image?: DockerImage;
 }> {
-  const dockerfilePath = findDockerfile(contextPath);
-
   if (dockerfilePath) {
     console.log(`Dockerfile found at: ${dockerfilePath}`);
     try {
       const buildStatus = await buildDockerImage(
+        contextPath,
         dockerfilePath,
         imageName,
         tag
@@ -468,6 +470,7 @@ export function handleBuildDockerImage() {
     async (
       _event,
       contextPath: string,
+      dockerfilePath: string,
       imageName: string = "my-docker-image",
       tag: string = "latest"
     ) => {
@@ -478,15 +481,11 @@ export function handleBuildDockerImage() {
         // 이미지 빌드 및 결과 반환
         const buildResult = await processAndBuildImage(
           contextPath,
+          dockerfilePath,
           imageName,
           tag
         );
-
-        if (buildResult.status !== "success" || !buildResult.image) {
-          throw new Error("Failed to build or retrieve the Docker image.");
-        }
-
-        // 빌드 및 이미지 가져오기 성공 시
+        console.log(buildResult.status);
         return { success: true, image: buildResult.image };
       } catch (error) {
         console.error("Error processing Docker image:", error);
@@ -522,7 +521,7 @@ export const createContainerOptions = (
       PortBindings:
         inboundPort && outboundPort
           ? {
-              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort }],
+              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort + "" }],
             }
           : {},
     },
@@ -532,6 +531,7 @@ export const createContainerOptions = (
 export const createContainer = async (
   options: ContainerCreateOptions
 ): Promise<{ success: boolean; containerId?: string; error?: string }> => {
+  console.log("djfkjshlfkjdshkjafhasdk options!!!!!!!!!!!!!!", options);
   try {
     // 동일한 이름의 컨테이너가 이미 있는지 확인
     const existingContainers = await docker.listContainers({ all: true });

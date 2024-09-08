@@ -1,9 +1,9 @@
 // src/utils/serviceUtils.ts
 import { useAppStore } from "../stores/appStatusStore";
+// import { useDockerStore } from "../stores/appStatusStore";
 import {
   checkDockerStatus,
   startDocker,
-  // fetchDummyDockerData,
   // handleBuildImage,
   // createAndStartContainers,
 } from "./dockerUtils";
@@ -16,52 +16,63 @@ export const startService = async () => {
   // const setDockerContainers = useDockerStore.getState().setDockerContainers;
 
   try {
-    console.log("1.ServiceUtil: Starting service");
+    console.log("1. ServiceUtil: Starting service");
     setServiceStatus("loading");
 
     // 1. Docker 상태 확인 및 실행
     const dockerStatus = await checkDockerStatus();
-    console.log("2.ServiceUtil: Docker status:", dockerStatus);
+    console.log("2. ServiceUtil: Docker status:", dockerStatus);
     if (dockerStatus !== "running") {
-      console.log("3.ServiceUtil:Starting Docker");
+      console.log("3. ServiceUtil: Starting Docker");
       await startDocker();
     }
 
     setDockerStatus("running");
-    console.log("4.ServiceUtil: Docker is running");
+    console.log("4. ServiceUtil: Docker is running");
 
     // 2. WebSocket 연결
     connectWebSocket();
-    console.log("5.ServiceUtil: WebSocket connected");
+    console.log("5. ServiceUtil: WebSocket connected");
 
-    // const dummyDockerData = await fetchDummyDockerData();
+    // const dummyDockerData = [
+    //   {
+    //     hasDockerImage: false,
+    //     containerName: "FRONTEND-1",
+    //     inboundPort: 80, // number 타입으로 설정
+    //     outboundPort: 8080, // number 타입으로 설정
+    //     subdomainName: "sunsuking",
+    //     subdomainKey: "sadfasdf",
+    //     sourceCodeLink:
+    //       "https://github.com/sunsuking/kokoa-clone-2020/archive/refs/heads/main.zip",
+    //     dockerRootDirectory: "./",
+    //   },
+    // ];
     // console.log("6. Fetched dummy data:", dummyDockerData);
 
-    // // 3. 더미 데이터 기반으로 ZIP 파일 다운로드 및 해제, 이미지 빌드, 컨테이너 빌드
-    // const repoUrls = dummyDockerData.map((command) => command.sourceCodeLink);
+    // // 3. 더미 데이터 기반으로 ZIP 파일 다운로드 및 해제, Dockerfile 경로 추출
+    // const downloadPromises = dummyDockerData.map(async (command) => {
+    //   const { success, dockerfilePath, message, contextPath } =
+    //     await window.electronAPI.downloadAndUnzip(command.sourceCodeLink);
+    //   if (success && dockerfilePath) {
+    //     console.log(
+    //       `10. Download and unzip successful for ${command.sourceCodeLink} ${dockerfilePath}`
+    //     );
+    //     console.log(`Dockerfile path: ${dockerfilePath}`);
+    //     const buildResult = await handleBuildImage(contextPath, dockerfilePath);
+    //     console.log(`15. Build result for ${contextPath}`);
 
-    // const projectSourceDirectory =
-    //   await window.electronAPI.getProjectSourceDirectory();
-    // console.log("8. Project source directory:", projectSourceDirectory);
-
-    // const downloadPromises = repoUrls.map(async (repoUrl) => {
-    //   const downloadPath = window.electronAPI.joinPath(projectSourceDirectory);
-    //   const extractDir = downloadPath;
-    //   console.log("9. Downloading and extracting:", repoUrl, "to", extractDir);
-    //   await window.electronAPI.downloadAndUnzip(repoUrl);
-    //   console.log(`10. Download and unzip successful for ${repoUrl}`);
-    //   return { repoUrl, extractDir };
+    //     return { command, dockerfilePath, contextPath };
+    //   } else {
+    //     throw new Error(`Failed to download or find Dockerfile: ${message}`);
+    //   }
     // });
 
     // const downloadResults = await Promise.all(downloadPromises);
-    // console.log("11. All downloads and unzips completed");
-
-    // const buildPromises = downloadResults.map(async ({ repoUrl }) => {
-    //   console.log("12. Building image from:", repoUrl);
-    //   return await handleBuildImage(repoUrl);
-    // });
-    // const buildResults = await Promise.all(buildPromises);
-    // console.log("13. Build results:", buildResults);
+    // console.log("12. All downloads and unzips completed");
+    // console.log(
+    //   "13. Dockerfile paths used:",
+    //   downloadResults.map((res) => res.dockerfilePath)
+    // );
 
     // // 모든 Docker 이미지 가져오기
     // const allDockerImages = await window.electronAPI.getDockerImages();
@@ -69,7 +80,11 @@ export const startService = async () => {
 
     // if (allDockerImages.length > 0) {
     //   console.log("15. Creating and starting containers for all images");
-    //   const updatedContainers = await createAndStartContainers(allDockerImages);
+    //   const updatedContainers = await createAndStartContainers([
+    //     {
+    //       RepoTags: ["frontend-1:latest"],
+    //     } as DockerImage,
+    //   ]);
 
     //   // 4. 이미지 및 컨테이너 정보 zustand에 반영
     //   setDockerImages(allDockerImages);
@@ -83,7 +98,7 @@ export const startService = async () => {
     //   setServiceStatus("stopped");
     // }
   } catch (err) {
-    console.error(".!ServiceUtil: Error in service handler:", err);
+    console.error("!ServiceUtil: Error in service handler:", err);
     setServiceStatus("stopped");
   }
 };

@@ -1,7 +1,9 @@
 import path from "node:path";
 import { downloadFile, unzipFile, getTtalkakDirectory } from "./utils";
+import { findDockerfile } from "./dockerManager";
 import { ipcMain } from "electron";
 import fs from "fs";
+import * as url from "url";
 
 export function getProjectSourceDirectory(): string {
   const projectSourceDirectory = path.join(
@@ -19,22 +21,36 @@ export function getProjectSourceDirectory(): string {
   return projectSourceDirectory; // 경로 반환
 }
 
-// IPC 핸들러로 projectSourceDirectory를 반환
-ipcMain.handle("get-project-source-directory", async () => {
-  return getProjectSourceDirectory();
-});
-
-// 다운로드 하고 바로 unzip
+// 다운로드 하고 바로 unzip//도커 파일 경로 반환
 async function downloadAndUnzip(
-  repoUrl: string
-): Promise<{ success: boolean; message?: string; extractDir?: string }> {
+  repoUrl: string,
+  branch: string = "main",
+  dockerRootDirectory?: string
+): Promise<{
+  success: boolean;
+  message?: string;
+  dockerfilePath?: string;
+  contextPath?: string;
+}> {
   try {
     const downloadDir = getProjectSourceDirectory();
     const extractDir = getProjectSourceDirectory();
 
-    const repoName = path.basename(repoUrl); // 레포지토리 이름 추출
-    const zipFileName = `${repoName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
+    // URL을 파싱하여 경로 부분을 추출
+    const parsedUrl = url.parse(repoUrl);
+    const pathSegments = parsedUrl.pathname?.split("/") || [];
+
+    // "archive" 이전의 부분을 추출하여 레포지토리 이름을 확인
+    const repoName =
+      pathSegments.length > 1
+        ? pathSegments[pathSegments.length - 5]
+        : "unknown-repo";
+
+    console.log("reponame", repoName);
+
+    const zipFileName = `${repoName}-${branch}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
+    const contextPath = `${extractDir}\\${repoName}-${branch}`;
 
     console.log("Downloading from:", repoUrl);
     console.log("Saving to:", zipFilePath);
@@ -47,17 +63,52 @@ async function downloadAndUnzip(
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
 
-    // 성공 시 압축 해제된 폴더 경로와 함께 반환
-    return { success: true, extractDir };
+    let dockerfilePath: string | null = null;
+
+    // 사용자가 제공한 dockerRootDirectory가 있는 경우
+    if (dockerRootDirectory) {
+      const dockerDir = path.resolve(extractDir, dockerRootDirectory);
+      if (fs.existsSync(dockerDir)) {
+        dockerfilePath = findDockerfile(dockerDir);
+      } else {
+        console.error(
+          `Provided dockerRootDirectory not found at: ${dockerDir}`
+        );
+        return {
+          success: false,
+          message: `Provided dockerRootDirectory not found at: ${dockerDir}`,
+        };
+      }
+    } else {
+      // Dockerfile을 찾기 위해 디렉토리 내 탐색
+      dockerfilePath = findDockerfile(extractDir);
+    }
+
+    if (!dockerfilePath) {
+      return {
+        success: false,
+        message: "Dockerfile not found in any subdirectory.",
+      };
+    }
+
+    // 성공 시 Dockerfile 경로와 함께 반환
+    return { success: true, dockerfilePath, contextPath };
   } catch (error) {
     console.error("Error during download and unzip:", error);
     return { success: false, message: (error as Error).message };
   }
 }
 
+// IPC 핸들러로 projectSourceDirectory를 반환
+ipcMain.handle("get-project-source-directory", async () => {
+  return getProjectSourceDirectory();
+});
 // IPC 핸들러를 설정하여 다운로드 및 압축 해제를 처리
 export const githubDownLoadAndUnzip = (): void => {
-  ipcMain.handle("download-and-unzip", async (_, repoUrl: string) => {
-    return await downloadAndUnzip(repoUrl);
-  });
+  ipcMain.handle(
+    "download-and-unzip",
+    async (_, repoUrl: string, branch: string, dockerRootDirectory: string) => {
+      return await downloadAndUnzip(repoUrl, branch, dockerRootDirectory);
+    }
+  );
 };
