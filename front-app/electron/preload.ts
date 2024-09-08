@@ -33,7 +33,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   fetchDockerContainer: (containerId: string) =>
     ipcRenderer.invoke("fetch-docker-container", containerId),
   getDockerImages: () => ipcRenderer.invoke("get-docker-images"),
-  getDockerContainers: () => ipcRenderer.invoke("fetch-docker-containers"),
+  getDockerContainers: (all: boolean) =>
+    ipcRenderer.invoke("fetch-docker-containers", all),
 
   //도커 이벤트 감지
   sendDockerEventRequest: () => ipcRenderer.send("docker-event-request"),
@@ -86,13 +87,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createContainerOptions: (
     imageId: DockerImage,
     containerName: string,
-    ports: { [key: string]: string }
+    inboundPort: number,
+    outboundPort: number
   ) =>
     ipcRenderer.invoke(
       "create-container-options",
       imageId,
       containerName,
-      ports
+      inboundPort,
+      outboundPort
     ),
 
   createContainer: (options: ContainerCreateOptions) =>

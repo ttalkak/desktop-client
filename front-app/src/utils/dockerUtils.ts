@@ -1,16 +1,3 @@
-// import { useAppStore, useDockerStore } from "../stores/appStatusStore";
-
-export const dummyResponse: DeployCommandDto = {
-  hasDockerImage: false,
-  containerName: "FRONTEND-1",
-  port: { "80": "8000" },
-  subdomainName: "sunsuking",
-  subdomainKey: "sadfasdf",
-  sourceCodeLink:
-    "https://github.com/sunsuking/kokoa-clone-2020/archive/refs/heads/main.zip",
-  dockerRootDirectory: "./",
-};
-
 //도커 상태 확인함수
 export const checkDockerStatus = async (): Promise<
   "running" | "not running" | "unknown"
@@ -57,12 +44,6 @@ export const waitForDockerToStart = async (
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
   throw new Error("Docker failed to start within the expected time.");
-};
-
-//더미데이터 불러오는 함수
-export const fetchDummyDockerData = async () => {
-  console.log("Fetching dummy Docker data");
-  return dummyResponse;
 };
 
 //이미지 빌드함수

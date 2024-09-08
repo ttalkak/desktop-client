@@ -1,13 +1,16 @@
 import { Client, Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
+import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
 
 const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 
 const userId = sessionData.userId;
+// const userId = 2;
 
 // STOMP 클라이언트 설정
+// FIXME: 브로커 URL을 변경해야 합니다.
 export const client = new Client({
   brokerURL: "wss://ttalkak.com/ws",
   connectHeaders: {
@@ -24,17 +27,39 @@ client.onConnect = (frame) => {
   setWebsocketStatus("connected");
   sendComputeConnectMessage();
 
-  client.subscribe("/user/queue/reply", (message: Message) => {
-    const response = JSON.parse(message.body);
-    console.log("Received response from backend:", response);
+  client.subscribe(
+    `/sub/compute-create/${userId}`,
+    async (message: Message) => {
+      const computes = JSON.parse(message.body);
+      computes.forEach(async (compute: DeploymentCommand) => {
+        if (compute.hasDockerImage) {
+          //
+        } else {
+          // 이미지가 없을 경우 빌드 및 배포
+          const { success, extractDir } =
+            await window.electronAPI.downloadAndUnzip(compute.sourceCodeLink);
+          if (success) {
+            const response = await handleBuildImage(
+              extractDir + "/kokoa-clone-2020-main",
+              compute.containerName.toLowerCase()
+            );
+            createAndStartContainers([
+              {
+                RepoTags: ["frontend-1:latest"],
+              } as DockerImage,
+            ]);
+          }
+        }
+      });
 
-    if (response.success) {
-      subscribeToDockerEvents();
-      subscribeToDockerCommands();
-    } else {
-      console.error("Error in backend response:", response.error);
+      // if (response.success) {
+      //   subscribeToDockerEvents();
+      //   subscribeToDockerCommands();
+      // } else {
+      //   console.error("Error in backend response:", response.error);
+      // }
     }
-  });
+  );
 };
 
 client.onStompError = (frame) => {
@@ -57,10 +82,21 @@ export const disconnectWebSocket = () => {
 
 const sendComputeConnectMessage = async () => {
   const platform = await window.electronAPI.getOsType();
+  const usedCompute = await window.electronAPI.getDockerContainers(false); // 실행 중인 컨테이너만 가져옴
+  // const allContainers = await window.electronAPI.getDockerContainers(true); // 전체 컨테이너 목록 가져옴
+  const usedCPU = await window.electronAPI.getCpuUsage();
+  const images = await window.electronAPI.getDockerImages();
+
+  const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
+
+  // 현재 사용량 보내기
   const createComputeRequest = {
-    userId: sessionData.userId || 0, // userId가 없을 경우 0으로 대체
-    computeType: platform,
-    maxMemory: 1024,
+    userId: sessionData.userId || 0,
+    computerType: platform,
+    usedCompute: usedCompute || 0,
+    usedMemory: totalSize || 0,
+    usedCPU: usedCPU || 0,
+    deployments: [],
   };
   client.publish({
     destination: "/pub/compute/connect",
@@ -109,14 +145,15 @@ const handleDockerCommand = async (message: Message) => {
   }
 };
 
+//deploycommand 조작
 const handleDeployCommand = async ({
-  imageName,
-  tag,
+  hasDockerImage,
   containerName,
-  port,
-  dockerRootDirectory,
+  inboundPort,
+  outboundPort,
   sourceCodeLink,
-}: DeployCommandDto) => {
+  dockerRootDirectory,
+}: DeploymentCommand) => {
   try {
     const setServiceStatus = useAppStore.getState().setServiceStatus;
     setServiceStatus("loading");
@@ -147,20 +184,19 @@ const handleDeployCommand = async ({
     }
 
     const buildResult = await window.electronAPI.buildDockerImage(
-      dockerfilePath,
-      imageName,
-      tag
+      dockerfilePath
     );
 
     // buildResult.image가 undefined일 가능성을 처리
     if (!buildResult.status || !buildResult.image) {
-      throw new Error(`Failed to build Docker image: ${imageName}`);
+      throw new Error(`Failed to build Docker image`);
     }
 
     const containerOptions = await window.electronAPI.createContainerOptions(
       buildResult.image.RepoTags[0], // 이미지 ID 사용
       containerName,
-      port
+      inboundPort,
+      outboundPort
     );
     const startResult = await window.electronAPI.createAndStartContainer(
       containerOptions
@@ -221,7 +257,7 @@ const handleShutdownCommand = async () => {
     const setServiceStatus = useAppStore.getState().setServiceStatus;
     setServiceStatus("stopped");
 
-    const containers = await window.electronAPI.getDockerContainers();
+    const containers = await window.electronAPI.getDockerContainers(true);
     for (const container of containers) {
       if (container.State.Running) {
         await window.electronAPI.stopContainer(container.Id);

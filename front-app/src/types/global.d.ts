@@ -2,12 +2,11 @@ import Dockerode from "dockerode";
 export {};
 
 declare global {
-  export interface DeployCommandDto {
+  export interface DeploymentCommand {
     hasDockerImage: boolean;
-    imageName?: string;
-    tag?: string;
-    port?: { [key: string]: string }; // 포트 매핑을 위한 객체 타입
-    containerName?: string;
+    containerName: string;
+    inboundPort?: number;
+    outboundPort?: number;
     subdomainName: string;
     subdomainKey: string;
     sourceCodeLink: string;
@@ -82,7 +81,7 @@ declare global {
     fetchDockerImage: (imageId: string) => Promise<DockerImage>;
     fetchDockerContainer: (containerId: string) => Promise<DockerContainer>;
     getDockerImages: () => Promise<DockerImage[]>;
-    getDockerContainers: () => Promise<DockerContainer[]>;
+    getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 
     //도커파일 경로찾기
     findDockerfile: (directory: string) => Promise<string | null>;
@@ -163,7 +162,8 @@ declare global {
     createContainerOptions: (
       image: string,
       containerName?: string,
-      port?: { [key: string]: string }
+      inboundPort?: number,
+      outboundPort?: number
     ) => Promise<Dockerode.ContainerCreateOptions>;
 
     createContainer: (

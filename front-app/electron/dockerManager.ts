@@ -240,7 +240,7 @@ export const handleFetchDockerContainer = (): void => {
 export const handleFetchDockerImageList = (): void => {
   ipcMain.handle("get-docker-images", async () => {
     try {
-      const images = await docker.listImages();
+      const images = await docker.listImages({ all: true });
       return images;
     } catch (err) {
       console.error("Failed to fetch Docker images:", err);
@@ -249,10 +249,10 @@ export const handleFetchDockerImageList = (): void => {
   });
 };
 //컨테이너리스트[실제 실행중인 전체목록]
-export const handleFetchDockerContainerList = (): void => {
+export const handleFetchDockerContainerList = (all: boolean = false): void => {
   ipcMain.handle("fetch-docker-containers", async () => {
     try {
-      const containers = await docker.listContainers();
+      const containers = await docker.listContainers({ all, size: true });
       return containers;
     } catch (err) {
       console.error("Failed to fetch Docker containers:", err);
@@ -261,7 +261,7 @@ export const handleFetchDockerContainerList = (): void => {
   });
 };
 
-//------------------- Docker 컨테이너 로그 스트리밍 --------------------------
+//------------------- Docker 컨테이너 로그 스트리밍
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
@@ -507,23 +507,24 @@ export function handleBuildDockerImage() {
 export const createContainerOptions = (
   name: string,
   containerName: string,
-  port: { [key: string]: string }
+  inboundPort: number = 80,
+  outboundPort: number = 8080
 ): ContainerCreateOptions => {
   return {
     Image: name,
     name: containerName,
-    ExposedPorts: Object.keys(port).reduce((acc, port) => {
-      acc[port] = {};
-      return acc;
-    }, {} as { [key: string]: {} }),
+    ExposedPorts: inboundPort
+      ? {
+          [`${inboundPort}/tcp`]: {},
+        }
+      : {},
     HostConfig: {
-      PortBindings: Object.entries(port).reduce(
-        (acc, [containerPort, hostPort]) => {
-          acc[containerPort] = [{ HostPort: hostPort }];
-          return acc;
-        },
-        {} as { [port: string]: Array<{ HostPort: string }> }
-      ),
+      PortBindings:
+        inboundPort && outboundPort
+          ? {
+              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort }],
+            }
+          : {},
     },
   };
 };
@@ -607,10 +608,16 @@ export function registerContainerIpcHandlers() {
       _event,
       repoTag: string,
       containerName: string,
-      ports: { [key: string]: string }
+      inboundPort?: number,
+      outboundPort?: number
     ) => {
       try {
-        return createContainerOptions(repoTag, containerName, ports);
+        return createContainerOptions(
+          repoTag,
+          containerName,
+          inboundPort,
+          outboundPort
+        );
       } catch (error) {
         console.error(`Error creating container options:`, error);
         throw error;
