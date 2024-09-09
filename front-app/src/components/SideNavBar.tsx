@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaCircle } from "react-icons/fa";
 import { startService } from "../utils/serviceUtils";
-import { disconnectWebSocket } from "../utils/stompService";
 import { useAppStore } from "../stores/appStatusStore";
 import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
 
@@ -109,12 +108,6 @@ const SideNavBar = () => {
             }`}
           />
         </div>
-        <button
-          onClick={disconnectWebSocket}
-          className="bg-color-8 rounded text-white py-1 my-4  hover:bg-color-13"
-        >
-          웹소켓 연결해지
-        </button>
 
         <div className="flex flex-col mt-6">
           <Link to="/" className={`${navText} ${isActive("/")}`}>
