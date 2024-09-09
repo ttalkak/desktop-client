@@ -3,7 +3,12 @@ import path from "node:path";
 import * as fs from "fs";
 import iconv from "iconv-lite";
 import { ipcMain, BrowserWindow } from "electron";
-import { getTtalkakDirectory, downloadFile } from "./utils";
+import {
+  getUserHomeDirectory,
+  getTtalkakDirectory,
+  downloadFile,
+  unzipFile,
+} from "./utils";
 
 let win: BrowserWindow | null = null;
 
@@ -18,10 +23,14 @@ async function runPgrok(
   token: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
-  const pgrokExePath = path.join(ttalkakDirectory, "pgrok.exe");
+  const pgrokExePath = path.join(
+    ttalkakDirectory,
+    "pgrok_1.4.1_windows_amd64",
+    "pgrok.exe"
+  );
 
   if (!fs.existsSync(pgrokExePath)) {
-    throw new Error("pgrok.exe not found. Please download it first.");
+    throw new Error("pgrok.exe not found. Please download and unzip it first.");
   }
 
   const command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token}`;
@@ -103,7 +112,10 @@ export function registerPgrokIpcHandlers() {
         fs.mkdirSync(ttalkakDirectory, { recursive: true });
       }
 
-      const downloadPath = path.join(ttalkakDirectory, "pgrok.exe");
+      const downloadPath = path.join(
+        ttalkakDirectory,
+        "pgrok_1.4.1_windows_amd64.zip"
+      );
 
       // 이미 파일이 있는 경우
       if (fs.existsSync(downloadPath)) {
@@ -111,11 +123,32 @@ export function registerPgrokIpcHandlers() {
       }
 
       await downloadFile(
-        "https://d1do0lnmj06xbc.cloudfront.net/pgrok.exe",
+        "https://github.com/pgrok/pgrok/releases/download/v1.4.1/pgrok_1.4.1_windows_amd64.zip",
         downloadPath
       );
 
-      return "Download Completed";
+      await unzipFile(downloadPath, downloadPath.split(".zip")[0]);
+
+      // pgrok 폴더 경로
+      const pgrokFolderPath = path.join(
+        getUserHomeDirectory(),
+        "AppData",
+        "Local",
+        "pgrok"
+      );
+
+      // pgrok 폴더가 없으면 생성
+      if (!fs.existsSync(pgrokFolderPath)) {
+        fs.mkdirSync(pgrokFolderPath, { recursive: true });
+      }
+
+      // pgrok.yml 파일 생성
+      const ymlFilePath = path.join(pgrokFolderPath, "pgrok.yml");
+      if (!fs.existsSync(ymlFilePath)) {
+        fs.writeFileSync(ymlFilePath, ""); // 빈 파일 생성
+      }
+
+      return "Download pgrok and file creation completed";
     } catch (error) {
       return `Download failed: ${error}`;
     }

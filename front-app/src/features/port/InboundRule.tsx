@@ -48,8 +48,10 @@ const InboundRule: React.FC = () => {
     }
   };
 
+  const container = "bg-white border";
+
   return (
-    <div>
+    <div className={container}>
       <h2>Inbound Rules</h2>
       <table>
         <thead>
