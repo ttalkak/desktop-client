@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import CpuStatusItem from "../features/dashboard/CpuStatusItem";
 
 const Home = () => {
   const [pgrokLogs, setPgrokLogs] = useState<string[]>([]);
@@ -6,7 +7,7 @@ const Home = () => {
   const handleRunPgrok = () => {
     const remoteAddr = "34.47.108.121:2222";
     const forwardAddr = "http://localhost:3000";
-    const token = "asdf1-qwejkn1lkj-2kjnjk-asdf";
+    const token = "asdjkf2-qwenjf-wendka";
 
     window.electronAPI
       .runPgrok(remoteAddr, forwardAddr, token)
@@ -36,7 +37,10 @@ const Home = () => {
         <div className="border-2 min-w-1 min-h-10">
           <div>코인영역</div>
         </div>
-        {/* pgrok 영역 */}
+
+        <div>
+          <CpuStatusItem />
+        </div>
         <div>
           <button onClick={handleRunPgrok}>pgrok 실행</button>
           <div>

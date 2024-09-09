@@ -60,6 +60,16 @@ function registerIpcHandlers() {
 
   // pgrok 관련 IPC 핸들러 등록
   registerPgrokIpcHandlers();
+
+  ipcMain.handle("get-cpu-usage", async () => {
+    try {
+      const cpuUsage = calculateCpuUsage();
+      return cpuUsage;
+    } catch (error) {
+      console.error("Failed to get CPU usage:", error);
+      throw error;
+    }
+  });
 }
 //OS 종류 확인 후 전달
 ipcMain.handle("get-os-type", async () => {
@@ -125,16 +135,6 @@ async function createWindow() {
   }
 
   setMainWindow(win); // pgrokManager에 메인 윈도우 설정
-
-  ipcMain.handle("get-cpu-usage", async () => {
-    try {
-      const cpuUsage = calculateCpuUsage();
-      return cpuUsage;
-    } catch (error) {
-      console.error("Failed to get CPU usage:", error);
-      throw error;
-    }
-  });
 
   win.on("close", (event) => {
     if (!isQuiting) {

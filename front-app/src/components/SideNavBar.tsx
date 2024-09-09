@@ -75,7 +75,7 @@ const SideNavBar = () => {
     <div className={navContainer}>
       <div className="flex flex-col justify-center">
         <div className="text-xl text-center font-bold">
-          Click to run TTalkak
+          Click to run Ttalkak
         </div>
 
         <button
