@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
+import { ContainerInspectInfo } from "dockerode";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
@@ -79,8 +80,11 @@ const ContainerList: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {dockerContainers.map((container) => {
-            const { Id, Name, Image, Created, State, Ports } = container;
+          {dockerContainers.map((container: ContainerInspectInfo) => {
+            const { Id, Name, Image, Created, State, NetworkSettings } =
+              container;
+
+            const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
             const cpuUsage = cpuUsages[Id] || 0;
 
@@ -95,15 +99,33 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {Ports.map((port, index) => (
-                      <div key={index}>
-                        <p>
-                          {port.PublicPort}:{port.PrivatePort} ({port.Type})
-                        </p>
-                      </div>
-                    ))}
+                    {Object.entries(Ports).map(([key, value]) =>
+                      value.map((port, index) => (
+                        <div key={index}>
+                          <p>
+                            {port.HostPort}:{key.split("/")[0]} (
+                            {key.split("/")[1]})
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </td>
-                  <td className="py-2 px-4 border-b">{State}</td>
+                  <td className="py-2 px-4 border-b">
+                    {State ? (
+                      <div>
+                        {State.Running && <p>Running</p>}
+                        {State.Paused && <p>Paused</p>}
+                        {State.Restarting && <p>Restarting</p>}
+                        {State.OOMKilled && <p>Out of Memory</p>}
+                        {State.Dead && <p>Dead</p>}
+                        {State.Error && <p>{State.Error}</p>}
+                        {State.ExitCode !== 0 && <p>{State.ExitCode}</p>}
+                      </div>
+                    ) : (
+                      <p>No health information available</p>
+                    )}
+                  </td>
+
                   <td className="py-2 px-4 border-b">{cpuUsage.toFixed(2)}%</td>
                   <td className="py-2 px-4 border-b">
                     <button

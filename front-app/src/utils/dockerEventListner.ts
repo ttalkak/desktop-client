@@ -33,7 +33,8 @@ export const registerDockerEventHandlers = (): (() => void) => {
       //     }
       //   });
       // break;
-      case "remove":
+
+      case "delete":
         removeDockerImage(event.Actor.ID);
         break;
       case "tag":
@@ -78,38 +79,39 @@ export const registerDockerEventHandlers = (): (() => void) => {
           }
         });
         break;
-      case "stop":
-        window.electronAPI.getDockerContainers(true).then((containers) => {
-          const container = containers.find((c) => c.Id === event.Actor.ID);
-          if (container) {
-            updateDockerContainer({
-              ...container,
-              State: { ...container.State, Status: "stopped" },
-            });
-          } else {
-            console.error(
-              `Container with ID ${event.Actor.ID} not found during stop.`
-            );
-          }
-        });
-        break;
+      // case "stop":
+      //   window.electronAPI.getDockerContainers(true).then((containers) => {
+      //     const container = containers.find((c) => c.Id === event.Actor.ID);
+      //     if (container) {
+      //       updateDockerContainer({
+      //         ...container,
+      //         State: { ...container.State, Status: event.status }, // 이벤트에서 받아온 값을 직접 설정
+      //       });
+      //     } else {
+      //       console.error(
+      //         `Container with ID ${event.Actor.ID} not found during stop.`
+      //       );
+      //     }
+      //   });
+      //   break;
 
-      case "die":
-        window.electronAPI.getDockerContainers(true).then((containers) => {
-          const container = containers.find((c) => c.Id === event.Actor.ID);
-          if (container) {
-            updateDockerContainer({
-              ...container,
-              State: { ...container.State, Status: "dead" },
-            });
-          } else {
-            console.error(
-              `Container with ID ${event.Actor.ID} not found during die.`
-            );
-          }
-        });
-        break;
-      case "restart":
+      // case "die":
+      //   window.electronAPI.getDockerContainers(true).then((containers) => {
+      //     const container = containers.find((c) => c.Id === event.Actor.ID);
+      //     if (container) {
+      //       updateDockerContainer({
+      //         ...container,
+      //         State: { ...container.State, Status: event.status }, // 이벤트에서 받아온 값을 직접 설정
+      //       });
+      //     } else {
+      //       console.error(
+      //         `Container with ID ${event.Actor.ID} not found during die.`
+      //       );
+      //     }
+      //   });
+      //   break;
+
+      case "restart" || "die" || "stop":
         window.electronAPI.getDockerContainers(true).then((containers) => {
           const updatedContainer = containers.find(
             (c) => c.Id === event.Actor.ID

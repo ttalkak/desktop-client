@@ -1,6 +1,5 @@
 import { ipcRenderer, contextBridge } from "electron";
 import path from "path";
-import { IpcRendererEvent } from "electron";
 
 console.log("Preload script loaded");
 
