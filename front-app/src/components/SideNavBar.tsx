@@ -64,10 +64,7 @@ const SideNavBar = () => {
     setDockerImages([]);
     setDockerContainers([]);
     setCpuStore([]);
-    const intervalId = setInterval(dockerCheckHandler, 30000);
-    return () => {
-      clearInterval(intervalId);
-    };
+    return () => {};
   }, []);
 
   return (
