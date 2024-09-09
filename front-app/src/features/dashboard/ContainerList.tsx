@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
-import { useDockerStore } from "./../../stores/appStatusStore";
-import { registerDockerEventHandlers } from "../../utils/dockerEventListner";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { ContainerInspectInfo } from "dockerode";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
@@ -12,26 +12,8 @@ const ContainerList: React.FC = () => {
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
 
   useEffect(() => {
-    // Docker 이벤트 핸들러 등록
-    registerDockerEventHandlers();
-
-    // Docker 컨테이너 CPU 사용량 모니터링 시작
     window.electronAPI.monitorCpuUsage();
 
-    // CPU 사용량 업데이트 핸들러
-    window.electronAPI.onCpuUsagePercent(
-      (
-        _event: Electron.IpcRendererEvent,
-        data: { containerId: string; cpuUsagePercent: number }
-      ) => {
-        setCpuUsages((prevCpuUsages) => ({
-          ...prevCpuUsages,
-          [data.containerId]: data.cpuUsagePercent,
-        }));
-      }
-    );
-
-    // CPU 사용량 업데이트 핸들러 등록
     const handleCpuUsagePercent = (
       _event: Electron.IpcRendererEvent,
       data: { containerId: string; cpuUsagePercent: number }
@@ -55,13 +37,11 @@ const ContainerList: React.FC = () => {
     );
   };
 
-  // 이미지 이름을 짧게 표시하는 함수
   const shortenImageName = (imageName: string) => {
     const parts = imageName.split("/");
     return parts[parts.length - 1].split(":")[0];
   };
 
-  // 생성 시간을 포맷팅하는 함수
   const formatCreatedTime = (created: string | number | undefined) => {
     if (created === undefined) return "Unknown";
     const date = new Date(
@@ -100,9 +80,11 @@ const ContainerList: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {dockerContainers.map((container) => {
-            const { Id, Name, Image, Created, NetworkSettings, State } =
+          {dockerContainers.map((container: ContainerInspectInfo) => {
+            const { Id, Name, Image, Created, State, NetworkSettings } =
               container;
+
+            const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
             const cpuUsage = cpuUsages[Id] || 0;
 
@@ -117,25 +99,33 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {NetworkSettings.Ports &&
-                    Object.keys(NetworkSettings.Ports).length > 0 ? (
-                      Object.entries(NetworkSettings.Ports).map(
-                        ([port, bindings], idx) =>
-                          bindings?.map((binding, bIdx) => (
-                            <div key={`${idx}-${bIdx}`} className="text-sm">
-                              {binding.HostIp}:{binding.HostPort} → {port}
-                            </div>
-                          )) || (
-                            <span className="text-sm text-gray-500">
-                              No Ports
-                            </span>
-                          )
-                      )
-                    ) : (
-                      <span className="text-sm text-gray-500">No Ports</span>
+                    {Object.entries(Ports).map(([key, value]) =>
+                      value.map((port, index) => (
+                        <div key={index}>
+                          <p>
+                            {port.HostPort}:{key.split("/")[0]} (
+                            {key.split("/")[1]})
+                          </p>
+                        </div>
+                      ))
                     )}
                   </td>
-                  <td className="py-2 px-4 border-b">{State.Status}</td>
+                  <td className="py-2 px-4 border-b">
+                    {State ? (
+                      <div>
+                        {State.Running && <p>Running</p>}
+                        {State.Paused && <p>Paused</p>}
+                        {State.Restarting && <p>Restarting</p>}
+                        {State.OOMKilled && <p>Out of Memory</p>}
+                        {State.Dead && <p>Dead</p>}
+                        {State.Error && <p>{State.Error}</p>}
+                        {State.ExitCode !== 0 && <p>{State.ExitCode}</p>}
+                      </div>
+                    ) : (
+                      <p>No health information available</p>
+                    )}
+                  </td>
+
                   <td className="py-2 px-4 border-b">{cpuUsage.toFixed(2)}%</td>
                   <td className="py-2 px-4 border-b">
                     <button

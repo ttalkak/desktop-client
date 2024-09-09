@@ -25,7 +25,7 @@ export const useAppStore = create<AppState>()(
       setServiceStatus: (status) => set({ serviceStatus: status }),
     }),
     {
-      name: "app-status-storage",
+      name: "appStatusStorage",
       storage: createJSONStorage(() => sessionStorage),
     }
   )
@@ -93,7 +93,7 @@ export const useDockerStore = create<DockerState>()(
       clearDockerContainers: () => set({ dockerContainers: [] }),
     }),
     {
-      name: "docker-store",
+      name: "dockerStore",
       storage: createJSONStorage(() => sessionStorage),
     }
   )
@@ -142,7 +142,7 @@ export const useCpuStore = create<CpuState>()(
         })),
     }),
     {
-      name: "cpu-usage-storage",
+      name: "cpuUsageStorage",
       storage: createJSONStorage(() => sessionStorage),
     }
   )

@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, IpcMainEvent } from "electron";
+import { ipcMain, BrowserWindow } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Docker from "dockerode";
@@ -70,7 +70,7 @@ export const handleStartDocker = (): void => {
 
 //------------------- 도커 이벤트 스트림 --------------------------
 export const handleGetDockerEvent = (): void => {
-  ipcMain.on("get-docker-event", (event: IpcMainEvent) => {
+  ipcMain.on("get-docker-event", (event) => {
     docker.getEvents({}, (err, stream) => {
       if (err) {
         console.error("Error connecting to Docker events:", err);
@@ -152,7 +152,6 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
 export function monitorAllContainersCpuUsage(): void {
   docker.listContainers((err, containers) => {
     if (!containers || containers.length === 0) {
-      console.error("1. No containers found.");
       return;
     }
     if (err) {
@@ -525,13 +524,19 @@ export const createContainerOptions = (
             }
           : {},
     },
+    Healthcheck: {
+      Test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
+      Interval: 30000000000, // 30초 (나노초 단위)
+      Timeout: 10000000000, // 10초 (나노초 단위)
+      Retries: 3, // 실패 시 재시도 횟수
+      StartPeriod: 5000000000, // 컨테이너 시작 후 처음 HealthCheck를 수행하기 전 대기 시간 (5초)
+    },
   };
 };
 
 export const createContainer = async (
   options: ContainerCreateOptions
 ): Promise<{ success: boolean; containerId?: string; error?: string }> => {
-  console.log("djfkjshlfkjdshkjafhasdk options!!!!!!!!!!!!!!", options);
   try {
     // 동일한 이름의 컨테이너가 이미 있는지 확인
     const existingContainers = await docker.listContainers({ all: true });

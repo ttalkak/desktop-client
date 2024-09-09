@@ -1,6 +1,5 @@
 import { ipcRenderer, contextBridge } from "electron";
 import path from "path";
-import { IpcRendererEvent } from "electron";
 
 console.log("Preload script loaded");
 
@@ -37,24 +36,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("get-all-docker-containers", all),
 
   //도커 이벤트 감지
-  sendDockerEventRequest: () => ipcRenderer.send("docker-event-request"),
+  sendDockerEventRequest: () => ipcRenderer.send("get-docker-event"),
 
   onDockerEventResponse: (callback: (event: DockerEvent) => void) =>
-    ipcRenderer.on(
-      "docker-event-response",
-      (_event: IpcRendererEvent, dockerEvent: DockerEvent) =>
-        callback(dockerEvent)
+    ipcRenderer.on("docker-event-response", (_event, dockerEvent) =>
+      callback(dockerEvent)
     ),
 
-  onDockerEventError: (callback: ErrorCallback) =>
+  onDockerEventError: (callback: (error: string) => void) =>
     ipcRenderer.on("docker-event-error", (_event, error) => callback(error)),
 
   onDockerEventEnd: (callback: () => void) => {
     ipcRenderer.on("docker-event-end", () => callback());
   },
 
-  removeAllDockerEventListeners: () =>
-    ipcRenderer.removeAllListeners("docker-event-response"),
+  removeAllDockerEventListeners: () => {
+    ipcRenderer.removeAllListeners("docker-event-response");
+    ipcRenderer.removeAllListeners("docker-event-error");
+    ipcRenderer.removeAllListeners("docker-event-end");
+  },
 
   //----------------- zip 다운 하고 바로 unzip
   getProjectSourceDirectory: (): Promise<string> =>
