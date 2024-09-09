@@ -165,7 +165,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeAllCpuListeners: () => {
     ipcRenderer.removeAllListeners("average-cpu-usage");
     ipcRenderer.removeAllListeners("get-cpu-usage");
-    ipcRenderer.removeAllListeners("get-cpu-usage");
   },
   //---------------------- 도커 로그
   startLogStream: (containerId: string) => {
