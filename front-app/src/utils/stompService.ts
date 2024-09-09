@@ -1,11 +1,16 @@
 import { Client, Message } from "@stomp/stompjs";
 import { useAppStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
-import { registerDockerEventHandlers } from "./dockerEventListner";
+import { useDockerStore } from "../stores/appStatusStore";
 
 const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
-
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
+//상태 셋팅 => 최초로그인시 셋팅 예정
+// const setDockerImages = useDockerStore.getState().setDockerImages;
+// const setDockerContainers = useDockerStore.getState().setDockerContainers;
+
+const addDockerImage = useDockerStore.getState().addDockerImage;
+const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
 // const userId = sessionData.userId;
 const userId = 2;
@@ -50,20 +55,23 @@ client.onConnect = (frame) => {
           if (success) {
             const { image } = await handleBuildImage(
               contextPath,
-              // compute.containerName.toLowerCase(),
               dockerfilePath.toLowerCase()
             );
             console.log(`도커 파일 위치임 ${dockerfilePath}`);
             if (!image) {
               console.log(`이미지 생성 실패`);
             } else {
-              createAndStartContainers(
+              addDockerImage(image);
+              // createAndStartContainers([image], inboundPort, outboundPort);
+              const containers = await createAndStartContainers(
                 [image],
-                // compute.inboundPort!!,
-                // compute.outboundPort!!
                 inboundPort,
                 outboundPort
               );
+              // 배열값
+              containers.forEach((container) => {
+                addDockerContainer(container);
+              });
 
               window.electronAPI
                 .runPgrok(

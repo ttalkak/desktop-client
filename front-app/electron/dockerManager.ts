@@ -70,7 +70,7 @@ export const handleStartDocker = (): void => {
 
 //------------------- 도커 이벤트 스트림 --------------------------
 export const handleGetDockerEvent = (): void => {
-  ipcMain.on("get-docker-event", (event: IpcMainEvent) => {
+  ipcMain.on("get-docker-event", (event) => {
     docker.getEvents({}, (err, stream) => {
       if (err) {
         console.error("Error connecting to Docker events:", err);

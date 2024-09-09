@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+// import CpuStatusItem from "../features/home/CpuStatusItem";
 
 const Home = () => {
   const [pgrokLogs, setPgrokLogs] = useState<string[]>([]);
@@ -35,6 +36,7 @@ const Home = () => {
       <div className="m-10">
         <div className="border-2 min-w-1 min-h-10">
           <div>코인영역</div>
+          {/* <CpuStatusItem /> */}
         </div>
         {/* pgrok 영역 */}
         <div>
