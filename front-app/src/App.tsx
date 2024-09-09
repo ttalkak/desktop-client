@@ -15,7 +15,7 @@ function App() {
       <div className="flex overflow-hidden">
         <SideNavBar />
         <div
-          className="flex-grow overflow-auto custom-scrollbar ml-64"
+          className="flex-grow overflow-auto custom-scrollbar ml-64 px-6 py-6"
           style={{ height: "calc(100vh - 40.8px - 24px)" }}
         >
           <Routes>

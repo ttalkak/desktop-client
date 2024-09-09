@@ -48,41 +48,46 @@ const InboundRule: React.FC = () => {
     }
   };
 
-  const container = "bg-white border";
-
   return (
-    <div className={container}>
-      <h2>Inbound Rules</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Rule Name</th>
-            <th>Local IP</th>
-            <th>Local Port</th>
-            <th>Enabled</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rules.map((rule, index) => (
-            <tr key={index}>
-              <td>{rule.name}</td>
-              <td>{rule.localIP}</td>
-              <td>{rule.localPort}</td>
-              <td>
-                {rule.enabled === "예" ? (
-                  <button onClick={() => toggleRule(rule, index)}>
-                    Disable
-                  </button>
-                ) : (
-                  <button onClick={() => toggleRule(rule, index)}>
-                    Enable
-                  </button>
-                )}
-              </td>
+    <div className="card w-full h-full overflow-hidden">
+      <div className="overflow-auto custom-scrollbar h-full">
+        <table className="w-full bg-white border-gray-300 text-sm">
+          <thead className="sticky top-0 text-sm bg-white-gradient">
+            <tr className="border-b">
+              <th className="p-1">Rule Name</th>
+              <th className="p-1">Local IP</th>
+              <th className="p-1">Local Port</th>
+              <th className="p-1">Enabled</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rules.map((rule, index) => (
+              <tr key={index} className="border-b">
+                <td className="py-2 text-center">{rule.name}</td>
+                <td className="text-center">{rule.localIP}</td>
+                <td className="">{rule.localPort}</td>
+                <td className="text-center">
+                  {rule.enabled === "예" ? (
+                    <button
+                      className="px-3 py-1 rounded"
+                      onClick={() => toggleRule(rule, index)}
+                    >
+                      Disable
+                    </button>
+                  ) : (
+                    <button
+                      className="px-3 py-1 rounded"
+                      onClick={() => toggleRule(rule, index)}
+                    >
+                      Enable
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -20,9 +20,14 @@ export default {
         "color-11": "#2A69D0",
         "color-12": "#3A91D1",
         "color-13": "#3385C1",
+        "color-14": "rgba(255, 255, 255, 0.75)",
       },
       fontSize: {
         tiny: "0.5rem",
+      },
+      backgroundImage: {
+        "white-gradient":
+          "linear-gradient(to bottom, #FFFFFF, rgba(255, 255, 255, 0.75))",
       },
     },
   },
@@ -45,7 +50,7 @@ export default {
           "background-color": "#fff",
           "border-radius": "0.5rem",
           padding: "1rem",
-          border: `1px solid ${theme("colors.color-3")}`,
+          border: `1px solid ${theme("colors.color-2")}`,
         },
       };
 
