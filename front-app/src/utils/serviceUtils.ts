@@ -34,4 +34,6 @@ export const startService = async () => {
     console.error("!ServiceUtil: Error in service handler:", err);
     setServiceStatus("stopped");
   }
+
+  setServiceStatus("running");
 };
