@@ -11,6 +11,7 @@ const DashBoard: React.FC = () => {
   );
   const [computeUsagePercentage, setComputeUsagePercentage] =
     useState<number>(0);
+
   let maxCompute = 0;
 
   useEffect(() => {
@@ -53,11 +54,10 @@ const DashBoard: React.FC = () => {
           </button>
         </div>
         {/* 분수 형태 */}
+
         <p className="font-sans text-gray-600 -end">
           {!userSettings
             ? "로그인이 필요합니다."
-            : maxCompute === 0
-            ? "프로그램을 시작하세요."
             : `${dockerContainers.length} / ${maxCompute} (${Math.round(
                 computeUsagePercentage
               )}%)`}
