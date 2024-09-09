@@ -159,13 +159,32 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  //컨테이너별 사용량 전체 스트림 연결 함수
-  monitorCpuUsage: () => ipcRenderer.invoke("monitor-cpu-usage"),
-
-  removeAllCpuListeners: () => {
-    ipcRenderer.removeAllListeners("average-cpu-usage");
-    ipcRenderer.removeAllListeners("get-cpu-usage");
+  //컨테이너별 stats 연결 함수
+  monitorSingleContainer: (containerId: string) =>
+    ipcRenderer.invoke("monitor-single-container", containerId),
+  addContainerStatsListener: (
+    channel: string,
+    listener: (...args: any[]) => void
+  ) => {
+    const validChannels = [
+      "container-stats",
+      "container-error",
+      "container-end",
+    ];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, listener);
+    }
   },
+  removeContainerStatsListener: (
+    channel: string,
+    listener: (...args: any[]) => void
+  ) => {
+    ipcRenderer.removeListener(channel, listener);
+  },
+  // removeAllCpuListeners: () => {
+  //   ipcRenderer.removeAllListeners("average-cpu-usage");
+  //   ipcRenderer.removeAllListeners("get-cpu-usage");
+  // },
   //---------------------- 도커 로그
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);

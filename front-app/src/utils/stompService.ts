@@ -5,25 +5,22 @@ import { useDockerStore } from "../stores/appStatusStore";
 
 const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
-//상태 셋팅 => 최초로그인시 셋팅 예정
-// const setDockerImages = useDockerStore.getState().setDockerImages;
-// const setDockerContainers = useDockerStore.getState().setDockerContainers;
-
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
-// const userId = sessionData.userId;
-const userId = 2;
+const userId = sessionData.userId;
+console.log(userId);
+// const userId = 2;
 
 // STOMP 클라이언트 설정
 export const client = new Client({
   brokerURL: "wss://ttalkak.com/ws",
   connectHeaders: {
-    "X-USER-ID": userId.toString(),
+    "X-USER-ID": userId,
   },
-  // debug: (str) => {
-  //   console.log(new Date(), str);
-  // },
+  debug: (str) => {
+    console.log(new Date(), str);
+  },
 });
 
 // WebSocket 연결 및 초기 설정
@@ -62,7 +59,6 @@ client.onConnect = (frame) => {
               console.log(`이미지 생성 실패`);
             } else {
               addDockerImage(image);
-              // createAndStartContainers([image], inboundPort, outboundPort);
               const containers = await createAndStartContainers(
                 [image],
                 inboundPort,
@@ -125,11 +121,10 @@ const sendComputeConnectMessage = async () => {
   const images = await window.electronAPI.getDockerImages();
   const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0); //실행중인 이미지 용량
   const deployCompute = await window.electronAPI.getDockerContainers(false); // 실행 중인 컨테이너만 가져옴
-  console.log(deployCompute);
 
   // 현재 사용량 보내기
   const createComputeRequest = {
-    userId: sessionData.userId || 0,
+    userId: userId,
     computerType: platform,
     usedCompute: usedCompute.length || 0,
     usedMemory: totalSize || 0,
