@@ -8,27 +8,13 @@ const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
-  const [cpuUsages, setCpuUsages] = useState<{ [key: string]: number }>({});
+  // const [cpuUsages, setCpuUsages] = useState<{ [key: string]: number }>({});
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
 
   useEffect(() => {
-    window.electronAPI.monitorCpuUsage();
+    // window.electronAPI.monitorCpuUsage();
 
-    const handleCpuUsagePercent = (
-      _event: Electron.IpcRendererEvent,
-      data: { containerId: string; cpuUsagePercent: number }
-    ) => {
-      setCpuUsages((prevCpuUsages) => ({
-        ...prevCpuUsages,
-        [data.containerId]: data.cpuUsagePercent,
-      }));
-    };
-
-    window.electronAPI.onCpuUsagePercent(handleCpuUsagePercent);
-
-    return () => {
-      window.electronAPI.removeAllCpuListeners();
-    };
+    return () => {};
   }, []);
 
   const handleContainerSelect = (containerId: string) => {
@@ -86,7 +72,7 @@ const ContainerList: React.FC = () => {
 
             const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
-            const cpuUsage = cpuUsages[Id] || 0;
+            // const cpuUsage = cpuUsages[Id] || 0;
 
             return (
               <React.Fragment key={Id}>
@@ -125,8 +111,10 @@ const ContainerList: React.FC = () => {
                       <p>No health information available</p>
                     )}
                   </td>
-
-                  <td className="py-2 px-4 border-b">{cpuUsage.toFixed(2)}%</td>
+                  <td className="py-2 px-4 border-b">수정중</td>
+                  {/* <td className="py-2 px-4 border-b">
+                  {cpuUsage.toFixed(2)}%
+                  </td> */}
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}
