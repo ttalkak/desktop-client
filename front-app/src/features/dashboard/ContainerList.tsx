@@ -43,9 +43,7 @@ const ContainerList: React.FC = () => {
           현재 실행 중인 Docker 컨테이너가 없습니다.
         </p>
         <div className="mt-4">
-          <span className="text-gray-400">
-            Docker 컨테이너를 실행한 후 새로 고침해주세요.
-          </span>
+          <span className="text-gray-400">서비스를 실행해주세요</span>
         </div>
       </div>
     );

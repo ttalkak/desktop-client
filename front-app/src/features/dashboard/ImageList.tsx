@@ -11,7 +11,7 @@ const ImageList: React.FC = () => {
           현재 할당된 Docker Image가 없습니다.
         </p>
         <div className="mt-4">
-          <span className="text-gray-400">새로운 이미지를 요청합니다.</span>
+          <span className="text-gray-400">서비스를 실행해주세요</span>
         </div>
       </div>
     );

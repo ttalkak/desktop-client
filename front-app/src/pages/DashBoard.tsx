@@ -3,14 +3,17 @@ import ContainerList from "../features/dashboard/ContainerList";
 import ImageList from "../features/dashboard/ImageList";
 import { useAuthStore } from "../stores/authStore";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 
 const DashBoard: React.FC = () => {
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const { accessToken, userSettings } = useAuthStore();
-  const [activeView, setActiveView] = useState<"containers" | "images">(
-    "containers"
-  );
   const [computeUsagePercentage, setComputeUsagePercentage] =
     useState<number>(0);
 
@@ -28,13 +31,13 @@ const DashBoard: React.FC = () => {
 
   const getStatusMessage = () => {
     if (!accessToken) {
-      return "로그인이 필요합니다.";
+      return "로그인 후 이용 가능합니다";
     }
     if (!userSettings) {
       return "사용자 설정을 불러오는 중...";
     }
     if (serviceStatus === "stopped") {
-      return "프로그램을 시작하세요.";
+      return "프로그램을 실행 후 이용 가능합니다";
     }
     const { maxCompute } = userSettings as { maxCompute: number };
     return `${dockerContainers.length} / ${maxCompute} (${Math.round(
@@ -43,36 +46,26 @@ const DashBoard: React.FC = () => {
   };
 
   return (
-    <div className="col-span-2 py-6 card">
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2 bg-color-3 p-1.5 rounded-lg max-w-min w-full">
-          <button
-            className={`px-4 py-2 rounded-lg ${
-              activeView === "containers"
-                ? "bg-white text-black shadow"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveView("containers")}
-          >
-            Containers
-          </button>
-          <button
-            className={`px-4 py-2 rounded-lg ${
-              activeView === "images"
-                ? "bg-white text-black shadow"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveView("images")}
-          >
-            Images
-          </button>
+    <div className="card h-full items-center">
+      <Tabs defaultValue="account">
+        <div className="flex justify-between w-full items-end">
+          <TabsList>
+            <TabsTrigger value="account">Containers</TabsTrigger>
+            <TabsTrigger value="password">Images</TabsTrigger>
+          </TabsList>
+          <p className="font-sans text-gray-600 text-sm">
+            {getStatusMessage()}
+          </p>
         </div>
-        <p className="font-sans text-gray-600 -end">{getStatusMessage()}</p>
-      </div>
-      <div className="mt-4 card">
-        {activeView === "containers" && <ContainerList />}
-        {activeView === "images" && <ImageList />}
-      </div>
+        <div className="flex justify-center h-full">
+          <TabsContent value="account">
+            <ContainerList />
+          </TabsContent>
+          <TabsContent value="password">
+            <ImageList />
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 };
