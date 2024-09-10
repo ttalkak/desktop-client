@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
+import { ContainerInspectInfo } from "dockerode";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
@@ -27,31 +28,12 @@ const ContainerList: React.FC = () => {
     return parts[parts.length - 1].split(":")[0];
   };
 
-  const formatCreatedTime = (created: string) => {
-    const date = new Date(created);
-    return date.toLocaleString();
-  };
-
-  const getPortMappings = (container: DockerContainer) => {
-    const ports = container.NetworkSettings.Ports;
-    return Object.entries(ports).map(([key, value]) =>
-      value?.map((port, index) => (
-        <div key={`${key}-${index}`}>
-          {port.HostPort}:{key.split("/")[0]} ({key.split("/")[1]})
-        </div>
-      ))
+  const formatCreatedTime = (created: string | number | undefined) => {
+    if (created === undefined) return "Unknown";
+    const date = new Date(
+      typeof created === "string" ? created : Number(created) * 1000
     );
-  };
-
-  const getContainerState = (container: DockerContainer) => {
-    const { State } = container;
-    if (State.Running) return "Running";
-    if (State.Paused) return "Paused";
-    if (State.Restarting) return "Restarting";
-    if (State.OOMKilled) return "Out of Memory";
-    if (State.Dead) return "Dead";
-    if (State.ExitCode !== 0) return `Exited (${State.ExitCode})`;
-    return State.Status;
+    return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
   };
 
   if (dockerContainers.length === 0) {
@@ -62,7 +44,7 @@ const ContainerList: React.FC = () => {
         </p>
         <div className="mt-4">
           <span className="text-gray-400">
-            Docker 컨테이너를 실행해 주세요.
+            Docker 컨테이너를 실행한 후 새로 고침해주세요.
           </span>
         </div>
       </div>
@@ -84,15 +66,18 @@ const ContainerList: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {dockerContainers.map((container: DockerContainer) => {
-            const { Id, Name, Image, Created } = container;
+          {dockerContainers.map((container: ContainerInspectInfo) => {
+            const { Id, Name, Image, Created, State, NetworkSettings } =
+              container;
+
+            const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
             // const cpuUsage = cpuUsages[Id] || 0;
 
             return (
               <React.Fragment key={Id}>
                 <tr>
-                  <td className="py-2 px-4 border-b">{Name.slice(1)}</td>
+                  <td className="py-2 px-4 border-b">{Name}</td>
                   <td className="py-2 px-4 border-b" title={Image}>
                     {shortenImageName(Image)}
                   </td>
@@ -100,10 +85,31 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {getPortMappings(container)}
+                    {Object.entries(Ports).map(([key, value]) =>
+                      value.map((port, index) => (
+                        <div key={index}>
+                          <p>
+                            {port.HostPort}:{key.split("/")[0]} (
+                            {key.split("/")[1]})
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {getContainerState(container)}
+                    {State ? (
+                      <div>
+                        {State.Running && <p>Running</p>}
+                        {State.Paused && <p>Paused</p>}
+                        {State.Restarting && <p>Restarting</p>}
+                        {State.OOMKilled && <p>Out of Memory</p>}
+                        {State.Dead && <p>Dead</p>}
+                        {State.Error && <p>{State.Error}</p>}
+                        {State.ExitCode !== 0 && <p>{State.ExitCode}</p>}
+                      </div>
+                    ) : (
+                      <p>No health information available</p>
+                    )}
                   </td>
                   <td className="py-2 px-4 border-b">수정중</td>
                   {/* <td className="py-2 px-4 border-b">
@@ -125,7 +131,7 @@ const ContainerList: React.FC = () => {
                 </tr>
                 {isSelected && (
                   <tr>
-                    <td colSpan={7} className="p-4 bg-gray-100 border-b">
+                    <td colSpan={10} className="p-4 bg-gray-100 border-b">
                       <ContainerLogs containerId={Id} />
                     </td>
                   </tr>
