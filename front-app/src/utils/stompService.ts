@@ -9,8 +9,7 @@ const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
 const userId = sessionData.userId;
-console.log(userId);
-// const userId = 2;
+console.log("세션 userID", userId);
 
 // STOMP 클라이언트 설정
 export const client = new Client({
