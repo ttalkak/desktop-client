@@ -4,6 +4,7 @@ import { FaCircle } from "react-icons/fa";
 import { startService } from "../utils/serviceUtils";
 import { useAppStore } from "../stores/appStatusStore";
 import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
+import { useAuthStore } from "../stores/authStore"; // useAuthStore 임포트
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
@@ -15,6 +16,9 @@ const SideNavBar = () => {
     (state) => state.setDockerContainers
   );
   const setCpuStore = useCpuStore((state) => state.setContainerCpuUsages);
+
+  // 로그인 상태와 사용자 설정 가져오기
+  const { accessToken } = useAuthStore();
 
   const location = useLocation();
 
@@ -60,15 +64,23 @@ const SideNavBar = () => {
   };
 
   useEffect(() => {
-    dockerCheckHandler();
-    setDockerImages([]);
-    setDockerContainers([]);
-    setCpuStore([]);
-    const intervalId = setInterval(dockerCheckHandler, 30000);
-    return () => {
-      clearInterval(intervalId);
+    const initializeState = async () => {
+      if (accessToken) {
+        // 로그인 상태가 확인되면만 처리
+        await dockerCheckHandler();
+        setDockerImages([]);
+        setDockerContainers([]);
+        setCpuStore([]);
+      }
     };
-  }, []);
+
+    initializeState(); // 비동기 초기화 함수 호출
+
+    return () => {
+      // Cleanup 함수가 필요하면 여기에 추가
+    };
+  }, [accessToken]);
+  const isLoggedIn = Boolean(accessToken);
 
   return (
     <div className={navContainer}>
@@ -79,10 +91,20 @@ const SideNavBar = () => {
 
         <button
           onClick={startService}
-          className="bg-color-12 rounded text-white py-1 mt-4 mb-2  hover:bg-color-13"
+          className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13 ${
+            !isLoggedIn ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          disabled={!isLoggedIn}
         >
           start
         </button>
+
+        {!isLoggedIn && (
+          <div className="text-red-500 text-center mt-2">
+            Please log in to start the service.
+          </div>
+        )}
+
         <div className="flex justify-end">
           <FaCircle
             className={`text-tiny mr-1 ${

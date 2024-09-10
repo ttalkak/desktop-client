@@ -23,6 +23,7 @@ export default {
         "color-13": "#3385C1",
         "color-14": "rgba(255, 255, 255, 0.75)",
         "color-15": "#7FC0EF",
+
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

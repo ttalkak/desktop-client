@@ -1,31 +1,46 @@
 import React, { useEffect, useState } from "react";
 import ContainerList from "../features/dashboard/ContainerList";
 import ImageList from "../features/dashboard/ImageList";
-import { useDockerStore } from "../stores/appStatusStore";
+import { useAuthStore } from "../stores/authStore";
+import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 
 const DashBoard: React.FC = () => {
-  const userSettings = sessionStorage.getItem("userSettings");
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
+  const serviceStatus = useAppStore((state) => state.serviceStatus);
+  const { accessToken, userSettings } = useAuthStore();
   const [activeView, setActiveView] = useState<"containers" | "images">(
     "containers"
   );
   const [computeUsagePercentage, setComputeUsagePercentage] =
     useState<number>(0);
-  let maxCompute = 0;
 
   useEffect(() => {
-    if (userSettings) {
-      const parsedSettings = JSON.parse(userSettings);
-      maxCompute = parsedSettings.maxCompute || 5; // maxCompute가 없으면 기본값 5 사용
-    } else {
-      maxCompute = 0;
+    if (userSettings && "maxCompute" in userSettings) {
+      const { maxCompute } = userSettings as { maxCompute: number };
+      if (maxCompute > 0 && dockerContainers.length > 0) {
+        const usagePercentage = (dockerContainers.length / maxCompute) * 100;
+        setComputeUsagePercentage(usagePercentage);
+      } else {
+        setComputeUsagePercentage(0);
+      }
     }
-
-    const containerCount = dockerContainers.length; // 할당받은 Container 수
-    const usagePercentage =
-      maxCompute > 0 ? (containerCount / maxCompute) * 100 : 0;
-    setComputeUsagePercentage(usagePercentage);
   }, [userSettings, dockerContainers]);
+
+  const getStatusMessage = () => {
+    if (!accessToken) {
+      return "로그인이 필요합니다.";
+    }
+    if (!userSettings) {
+      return "사용자 설정을 불러오는 중...";
+    }
+    if (serviceStatus === "stopped") {
+      return "프로그램을 시작하세요.";
+    }
+    const { maxCompute } = userSettings as { maxCompute: number };
+    return `${dockerContainers.length} / ${maxCompute} (${Math.round(
+      computeUsagePercentage
+    )}%)`;
+  };
 
   return (
     <div className="col-span-2 py-6 card">
@@ -52,16 +67,7 @@ const DashBoard: React.FC = () => {
             Images
           </button>
         </div>
-        {/* 분수 형태 */}
-        <p className="font-sans text-gray-600 -end">
-          {!userSettings
-            ? "로그인이 필요합니다."
-            : maxCompute === 0
-            ? "프로그램을 시작하세요."
-            : `${dockerContainers.length} / ${maxCompute} (${Math.round(
-                computeUsagePercentage
-              )}%)`}
-        </p>
+        <p className="font-sans text-gray-600 -end">{getStatusMessage()}</p>
       </div>
       <div className="mt-4 card">
         {activeView === "containers" && <ContainerList />}
