@@ -52,7 +52,6 @@ const Header = () => {
   };
 
   const toggleSettingModal = (source: string) => {
-    console.log("toggle", source);
     if (source === "modal") {
       setIsFromModal(true);
       setIsSettingModalOpen(false);

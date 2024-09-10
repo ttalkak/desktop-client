@@ -19,7 +19,8 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     max: 0,
   });
 
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [rangeWarning, setRangeWarning] = useState<string>("");
+  const [portError, setPortError] = useState<string>("");
 
   useEffect(() => {
     const userSettings = sessionStorage.getItem("userSettings");
@@ -44,10 +45,17 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   const handleMaxProjectsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (isNaN(Number(value))) {
-      setErrorMessage("숫자만 입력 가능합니다.");
+      setRangeWarning("");
     } else {
-      setErrorMessage("");
       setMaxCompute(value);
+
+      // 입력된 숫자가 1 미만이거나 10을 초과하는 경우
+      const numericValue = Number(value);
+      if (numericValue < 1 || numericValue > 10) {
+        setRangeWarning("최대 10까지 지정할 수 있습니다.");
+      } else {
+        setRangeWarning("");
+      }
     }
   };
 
@@ -57,18 +65,21 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   ) => {
     const value = e.target.value;
     if (isNaN(Number(value))) {
-      setErrorMessage("숫자만 입력 가능합니다.");
     } else {
-      setErrorMessage("");
-      setPortRange({
-        ...portRange,
-        [field]: value,
-      });
+      const newPortRange = { ...portRange, [field]: value };
+      setPortRange(newPortRange);
+
+      // min 값이 max 값보다 큰 경우 에러 처리
+      if (Number(newPortRange.min) > Number(newPortRange.max)) {
+        setPortError("시작값이 종료값보다 클 수 없습니다.");
+      } else {
+        setPortError("");
+      }
     }
   };
 
   const handleSave = async () => {
-    if (errorMessage) return;
+    if (rangeWarning || portError) return;
 
     console.log(maxCompute, portRange);
 
@@ -86,14 +97,11 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     }
 
     try {
-      const response = await axiosInstance.post(
-        "https://ttalkak.com/v1/compute/status",
-        {
-          maxCompute: Number(maxCompute),
-          availablePortStart: Number(portRange.min),
-          availablePortEnd: Number(portRange.max),
-        }
-      );
+      const response = await axiosInstance.post("/compute/status", {
+        maxCompute: Number(maxCompute),
+        availablePortStart: Number(portRange.min),
+        availablePortEnd: Number(portRange.max),
+      });
 
       if (response.data.status === 200) {
         alert("설정이 저장되었습니다.");
@@ -119,13 +127,15 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // 외부 클릭 시 모달 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         modalRef.current &&
         !modalRef.current.contains(event.target as Node)
       ) {
+        setIsEditing(false);
+        setRangeWarning("");
+        setPortError("");
         onClose("modal");
       }
     };
@@ -146,54 +156,54 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   return (
     <div
       ref={modalRef}
-      className="absolute top-full right-0 bg-white px-4 pt-8 pb-5 rounded shadow-lg z-50 mt-1 border border-color-2"
+      className="absolute top-full right-0 bg-white w-72 p-4 rounded shadow-lg z-50 mt-1 border border-color-2"
     >
-      <form className="space-y-6">
-        <div className="flex flex-col space-y-2">
-          <label className="text-sm">
-            최대 허용 프로젝트 수 (초기 설정: 4)
-          </label>
+      <form>
+        <div className="flex flex-col mb-2">
+          <label className="text-sm mb-2">컨테이너 수</label>
           <div className="flex items-center space-x-2">
             <input
               type="text"
               value={maxCompute}
               onChange={handleMaxProjectsChange}
               disabled={!isEditing}
-              className={`border p-1 rounded w-16 text-center ${
+              className={`border p-1 rounded w-16 text-center w-full ${
                 !isEditing ? "text-gray-400" : ""
               }`}
             />
           </div>
+          {rangeWarning && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">{rangeWarning}</p>
+          )}
         </div>
 
-        <div className="flex flex-col space-y-2">
-          <label className="text-sm">
-            포트 대역 설정 (초기: 10000 ~ 15000)
-          </label>
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col mb-2">
+          <label className="text-sm mb-2">포트 대역</label>
+          <div className="flex items-center space-x-2 justify-between">
             <input
               type="text"
               value={portRange.min}
               onChange={(e) => handlePortRangeChange(e, "min")}
               disabled={!isEditing}
-              className={`border p-1 rounded w-24 text-center ${
+              className={`border p-1 rounded w-24 text-center w-28 ${
                 !isEditing ? "text-gray-400" : ""
               }`}
             />
-            <span>~</span>
+            <span className="text-color-3">-</span>
             <input
               type="text"
               value={portRange.max}
               onChange={(e) => handlePortRangeChange(e, "max")}
               disabled={!isEditing}
-              className={`border p-1 rounded w-24 text-center ${
+              className={`border p-1 rounded w-24 text-center w-28 ${
                 !isEditing ? "text-gray-400" : ""
               }`}
             />
           </div>
+          {portError && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">{portError}</p>
+          )}
         </div>
-
-        {errorMessage && <p className="text-red-500 text-sm">{errorMessage}</p>}
 
         <div className="flex justify-end">
           <button
@@ -205,7 +215,7 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
                 setIsEditing(true);
               }
             }}
-            className="text-red-500"
+            className="text-red-500 mt-2"
           >
             {isEditing ? "저장" : "편집"}
           </button>
