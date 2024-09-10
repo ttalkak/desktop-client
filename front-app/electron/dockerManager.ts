@@ -105,11 +105,12 @@ export const handleGetDockerEvent = (): void => {
   });
 };
 
-//------------------- CPU 사용률 스트림 --------------------------
+//------------------- 개별 컨테이너 stats cpu, 디스크 리딩 포함
 export function getContainerStatsStream(containerId: string): EventEmitter {
   const container = docker.getContainer(containerId);
   const statsEmitter = new EventEmitter();
 
+  // Docker 컨테이너의 stats를 스트리밍 방식으로 수신
   container.stats({ stream: true }, (err, stream) => {
     if (err) {
       console.error("Error fetching stats:", err);
@@ -117,90 +118,107 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
       return;
     }
 
+    // 스트림에서 데이터가 들어올 때마다 이벤트 발생
     stream?.on("data", (data: Buffer) => {
       try {
         const stats = JSON.parse(data.toString());
-        const cpuDelta =
-          stats.cpu_stats.cpu_usage.total_usage -
-          stats.precpu_stats.cpu_usage.total_usage;
-        const systemDelta =
-          stats.cpu_stats.system_cpu_usage -
-          stats.precpu_stats.system_cpu_usage;
-        const numberOfCpus = stats.cpu_stats.online_cpus;
-
-        const cpuUsagePercent = (cpuDelta / systemDelta) * numberOfCpus * 100;
-        statsEmitter.emit("data", { containerId, cpuUsagePercent });
+        console.log(stats);
+        // 데이터를 `data` 이벤트로 전달
+        statsEmitter.emit("data", { containerId, stats });
       } catch (error) {
         console.error("Error parsing stats data:", error);
         statsEmitter.emit("error", { containerId, error });
       }
     });
 
+    // 스트림에서 오류가 발생할 때
     stream?.on("error", (err: Error) => {
       console.error("Stream error:", err);
       statsEmitter.emit("error", { containerId, error: err });
     });
 
+    // 스트림이 종료될 때
     stream?.on("end", () => {
       statsEmitter.emit("end", { containerId });
     });
   });
 
+  // statsEmitter를 반환하여 외부에서 이벤트를 수신할 수 있도록 함
   return statsEmitter;
 }
 
-export function monitorAllContainersCpuUsage(): void {
-  docker.listContainers((err, containers) => {
-    if (!containers || containers.length === 0) {
-      return;
-    }
-    if (err) {
-      console.error("Error listing containers:", err);
-      return;
-    }
+// export function monitorAllContainersCpuUsage(): void {
+//   docker.listContainers((err, containers) => {
+//     if (!containers || containers.length === 0) {
+//       return;
+//     }
+//     if (err) {
+//       console.error("Error listing containers:", err);
+//       return;
+//     }
 
-    let totalCpuUsage = 0;
-    let containerCount = containers.length;
-    const mainWindow = BrowserWindow.getAllWindows()[0]; // 첫 번째 창을 가져옴
+//     let totalCpuUsage = 0;
+//     let containerCount = containers.length;
+//     const mainWindow = BrowserWindow.getAllWindows()[0]; // 첫 번째 창을 가져옴
 
-    containers.forEach((container) => {
-      const statsEmitter = getContainerStatsStream(container.Id);
+//     containers.forEach((container) => {
+//       const statsEmitter = getContainerStatsStream(container.Id);
 
-      statsEmitter.on(
-        "data",
-        ({ containerId, cpuUsagePercent }: CpuUsageData) => {
-          totalCpuUsage += cpuUsagePercent;
-          const averageCpuUsage = totalCpuUsage / containerCount;
+//       statsEmitter.on(
+//         "data",
+//         ({ containerId, cpuUsagePercent }: CpuUsageData) => {
+//           totalCpuUsage += cpuUsagePercent;
+//           const averageCpuUsage = totalCpuUsage / containerCount;
 
-          mainWindow.webContents.send("cpu-usage-percent", {
-            containerId,
-            cpuUsagePercent,
-          });
+//           mainWindow.webContents.send("cpu-usage-percent", {
+//             containerId,
+//             cpuUsagePercent,
+//           });
 
-          mainWindow.webContents.send("average-cpu-usage", {
-            averageCpuUsage,
-          });
-        }
-      );
+//           mainWindow.webContents.send("average-cpu-usage", {
+//             averageCpuUsage,
+//           });
+//         }
+//       );
 
-      statsEmitter.on("error", ({ containerId, error }) => {
-        console.error(`Error in container ${containerId}:`, error);
-      });
+//       statsEmitter.on("error", ({ containerId, error }) => {
+//         console.error(`Error in container ${containerId}:`, error);
+//       });
 
-      statsEmitter.on("end", ({ containerId }) => {
-        console.log(`Monitoring ended for container ${containerId}`);
-        containerCount--;
-        // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
-        // totalCpuUsage -= 해당 컨테이너의 cpuUsagePercent;
-      });
-    });
-  });
-}
+//       statsEmitter.on("end", ({ containerId }) => {
+//         console.log(`Monitoring ended for container ${containerId}`);
+//         containerCount--;
+//         // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
+//         // totalCpuUsage -= 해당 컨테이너의 cpuUsagePercent;
+//       });
+//     });
+//   });
+// }
 
 // Docker 컨테이너 CPU 사용량 모니터링 핸들러
 export const handleMonitorContainersCpuUsage = (): void => {
-  ipcMain.handle("monitor-cpu-usage", () => {
-    monitorAllContainersCpuUsage();
+  ipcMain.handle("monitor-single-container", (event, containerId: string) => {
+    const statsEmitter = getContainerStatsStream(containerId);
+
+    // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+    statsEmitter.on("data", (data) => {
+      console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
+      event.sender.send("container-stats", data);
+    });
+
+    // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+    statsEmitter.on("error", (error) => {
+      console.error(`Error for container ${error.containerId}:`, error.error);
+      event.sender.send("container-error", error);
+    });
+
+    // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+    statsEmitter.on("end", (data) => {
+      console.log(`Monitoring ended for container ${data.containerId}`);
+      event.sender.send("container-end", data);
+    });
+
+    // statsEmitter 반환 없이 단순히 이벤트를 처리
   });
 };
 
@@ -247,6 +265,7 @@ export const handleFetchDockerImageList = (): void => {
     }
   });
 };
+
 //컨테이너리스트[실제 실행중인 전체목록]
 export const handleFetchDockerContainerList = (all: boolean = false): void => {
   ipcMain.handle("get-all-docker-containers", async () => {
