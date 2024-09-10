@@ -114,8 +114,13 @@ function setupClientHandlers(userId: string): void {
               console.log(`도커 파일 위치임 ${dockerfilePath}`);
               if (!image) {
                 console.log(`이미지 생성 실패`);
+                sendDeploymentStatus("image_creation_failed", compute); //이미지생성실패 웹소켓
               } else {
                 addDockerImage(image);
+                sendDeploymentStatus("image_created", compute, {
+                  //이미지 생성 성공 소켓
+                  imageId: image.Id,
+                });
                 const containers = await createAndStartContainers(
                   [image],
                   inboundPort,
@@ -126,7 +131,12 @@ function setupClientHandlers(userId: string): void {
                   addDockerContainer(container);
                   // 컨테이너가 성공적으로 생성 및 실행된 이후 stats를 주기적으로 가져오기 시작
                   window.electronAPI.getContainerStats(container.Id);
+                  sendDeploymentStatus("container_created", compute, {
+                    containerId: container.Id,
+                  }); //생성 성공 ping
                 });
+
+                startSendingCurrentState(); //1분 주기로 컨테이너,이미지 갯수 보내줌
 
                 window.electronAPI
                   .runPgrok(
@@ -136,9 +146,15 @@ function setupClientHandlers(userId: string): void {
                   )
                   .then((message) => {
                     console.log(`pgrok started: ${message}`);
+                    sendDeploymentStatus("pgrok_started", compute, {
+                      pgrokMessage: message,
+                    });
                   })
                   .catch((error) => {
                     alert(`Failed to start pgrok: ${error}`);
+                    sendDeploymentStatus("pgrok_failed", compute, {
+                      error: error.toString(),
+                    });
                   });
               }
             }
@@ -202,185 +218,56 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   } catch (error) {
     console.error("Error sending compute connect message:", error);
   }
-  // sendContainersHealthCheck();
+};
+
+//빌드 상태 전달
+const sendDeploymentStatus = (
+  status: string,
+  compute: DeploymentCommand,
+  details?: any
+): void => {
+  client?.publish({
+    destination: "/pub/compute/deployment-status", //변졍예정
+    body: JSON.stringify({
+      status,
+      compute,
+      details,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+};
+
+// 상태를 가져와서 전송하는 함수
+const sendCurrentState = async () => {
+  try {
+    const { dockerImages, dockerContainers } = useDockerStore.getState();
+    const usedCPU = await window.electronAPI.getCpuUsage();
+
+    const currentState = {
+      containerCount: dockerContainers.length,
+      imageCount: dockerImages.length,
+      cpuUsage: usedCPU,
+    };
+
+    client?.publish({
+      destination: "/pub/compute/state",
+      body: JSON.stringify(currentState),
+    });
+    console.log("Current state sent:", currentState);
+  } catch (error) {
+    console.error("Error sending current state:", error);
+  }
+};
+// 1분마다 상태를 전송하는 함수
+const startSendingCurrentState = () => {
+  console.log("Starting to send current state periodically...");
+  sendCurrentState(); // 즉시 호출
+  setInterval(() => {
+    console.log("Sending current state...");
+    sendCurrentState();
+  }, 60000); // 1분 (60,000ms)마다 호출
 };
 
 export function getStompClient(): Client | null {
   return client;
 }
-
-// const subscribeToDockerEvents = () => {
-//   client.subscribe("/topic/docker/updates", (message: Message) => {
-//     const dockerData = JSON.parse(message.body);
-//     console.log("Received Docker data:", dockerData);
-//     useDockerStore.getState().setDockerImages(dockerData.images);
-//     useDockerStore.getState().setDockerContainers(dockerData.containers);
-//   });
-
-//   client.subscribe("/topic/docker/events", (message: Message) => {
-//     const dockerEvent = JSON.parse(message.body);
-//     console.log("Received Docker event:", dockerEvent);
-//   });
-// };
-
-// const subscribeToDockerCommands = () => {
-//   client.subscribe("/pub/compute/command", handleDockerCommand);
-// };
-
-// const handleDockerCommand = async (message: Message) => {
-//   const { command, params } = JSON.parse(message.body);
-//   console.log("Received Docker command:", command, "with params:", params);
-
-//   switch (command) {
-//     case "DEPLOY":
-//       await handleDeployCommand(params);
-//       break;
-//     case "CONTAINER_ACTION":
-//       await handleContainerCommand(params);
-//       break;
-//     case "IMAGE_ACTION":
-//       await handleImageCommand(params);
-//       break;
-//     case "SHUTDOWN":
-//       await handleShutdownCommand();
-//       break;
-//     default:
-//       console.error("Unknown command:", command);
-//   }
-// };
-
-//deploycommand 조작
-// const handleDeployCommand = async ({
-//   hasDockerImage,
-//   containerName,
-//   inboundPort,
-//   outboundPort,
-//   sourceCodeLink,
-//   dockerRootDirectory,
-// }: DeploymentCommand) => {
-//   try {
-//     const setServiceStatus = useAppStore.getState().setServiceStatus;
-//     setServiceStatus("loading");
-
-//     const downloadResult = await window.electronAPI.downloadAndUnzip(
-//       sourceCodeLink
-//     );
-//     if (!downloadResult.success) {
-//       throw new Error(
-//         `Failed to download and unzip the repository: ${sourceCodeLink}`
-//       );
-//     }
-
-//     const extractedPath = downloadResult;
-//     if (!extractedPath) {
-//       throw new Error(`downloaded.. not found in ${extractedPath}`);
-//     }
-//     const fullDockerfilePath = window.electronAPI.joinPath(
-//       extractedPath,
-//       dockerRootDirectory
-//     );
-
-//     const dockerfilePath = await window.electronAPI.findDockerfile(
-//       fullDockerfilePath
-//     );
-//     if (!dockerfilePath) {
-//       throw new Error(`Dockerfile not found in ${fullDockerfilePath}`);
-//     }
-
-//     const buildResult = await window.electronAPI.buildDockerImage(
-//       dockerfilePath
-//     );
-
-//     // buildResult.image가 undefined일 가능성을 처리
-//     if (!buildResult.status || !buildResult.image) {
-//       throw new Error(`Failed to build Docker image`);
-//     }
-
-//     const containerOptions = await window.electronAPI.createContainerOptions(
-//       buildResult.image.RepoTags[0], // 이미지 ID 사용
-//       containerName,
-//       inboundPort,
-//       outboundPort
-//     );
-//     const startResult = await window.electronAPI.createAndStartContainer(
-//       containerOptions
-//     );
-//     if (!startResult.success) {
-//       throw new Error(`Failed to start Docker container: ${containerName}`);
-//     }
-
-//     setServiceStatus("running");
-//   } catch (error) {
-//     console.error("Error in handleDeployCommand:", error);
-//     useAppStore.getState().setServiceStatus("stopped");
-//   }
-// };
-
-// const handleContainerCommand = async ({
-//   action,
-//   containerId,
-// }: {
-//   action: string;
-//   containerId: string;
-// }) => {
-//   switch (action) {
-//     case "START":
-//       await window.electronAPI.startContainer(containerId);
-//       break;
-//     case "STOP":
-//       await window.electronAPI.stopContainer(containerId);
-//       break;
-//     case "REMOVE":
-//       await window.electronAPI.removeContainer(containerId);
-//       useDockerStore.getState().removeDockerContainer(containerId);
-//       break;
-//     default:
-//       console.error("Unknown container action:", action);
-//   }
-// };
-
-// const handleImageCommand = async ({
-//   action,
-//   imageId,
-// }: {
-//   action: "REMOVE"; // 필요한 다른 액션이 있다면 추가
-//   imageId: string;
-// }) => {
-//   switch (action) {
-//     case "REMOVE":
-//       await window.electronAPI.removeImage(imageId);
-//       useDockerStore.getState().removeDockerImage(imageId);
-//       break;
-//     default:
-//       console.error("Unknown image action:", action);
-//   }
-// };
-
-// const handleShutdownCommand = async () => {
-//   try {
-//     const setServiceStatus = useAppStore.getState().setServiceStatus;
-//     setServiceStatus("stopped");
-
-//     const containers = await window.electronAPI.getDockerContainers(true);
-//     for (const container of containers) {
-//       if (container.State.Running) {
-//         await window.electronAPI.stopContainer(container.Id);
-//       }
-//       await window.electronAPI.removeContainer(container.Id);
-//     }
-
-//     const images = await window.electronAPI.getDockerImages();
-//     for (const image of images) {
-//       await window.electronAPI.removeImage(image.Id);
-//     }
-
-//     setServiceStatus("stopped");
-//     useDockerStore.getState().clearDockerContainers();
-//     useDockerStore.getState().clearDockerImages();
-
-//     console.log("All Docker services have been shut down");
-//   } catch (error) {
-//     console.error("Error during shutdown:", error);
-//     useAppStore.getState().setServiceStatus("stopped");
-//   }
-// };

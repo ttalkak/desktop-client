@@ -200,54 +200,6 @@ export function handleGetContainerStatsPeriodic() {
   );
 }
 
-// export function monitorAllContainersCpuUsage(): void {
-//   docker.listContainers((err, containers) => {
-//     if (!containers || containers.length === 0) {
-//       return;
-//     }
-//     if (err) {
-//       console.error("Error listing containers:", err);
-//       return;
-//     }
-
-//     let totalCpuUsage = 0;
-//     let containerCount = containers.length;
-//     const mainWindow = BrowserWindow.getAllWindows()[0]; // 첫 번째 창을 가져옴
-
-//     containers.forEach((container) => {
-//       const statsEmitter = getContainerStatsStream(container.Id);
-
-//       statsEmitter.on(
-//         "data",
-//         ({ containerId, cpuUsagePercent }: CpuUsageData) => {
-//           totalCpuUsage += cpuUsagePercent;
-//           const averageCpuUsage = totalCpuUsage / containerCount;
-
-//           mainWindow.webContents.send("cpu-usage-percent", {
-//             containerId,
-//             cpuUsagePercent,
-//           });
-
-//           mainWindow.webContents.send("average-cpu-usage", {
-//             averageCpuUsage,
-//           });
-//         }
-//       );
-
-//       statsEmitter.on("error", ({ containerId, error }) => {
-//         console.error(`Error in container ${containerId}:`, error);
-//       });
-
-//       statsEmitter.on("end", ({ containerId }) => {
-//         console.log(`Monitoring ended for container ${containerId}`);
-//         containerCount--;
-//         // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
-//         // totalCpuUsage -= 해당 컨테이너의 cpuUsagePercent;
-//       });
-//     });
-//   });
-// }
-
 // Docker 컨테이너 CPU 사용량 모니터링 핸들러
 export const handleMonitorContainersCpuUsage = (): void => {
   ipcMain.handle("monitor-single-container", (event, containerId: string) => {
@@ -419,6 +371,7 @@ export function handleFindDockerFile() {
     }
   });
 }
+
 export async function buildDockerImage(
   contextPath: string,
   dockerfilePath: string,
@@ -430,21 +383,29 @@ export async function buildDockerImage(
 }> {
   const fullTag = `${imageName}:${tag}`;
 
+  // 이미지 목록을 가져옵니다.
   const dockerImages = await docker.listImages();
   const imageInDocker = dockerImages.find((img) =>
     img.RepoTags?.includes(fullTag)
   );
 
-  //이미 목록에 있는 경우
+  // 이미지가 이미 존재하는 경우
   if (imageInDocker) {
-    console.log(`Image ${fullTag} already exists. delete and rebuild`);
-    const imageInspect = await docker.getImage(fullTag).inspect();
-    return { status: "exists", image: imageInspect };
+    console.log(`Image ${fullTag} already exists. Deleting and rebuilding...`);
+
+    // 이미지 삭제
+    const removeResult = await removeImage(fullTag);
+    if (!removeResult.success) {
+      return { status: "failed" };
+    }
+
+    // 삭제 후 다시 빌드
+    console.log(`Rebuilding Docker image ${fullTag}`);
   }
 
   const dockerfileRelativePath = path.basename(dockerfilePath);
-  // console.log("1111.Context Path:", contextPath);
-  // console.log("2222.Dockerfile Relative Path:", dockerfileRelativePath);
+
+  // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: [dockerfileRelativePath] },
@@ -463,6 +424,7 @@ export async function buildDockerImage(
 
   stream.pipe(process.stdout, { end: true });
 
+  // 빌드 결과를 처리합니다.
   return new Promise<{
     status: "success" | "exists" | "failed";
     image?: DockerImage;
@@ -518,12 +480,36 @@ export async function processAndBuildImage(
 }
 
 //이미지 삭제
+// 이미지 삭제 함수
 export const removeImage = async (
   imageId: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const image = docker.getImage(imageId);
-    await image.remove();
+
+    // 먼저 이미지가 사용 중인지 확인
+    const containers = await docker.listContainers({ all: true });
+    const usingContainers = containers.filter(
+      (container) => container.Image === imageId
+    );
+
+    if (usingContainers.length > 0) {
+      console.log(`Image ${imageId} is used by the following containers:`);
+      usingContainers.forEach((container) => {
+        console.log(`Stopping and removing container ${container.Id}`);
+      });
+
+      // 사용 중인 컨테이너 중지 및 삭제
+      for (const container of usingContainers) {
+        const cont = docker.getContainer(container.Id);
+        await cont.stop();
+        await cont.remove();
+        console.log(`Container ${container.Id} removed successfully`);
+      }
+    }
+
+    // 강제 삭제를 시도합니다.
+    await image.remove({ force: true });
     console.log(`Image ${imageId} removed successfully`);
     return { success: true };
   } catch (error) {
