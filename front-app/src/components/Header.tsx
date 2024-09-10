@@ -12,7 +12,6 @@ import {
 } from "../features/port/parseInboundRule";
 import { getUserSettings } from "../axios/auth";
 import logoImg from "./../assets/images/logo.png";
-import { disconnectWebSocket } from "../utils/stompService";
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -37,7 +36,6 @@ const Header = () => {
 
   const handleLogout = () => {
     clearTokens();
-    disconnectWebSocket();
   };
 
   const handleDownloadPgrok = () => {
