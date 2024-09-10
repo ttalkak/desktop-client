@@ -12,7 +12,7 @@ import {
 } from "../features/port/parseInboundRule";
 import { getUserSettings } from "../axios/auth";
 import logoImg from "./../assets/images/logo.png";
-import { disconnectWebSocket } from "src/utils/stompService";
+import { disconnectWebSocket } from "../utils/stompService";
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
