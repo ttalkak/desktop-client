@@ -64,7 +64,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   const ipt =
     "shadow-inner border border-color-2 px-2 py-1.5 mb-2 w-72 rounded placeholder:text-sm";
-  const loginBtn = "bg-color-6 text-white w-full py-1.5 rounded mt-1.5";
+  const loginBtnDefault = "bg-color-1 w-full py-1.5 rounded mt-1.5";
+  const loginBtnActive = "bg-color-12 text-white";
+
+  const isButtonActive = username.length > 0 && password.length > 0;
 
   if (!isOpen) return null;
 
@@ -93,7 +96,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         {errorMessage && (
           <div className="text-color-8 text-sm">{errorMessage}</div>
         )}
-        <button className={loginBtn} type="submit">
+        <button
+          className={`${loginBtnDefault} ${
+            isButtonActive ? loginBtnActive : ""
+          }`}
+          type="submit"
+          disabled={!isButtonActive}
+        >
           Login
         </button>
       </form>

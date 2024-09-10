@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAuthStore } from "../stores/authStore"; // zustand에서 토큰 상태 관리
 
 // 기본 axios 인스턴스 설정
-export const baseUrl: string = "https://ttalkak.com";
+export const baseUrl: string = "https://ttalkak.com/v1";
 
 const axiosInstance = axios.create({
   baseURL: baseUrl,
@@ -10,7 +10,7 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  withCredentials: true, // 쿠키 등을 포함한 인증 정보 전송
+  withCredentials: true,
 });
 
 // 요청 전에 accessToken을 헤더에 포함시키는 인터셉터
@@ -46,11 +46,14 @@ axiosInstance.interceptors.response.use(
         }
 
         // refreshToken으로 새로운 accessToken 요청
-        const refreshResponse = await axios.post(`${baseUrl}/auth/refresh`, {
-          token: refreshToken,
-        });
+        const refreshResponse = await axiosInstance.post("/auth/refresh");
 
-        const { accessToken: newAccessToken } = refreshResponse.data;
+        const {
+          data: { accessToken: newAccessToken },
+          success,
+        } = refreshResponse.data;
+
+        if (!success) throw Error("인증 실패");
 
         // 새로운 accessToken 저장
         useAuthStore.getState().setTokens(newAccessToken, refreshToken);
