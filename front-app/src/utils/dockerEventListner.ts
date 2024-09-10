@@ -5,9 +5,7 @@ export const registerDockerEventHandlers = (): (() => void) => {
   window.electronAPI.sendDockerEventRequest();
 
   console.log("registerDockerEventHandlers 호출됨");
-  // 추가
-  // const addDockerImage = useDockerStore.getState().addDockerImage;
-  // const addDockerContainer = useDockerStore.getState().addDockerContainer;
+
   //삭제
   const removeDockerImage = useDockerStore.getState().removeDockerImage;
   const removeDockerContainer = useDockerStore.getState().removeDockerContainer;
@@ -131,7 +129,6 @@ export const registerDockerEventHandlers = (): (() => void) => {
 
   // Docker 이벤트 감지 시작
   window.electronAPI.onDockerEventResponse((event: DockerEvent) => {
-    console.log(event, "Docker Event 감지");
     switch (event.Type) {
       case "container":
         console.log(event, "컨테이너 이벤트 감지");

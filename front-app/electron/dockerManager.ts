@@ -479,7 +479,6 @@ export async function processAndBuildImage(
   }
 }
 
-//이미지 삭제
 // 이미지 삭제 함수
 export const removeImage = async (
   imageId: string
