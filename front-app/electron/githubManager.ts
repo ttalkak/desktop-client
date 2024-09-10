@@ -107,8 +107,17 @@ ipcMain.handle("get-project-source-directory", async () => {
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(
     "download-and-unzip",
-    async (_, repoUrl: string, branch: string, dockerRootDirectory: string) => {
-      return await downloadAndUnzip(repoUrl, branch, dockerRootDirectory);
+    async (
+      _,
+      sourceCodeLink: string,
+      branch: string,
+      dockerRootDirectory: string
+    ) => {
+      return await downloadAndUnzip(
+        sourceCodeLink,
+        branch,
+        dockerRootDirectory
+      );
     }
   );
 };

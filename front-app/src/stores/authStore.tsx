@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-interface SettingState {
+export interface SettingState {
   userId: number;
   maxCompute: number;
   availablePortStart: number;

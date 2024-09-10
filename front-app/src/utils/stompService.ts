@@ -3,140 +3,277 @@ import { useAppStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
 import { useDockerStore } from "../stores/appStatusStore";
 
-const sessionData = JSON.parse(sessionStorage.getItem("userSettings") || "{}");
+interface SessionData {
+  userId: number;
+  maxCompute: number;
+  availablePortStart: number;
+  availablePortEnd: number;
+}
+
+interface ComputeConnectRequest {
+  userId: string;
+  computerType: string;
+  usedCompute: number;
+  usedMemory: number;
+  usedCPU: number;
+  deployments: number;
+}
+
+let client: Client | null = null;
+
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
-const userId = sessionData.userId;
-console.log("세션 userID", userId);
+function getSessionData(): SessionData | null {
+  const data = sessionStorage.getItem("userSettings");
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as SessionData;
+  } catch {
+    return null;
+  }
+}
 
-// STOMP 클라이언트 설정
-export const client = new Client({
-  brokerURL: "wss://ttalkak.com/ws",
-  connectHeaders: {
-    "X-USER-ID": userId,
-  },
-  debug: (str) => {
-    console.log(new Date(), str);
-  },
-});
+function createStompClient(userId: string): Client {
+  console.log("세션 userID", userId);
+  return new Client({
+    brokerURL: "wss://ttalkak.com/ws",
+    connectHeaders: {
+      // "X-USER-ID": userId,
+      "X-USER-ID": "2",
+    },
+    // debug: (str) => {
+    //   console.log(new Date(), str);
+    // },
+  });
+}
 
-// WebSocket 연결 및 초기 설정
-client.onConnect = (frame) => {
-  console.log("Connected: " + frame);
-  setWebsocketStatus("connected");
-  //연결이후 메세지 보냄
-  sendComputeConnectMessage();
+async function waitForSessionData(
+  maxAttempts: number = 10,
+  interval: number = 1000
+): Promise<SessionData> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const sessionData = getSessionData();
+    if (sessionData && sessionData.userId) {
+      return sessionData;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+  throw new Error("Failed to get session data after maximum attempts");
+}
 
-  client.subscribe(
-    `/sub/compute-create/${userId}`,
-    async (message: Message) => {
-      //도커 이벤트 핸들러 등록
-      // registerDockerEventHandlers();
-      const computes = JSON.parse(message.body);
-      computes.forEach(async (compute: DeploymentCommand) => {
-        if (compute.hasDockerImage) {
-          //Docker 이미지가 이미 있을 경우=> 추가 작업필요
-        } else {
-          // 이미지가 없을 경우 빌드
-          const inboundPort = 80;
-          const outboundPort = 8080;
-          const { success, dockerfilePath, contextPath } =
-            await window.electronAPI.downloadAndUnzip(
-              compute.sourceCodeLink,
-              compute.branch,
-              compute.dockerRootDirectory
-            );
-          if (success) {
-            const { image } = await handleBuildImage(
-              contextPath,
-              dockerfilePath.toLowerCase()
-            );
-            console.log(`도커 파일 위치임 ${dockerfilePath}`);
-            if (!image) {
-              console.log(`이미지 생성 실패`);
-            } else {
-              addDockerImage(image);
-              const containers = await createAndStartContainers(
-                [image],
-                inboundPort,
-                outboundPort
+export async function initializeStompClient(): Promise<Client> {
+  try {
+    const sessionData = await waitForSessionData();
+    if (!client) {
+      client = createStompClient(sessionData.userId.toString());
+      setupClientHandlers(sessionData.userId.toString());
+    }
+    return client;
+  } catch (error) {
+    console.error("Failed to initialize STOMP client:", error);
+    throw error;
+  }
+}
+
+function setupClientHandlers(userId: string): void {
+  if (!client) return;
+
+  // WebSocket 연결 및 초기 설정
+  client.onConnect = (frame) => {
+    console.log("Connected: " + frame);
+    setWebsocketStatus("connected");
+    //연결이후 메세지 보냄
+    sendComputeConnectMessage("2");
+
+    client?.subscribe(
+      // `/sub/compute-create/${userId}`,
+      `/sub/compute-create/2`,
+      async (message: Message) => {
+        //도커 이벤트 핸들러 등록
+        // registerDockerEventHandlers();
+        const computes = JSON.parse(message.body);
+        computes.forEach(async (compute: DeploymentCommand) => {
+          if (compute.hasDockerImage) {
+            //Docker 이미지가 이미 있을 경우=> 추가 작업필요
+          } else {
+            // 이미지가 없을 경우 빌드
+            const inboundPort = 80;
+            const outboundPort = 8080;
+            const { success, dockerfilePath, contextPath } =
+              await window.electronAPI.downloadAndUnzip(
+                compute.sourceCodeLink,
+                compute.branch,
+                compute.dockerRootDirectory
               );
-              // 배열값
-              containers.forEach((container) => {
-                addDockerContainer(container);
-              });
-
-              window.electronAPI
-                .runPgrok(
-                  "34.47.108.121:2222",
-                  `http://localhost:${8080}`,
-                  compute.subdomainKey
-                )
-                .then((message) => {
-                  console.log(`pgrok started: ${message}`);
-                })
-                .catch((error) => {
-                  alert(`Failed to start pgrok: ${error}`);
+            if (success) {
+              const { image } = await handleBuildImage(
+                contextPath,
+                dockerfilePath.toLowerCase()
+              );
+              console.log(`도커 파일 위치임 ${dockerfilePath}`);
+              if (!image) {
+                console.log(`이미지 생성 실패`);
+              } else {
+                addDockerImage(image);
+                // createAndStartContainers([image], inboundPort, outboundPort);
+                const containers = await createAndStartContainers(
+                  [image],
+                  inboundPort,
+                  outboundPort
+                );
+                // 배열값
+                containers.forEach((container) => {
+                  addDockerContainer(container);
                 });
+
+                window.electronAPI
+                  .runPgrok(
+                    "34.47.108.121:2222",
+                    `http://localhost:${8080}`,
+                    compute.subdomainKey
+                  )
+                  .then((message) => {
+                    console.log(`pgrok started: ${message}`);
+                  })
+                  .catch((error) => {
+                    alert(`Failed to start pgrok: ${error}`);
+                  });
+              }
             }
           }
-        }
-      });
-
-      // if (response.success) {
-      //   subscribeToDockerEvents();
-      //   subscribeToDockerCommands();
-      // } else {
-      //   console.error("Error in backend response:", response.error);
-      // }
-    }
-  );
-};
-
-client.onStompError = (frame) => {
-  console.error("Broker reported error: " + frame.headers["message"]);
-  console.error("Additional details: " + frame.body);
-  setWebsocketStatus("disconnected");
-};
-
-export const connectWebSocket = () => {
-  client.activate();
-  console.log("웹소켓 연결 시도 중");
-  setWebsocketStatus("connecting");
-};
-
-export const disconnectWebSocket = () => {
-  client.deactivate();
-  console.log("웹소켓 연결 종료");
-  setWebsocketStatus("disconnected");
-};
-
-const sendComputeConnectMessage = async () => {
-  const platform = await window.electronAPI.getOsType();
-  const usedCompute = await window.electronAPI.getDockerContainers(true); // 전체 컨테이너 목록 가져옴
-  const usedCPU = await window.electronAPI.getCpuUsage();
-  const images = await window.electronAPI.getDockerImages();
-  const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0); //실행중인 이미지 용량
-  const deployCompute = await window.electronAPI.getDockerContainers(false); // 실행 중인 컨테이너만 가져옴
-
-  // 현재 사용량 보내기
-  const createComputeRequest = {
-    userId: userId,
-    computerType: platform,
-    usedCompute: usedCompute.length || 0,
-    usedMemory: totalSize || 0,
-    usedCPU: usedCPU || 0,
-    deployments: deployCompute.length || [],
+        });
+      }
+    );
   };
 
-  client.publish({
-    destination: "/pub/compute/connect",
-    body: JSON.stringify(createComputeRequest),
-  });
-  console.log("Compute connect message sent:", createComputeRequest);
+  client.onStompError = (frame) => {
+    console.error("Broker reported error: " + frame.headers["message"]);
+    console.error("Additional details: " + frame.body);
+    setWebsocketStatus("disconnected");
+  };
+}
+
+export const connectWebSocket = async (): Promise<void> => {
+  try {
+    await initializeStompClient();
+    client?.activate();
+    console.log("웹소켓 연결 시도 중");
+    setWebsocketStatus("connecting");
+  } catch (error) {
+    console.error("Failed to connect WebSocket:", error);
+    setWebsocketStatus("disconnected");
+  }
 };
+
+export const disconnectWebSocket = (): void => {
+  if (client) {
+    client.deactivate();
+    console.log("웹소켓 연결 종료");
+    setWebsocketStatus("disconnected");
+  }
+};
+
+const sendComputeConnectMessage = async (userId: string): Promise<void> => {
+  try {
+    const platform = await window.electronAPI.getOsType();
+    const usedCompute = await window.electronAPI.getDockerContainers(true);
+    const usedCPU = await window.electronAPI.getCpuUsage();
+    const images = await window.electronAPI.getDockerImages();
+    const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
+    const deployCompute = await window.electronAPI.getDockerContainers(false);
+
+    const createComputeRequest: ComputeConnectRequest = {
+      // userId: userId,
+      userId: "2",
+      computerType: platform,
+      usedCompute: usedCompute.length || 0,
+      usedMemory: totalSize || 0,
+      usedCPU: usedCPU || 0,
+      deployments: deployCompute.length || 0,
+    };
+
+    client?.publish({
+      destination: "/pub/compute/connect",
+      body: JSON.stringify(createComputeRequest),
+    });
+    console.log("Compute connect message sent:", createComputeRequest);
+  } catch (error) {
+    console.error("Error sending compute connect message:", error);
+  }
+  sendContainersHealthCheck();
+};
+
+export function getStompClient(): Client | null {
+  return client;
+}
+
+export const sendDockerHealthCheck = () => {};
+
+export const sendContainersHealthCheck = () => {
+  console.log("stats 출력 테스트, 내용 확인 필요");
+
+  const containerIds = [
+    "176c669bb15ad24ff3cad031ae51dc6c38300011b3bccb6db4d4f05389cde024",
+    // 추가적인 컨테이너 ID
+  ];
+
+  containerIds.forEach((containerId) => {
+    window.electronAPI.monitorSingleContainer(containerId).then((stats) => {
+      console.log(`Monitoring CPU usage for container ${containerId} started`);
+
+      // 필요한 값 파싱
+      const parsedStats = parseContainerStats(stats);
+      console.log(parsedStats);
+
+      // WebSocket을 통해 파싱된 컨테이너 상태 전송
+      //   client?.publish({
+      //     destination: "/pub/container/stats",
+      //     body: JSON.stringify({
+      //       containerId,
+      //       ...parsedStats,
+      //     }),
+      //   });
+      // })
+      // .catch((error) => {
+      //   console.error(`Error monitoring container ${containerId}:`, error);
+      // });
+    });
+  });
+};
+
+// 필요한 값을 파싱하는 함수
+function parseContainerStats(stats: ContainerStats) {
+  // CPU 사용률 계산
+  console.log(stats);
+  const cpuDelta =
+    stats.cpu_stats.cpu_usage.total_usage -
+    stats.precpu_stats.cpu_usage.total_usage;
+  const systemCpuDelta =
+    stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+  const numberOfCpus = stats.cpu_stats.online_cpus;
+  const cpuUsage = (cpuDelta / systemCpuDelta) * numberOfCpus * 100;
+
+  // 디스크 I/O 읽기 및 쓰기
+  const blkioStats = stats.blkio_stats.io_service_bytes_recursive;
+  const diskRead = blkioStats
+    .filter((io: any) => io.op === "Read")
+    .reduce((acc: number, io: any) => acc + io.value, 0);
+  const diskWrite = blkioStats
+    .filter((io: any) => io.op === "Write")
+    .reduce((acc: number, io: any) => acc + io.value, 0);
+
+  // 컨테이너의 현재 상태
+  const status = stats.state.Status;
+
+  return {
+    cpuUsage: cpuUsage.toFixed(2), // 소수점 2자리까지
+    diskRead,
+    diskWrite,
+    status,
+  };
+}
 
 // const subscribeToDockerEvents = () => {
 //   client.subscribe("/topic/docker/updates", (message: Message) => {

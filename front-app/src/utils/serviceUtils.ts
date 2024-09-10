@@ -23,13 +23,6 @@ export const startService = async () => {
     setDockerStatus("running");
     console.log("4. ServiceUtil: Docker is running");
 
-    //stats 테스트 필요
-    console.log("stats 출력 테스트, 내용 확인 필요");
-    const containerId = "your-container-id";
-
-    window.electronAPI.monitorSingleContainer(containerId).then(() => {
-      console.log(`Monitoring CPU usage for container ${containerId} started`);
-    });
     // 2. dockerEvent 감지 시작
     // Docker 이벤트 핸들러 등록
     registerDockerEventHandlers();

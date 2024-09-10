@@ -585,14 +585,41 @@ export const createContainer = async (
 };
 
 //컨테이너 실행
+// export const startContainer = async (
+//   containerId: string
+// ): Promise<{ success: boolean; error?: string }> => {
+//   try {
+//     const container = docker.getContainer(containerId);
+//     await container.start();
+//     console.log(`Container ${containerId} started successfully`);
+//     return { success: true };
+//   } catch (error) {
+//     console.error(`Error starting container ${containerId}:`, error);
+//     return { success: false, error: (error as Error).message };
+//   }
+// };
+
 export const startContainer = async (
   containerId: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.start();
-    console.log(`Container ${containerId} started successfully`);
-    return { success: true };
+    const containerInfo = await container.inspect();
+
+    // 컨테이너가 존재하고 실행 중이 아닌 경우에만 시작
+    if (containerInfo.State && containerInfo.State.Status !== "running") {
+      await container.start();
+      console.log(`Container ${containerId} started successfully`);
+      return { success: true };
+    } else if (containerInfo.State.Status === "running") {
+      console.log(`Container ${containerId} is already running`);
+      return { success: true };
+    } else {
+      console.error(
+        `Container ${containerId} is not in a state that can be started`
+      );
+      return { success: false, error: "Container is not in a startable state" };
+    }
   } catch (error) {
     console.error(`Error starting container ${containerId}:`, error);
     return { success: false, error: (error as Error).message };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
@@ -8,14 +8,8 @@ const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
-  // const [cpuUsages, setCpuUsages] = useState<{ [key: string]: number }>({});
+
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
-
-  useEffect(() => {
-    // window.electronAPI.monitorCpuUsage();
-
-    return () => {};
-  }, []);
 
   const handleContainerSelect = (containerId: string) => {
     setSelectedContainerId((prevId) =>
@@ -43,7 +37,9 @@ const ContainerList: React.FC = () => {
           현재 실행 중인 Docker 컨테이너가 없습니다.
         </p>
         <div className="mt-4">
-          <span className="text-gray-400">서비스를 실행해주세요</span>
+          <span className="text-gray-400">
+            Docker 컨테이너를 실행한 후 새로 고침해주세요.
+          </span>
         </div>
       </div>
     );
@@ -59,7 +55,7 @@ const ContainerList: React.FC = () => {
             <th className="py-2 px-4 border-b">Created</th>
             <th className="py-2 px-4 border-b">Ports</th>
             <th className="py-2 px-4 border-b">State</th>
-            <th className="py-2 px-4 border-b">CPU Usage</th>
+
             <th className="py-2 px-4 border-b">Logs</th>
           </tr>
         </thead>
@@ -70,7 +66,6 @@ const ContainerList: React.FC = () => {
 
             const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
-            // const cpuUsage = cpuUsages[Id] || 0;
 
             return (
               <React.Fragment key={Id}>
@@ -109,10 +104,7 @@ const ContainerList: React.FC = () => {
                       <p>No health information available</p>
                     )}
                   </td>
-                  <td className="py-2 px-4 border-b">수정중</td>
-                  {/* <td className="py-2 px-4 border-b">
-                  {cpuUsage.toFixed(2)}%
-                  </td> */}
+
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}

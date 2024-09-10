@@ -2,9 +2,20 @@ import Dockerode from "dockerode";
 export {};
 
 declare global {
+  // 기존 형식
+
+  interface databasesDTO {
+    databaseId: string;
+    databaseType: string;
+    username: string;
+    password: string;
+    port: number;
+  }
   export interface DeploymentCommand {
     hasDockerImage: boolean;
+    envs?: EnvironmentVariables[];
     containerName: string;
+    serviceType: string;
     inboundPort?: number;
     outboundPort?: number;
     subdomainName: string;
@@ -12,7 +23,29 @@ declare global {
     sourceCodeLink: string;
     dockerRootDirectory: string;
     branch: string;
+    databases?: databasesDTO[] | [];
   }
+
+  // interface EnvironmentVariables {
+  //   [key: string]: string; // key-value 쌍으로 된 환경 변수들
+  // }
+
+  // export interface DeploymentCommand {
+  //   deploymentId: string;
+  //   envs: EnvironmentVariables[];
+  //   port: string;
+  //   subdomainName: string;
+  //   subdomainKey: string;
+  //   serviceType: string; //FrontEnd/BackEnd
+  //   branch: string; //main인지 아닌지
+  //   hasDockerImage?: boolean; //도커 이미지 여부 확인
+  //   containerName?: string; //container 이름
+  //   inboundPort?: number;
+  //   outboundPort?: number;
+  //   repositoryUrl: string;
+  //   rootDirectory: string;
+  //   databases: databasesDTO[];
+  // }
 
   // 콜백 타입 정의
   type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
@@ -227,7 +260,7 @@ declare global {
     // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
-      repoUrl: string,
+      sourceCodeLink: string,
       branch: string,
       dockerRootDirectory: string
     ) => Promise<{

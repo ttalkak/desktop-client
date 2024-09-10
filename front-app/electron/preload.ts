@@ -60,9 +60,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
   downloadAndUnzip: async (
-    repoUrl: string,
+    repositoryUrl: string,
     branch: string,
-    dockerRootDirectory: string
+    rootDirectory: string
   ): Promise<{
     success: boolean;
     message?: string;
@@ -71,9 +71,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }> => {
     return await ipcRenderer.invoke(
       "download-and-unzip",
-      repoUrl,
+      repositoryUrl,
       branch,
-      dockerRootDirectory
+      rootDirectory
     );
   },
 
