@@ -103,7 +103,7 @@ const SignUp = () => {
   const errorMsg = "ml-2 text-color-8 text-sm";
 
   return (
-    <div className="w-4/12 min-w-96 mx-auto mt-16">
+    <div className="w-4/12 min-w-96 mx-auto border">
       <div className="text-center mb-3 text-2xl">회원가입</div>
       <form onSubmit={handleSignUp}>
         <div className="flex flex-col">
