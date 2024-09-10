@@ -18,6 +18,7 @@ import {
   registerContainerIpcHandlers,
   handleFindDockerFile,
   handleMonitorContainersCpuUsage,
+  handleGetContainerStatsPeriodic,
 } from "./dockerManager";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
@@ -57,7 +58,7 @@ function registerIpcHandlers() {
 
   //컨테이너 생성, 실행, 정지, 삭제
   registerContainerIpcHandlers();
-
+  handleGetContainerStatsPeriodic();
   // pgrok 관련 IPC 핸들러 등록
   registerPgrokIpcHandlers();
 

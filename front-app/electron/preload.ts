@@ -160,27 +160,56 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
   //컨테이너별 stats 연결 함수
-  monitorSingleContainer: (containerId: string) =>
-    ipcRenderer.invoke("monitor-single-container", containerId),
-  addContainerStatsListener: (
-    channel: string,
-    listener: (...args: any[]) => void
-  ) => {
-    const validChannels = [
-      "container-stats",
-      "container-error",
-      "container-end",
-    ];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, listener);
-    }
-  },
-  removeContainerStatsListener: (
-    channel: string,
-    listener: (...args: any[]) => void
-  ) => {
-    ipcRenderer.removeListener(channel, listener);
-  },
+  //개별 요청 방식
+  // React에서 getContainerStats 호출
+  getContainerStats: (containerId: string) =>
+    ipcRenderer.invoke("get-container-stats", containerId),
+  stopContainerStats: (intervalId: NodeJS.Timeout) =>
+    ipcRenderer.send("stop-container-stats", intervalId),
+
+  // getContainerStats: (containerId: string) => {
+  //   return ipcRenderer.invoke("get-container-stats", containerId);
+  // },
+  // // 컨테이너 상태를 수신할 때 이벤트 리스너를 추가
+  // onContainerStats: (
+  //   callback: (
+  //     event: Electron.IpcRendererEvent,
+  //     data: { containerId: string; stats: any }
+  //   ) => void
+  // ) => {
+  //   ipcRenderer.on("containerStats", callback);
+  // },
+  // // 컨테이너 상태 리스너 제거
+  // removeContainerStatsListener: (
+  //   callback: (
+  //     event: Electron.IpcRendererEvent,
+  //     data: { containerId: string; stats: any }
+  //   ) => void
+  // ) => {
+  //   ipcRenderer.removeListener("containerStats", callback);
+  // },
+  // //스트림 방식
+  // monitorSingleContainer: (containerId: string) =>
+  //   ipcRenderer.invoke("monitor-single-container", containerId),
+  // addContainerStatsListener: (
+  //   channel: string,
+  //   listener: (...args: any[]) => void
+  // ) => {
+  //   const validChannels = [
+  //     "container-stats",
+  //     "container-error",
+  //     "container-end",
+  //   ];
+  //   if (validChannels.includes(channel)) {
+  //     ipcRenderer.on(channel, listener);
+  //   }
+  // },
+  // removeContainerStatsListener: (
+  //   channel: string,
+  //   listener: (...args: any[]) => void
+  // ) => {
+  //   ipcRenderer.removeListener(channel, listener);
+  // },
   // removeAllCpuListeners: () => {
   //   ipcRenderer.removeAllListeners("average-cpu-usage");
   //   ipcRenderer.removeAllListeners("get-cpu-usage");

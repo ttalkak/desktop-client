@@ -4,6 +4,13 @@ export {};
 declare global {
   // 기존 형식
 
+  // TypeScript 타입 정의
+  interface ContainerStats {
+    cpu_usage: number;
+    memory_usage: number;
+    // 필요한 다른 데이터 추가
+  }
+
   interface databasesDTO {
     databaseId: string;
     databaseType: string;
@@ -55,82 +62,6 @@ declare global {
   interface CpuUsageData {
     containerId: string;
     cpuUsagePercent: number;
-  }
-
-  //Docker health check 위한 stats 타입 정의
-  export interface ContainerStats {
-    read: string;
-    precpu_stats: {
-      cpu_usage: {
-        total_usage: number;
-        percpu_usage: number[];
-        usage_in_kernelmode: number;
-        usage_in_usermode: number;
-      };
-      system_cpu_usage: number;
-      online_cpus: number;
-    };
-    cpu_stats: {
-      cpu_usage: {
-        total_usage: number;
-        percpu_usage: number[];
-        usage_in_kernelmode: number;
-        usage_in_usermode: number;
-      };
-      system_cpu_usage: number;
-      online_cpus: number;
-    };
-    memory_stats: {
-      usage: number;
-      max_usage: number;
-      limit: number;
-      stats: {
-        active_anon: number;
-        active_file: number;
-        cache: number;
-        dirty: number;
-        hierarchical_memory_limit: number;
-        hierarchical_memsw_limit: number;
-        inactive_anon: number;
-        inactive_file: number;
-        mapped_file: number;
-        pgfault: number;
-        pgmajfault: number;
-        pgpgin: number;
-        pgpgout: number;
-        rss: number;
-        rss_huge: number;
-        total_active_anon: number;
-        total_active_file: number;
-        total_cache: number;
-        total_dirty: number;
-        total_inactive_anon: number;
-        total_inactive_file: number;
-        total_mapped_file: number;
-        total_pgfault: number;
-        total_pgmajfault: number;
-        total_pgpgin: number;
-        total_pgpgout: number;
-        total_rss: number;
-        total_rss_huge: number;
-        total_unevictable: number;
-        total_writeback: number;
-        unevictable: number;
-        writeback: number;
-      };
-    };
-    networks: {
-      [interfaceName: string]: {
-        rx_bytes: number;
-        rx_dropped: number;
-        rx_errors: number;
-        rx_packets: number;
-        tx_bytes: number;
-        tx_dropped: number;
-        tx_errors: number;
-        tx_packets: number;
-      };
-    };
   }
 
   // Docker Event Actor 정의 (예: 어떤 컨테이너나 이미지에 대한 이벤트인지)
@@ -217,15 +148,32 @@ declare global {
     clearLogListeners: () => void;
 
     // 개별 컨테이너 stats 가져오기
-    monitorSingleContainer: (containerId: string) => Promise<void>;
-    addContainerStatsListener: (
-      channel: string,
-      listener: (...args: any[]) => void
-    ) => void;
-    removeContainerStatsListener: (
-      channel: string,
-      listener: (...args: any[]) => void
-    ) => void;
+    getContainerStats(containerId: string): Promise<any>; // `any` 대신 적절한 타입을 정의하세요
+    stopContainerStats(intervalId: NodeJS.Timeout): void;
+    //1회성 요청 방식
+    // getContainerStats: (containerId: string) => Promise<void>;
+    // onContainerStats: (
+    //   callback: (
+    //     event: Electron.IpcRendererEvent,
+    //     data: { containerId: string; stats: any }
+    //   ) => void
+    // ) => void;
+    // removeContainerStatsListener: (
+    //   callback: (
+    //     event: Electron.IpcRendererEvent,
+    //     data: { containerId: string; stats: any }
+    //   ) => void
+    // ) => void;
+    //스트림 방식
+    // monitorSingleContainer: (containerId: string) => Promise<void>;
+    // addContainerStatsListener: (
+    //   channel: string,
+    //   listener: (...args: any[]) => void
+    // ) => void;
+    // removeContainerStatsListener: (
+    //   channel: string,
+    //   listener: (...args: any[]) => void
+    // ) => void;
     getCpuUsage: () => Promise<number>; // 전체 CPU 사용률
     removeAllCpuListeners: () => void; // 컨테이너 cpu 사용률 리스너 제거
     monitorCpuUsage: () => void; // 컨테이너별 cpu 사용률 스트림 가져오는

@@ -5,6 +5,7 @@ import { ipcMain } from "electron";
 import fs from "fs";
 import * as url from "url";
 
+// 프로젝트 소스 디렉토리 반환
 export function getProjectSourceDirectory(): string {
   const projectSourceDirectory = path.join(
     getTtalkakDirectory(), // 기본 Ttalkak 경로
@@ -21,7 +22,7 @@ export function getProjectSourceDirectory(): string {
   return projectSourceDirectory; // 경로 반환
 }
 
-// 다운로드 하고 바로 unzip//도커 파일 경로 반환
+// 다운로드 및 압축 해제 함수
 async function downloadAndUnzip(
   repoUrl: string,
   branch: string = "main",
@@ -36,27 +37,26 @@ async function downloadAndUnzip(
     const downloadDir = getProjectSourceDirectory();
     const extractDir = getProjectSourceDirectory();
 
-    // URL을 파싱하여 경로 부분을 추출
-    const parsedUrl = url.parse(repoUrl);
-    const pathSegments = parsedUrl.pathname?.split("/") || [];
+    // GitHub 저장소 URL을 ZIP 다운로드 URL로 변환
+    const parsedUrl = new URL(repoUrl);
+    const pathSegments = parsedUrl.pathname.split("/");
 
-    // "archive" 이전의 부분을 추출하여 레포지토리 이름을 확인
-    const repoName =
-      pathSegments.length > 1
-        ? pathSegments[pathSegments.length - 5]
-        : "unknown-repo";
+    // 레포지토리 이름 추출 (예: repo.git)
+    const repoName = pathSegments[2].replace(".git", "");
 
-    console.log("reponame", repoName);
+    // ZIP 파일 이름 및 경로 생성
+    const zipFileName = `${repoName}-${branch}.zip`;
+    const zipFilePath = path.join(downloadDir, zipFileName);
+    const contextPath = path.join(extractDir, `${repoName}-${branch}`);
 
-    const zipFileName = `${repoName}-${branch}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
-    const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const contextPath = `${extractDir}\\${repoName}-${branch}`;
+    // GitHub ZIP 다운로드 URL 생성
+    const zipUrl = `https://github.com/${pathSegments[1]}/${repoName}/archive/refs/heads/${branch}.zip`;
 
-    console.log("Downloading from:", repoUrl);
+    console.log("Downloading from:", zipUrl);
     console.log("Saving to:", zipFilePath);
 
     console.log("Downloading ZIP file...");
-    await downloadFile(repoUrl, zipFilePath);
+    await downloadFile(zipUrl, zipFilePath);
     console.log("Download completed:", zipFilePath);
 
     console.log("Unzipping file...");
@@ -103,6 +103,7 @@ async function downloadAndUnzip(
 ipcMain.handle("get-project-source-directory", async () => {
   return getProjectSourceDirectory();
 });
+
 // IPC 핸들러를 설정하여 다운로드 및 압축 해제를 처리
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(

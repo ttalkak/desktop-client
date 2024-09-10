@@ -99,12 +99,6 @@ const SideNavBar = () => {
           start
         </button>
 
-        {!isLoggedIn && (
-          <div className="text-red-500 text-center mt-2">
-            Please log in to start the service.
-          </div>
-        )}
-
         <div className="flex justify-end">
           <FaCircle
             className={`text-tiny mr-1 ${
@@ -130,7 +124,11 @@ const SideNavBar = () => {
             }`}
           />
         </div>
-
+        {!isLoggedIn && (
+          <div className="text-red-500 text-center mt-2 text-sm">
+            Please log in to start the service.
+          </div>
+        )}
         <div className="flex flex-col mt-6">
           <Link to="/" className={`${navText} ${isActive("/")}`}>
             <div className="ml-1">Home</div>

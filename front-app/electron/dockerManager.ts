@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, IpcMainInvokeEvent } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Docker from "dockerode";
@@ -6,6 +6,7 @@ import { EventEmitter } from "events";
 import path from "node:path";
 import * as fs from "fs";
 import { Readable } from "stream";
+import { getStompClient } from "src/utils/stompService";
 
 const execAsync = promisify(exec);
 
@@ -82,7 +83,14 @@ export const handleGetDockerEvent = (): void => {
         stream.on("data", (chunk: Buffer) => {
           try {
             const dockerEvent = JSON.parse(chunk.toString());
-            event.reply("docker-event-response", dockerEvent);
+
+            // 이벤트 필터링: heartbeat 또는 불필요한 이벤트 필터링
+            if (
+              dockerEvent.Type === "container" &&
+              dockerEvent.Action !== "heartbeat"
+            ) {
+              event.reply("docker-event-response", dockerEvent);
+            }
           } catch (parseError) {
             console.error("Error parsing Docker event:", parseError);
             event.reply("docker-event-error", parseError);
@@ -145,6 +153,51 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
 
   // statsEmitter를 반환하여 외부에서 이벤트를 수신할 수 있도록 함
   return statsEmitter;
+}
+
+export function handleGetContainerStatsPeriodic() {
+  ipcMain.handle(
+    "get-container-stats",
+    async (_event: IpcMainInvokeEvent, containerId: string) => {
+      console.log(
+        `Starting periodic stats monitoring for container ${containerId}`
+      );
+
+      const intervalId = setInterval(async () => {
+        try {
+          const container = docker.getContainer(containerId);
+          const stats = await new Promise((resolve, reject) => {
+            container.stats(
+              { stream: false, "one-shot": true },
+              (err, stats) => {
+                if (err) reject(err);
+                else
+                  resolve({
+                    cpu_usage: stats?.cpu_stats?.cpu_usage?.total_usage ?? 0, // 나노초 (nanoseconds)
+                    memory_usage: stats?.memory_stats?.usage ?? 0, // 바이트 (bytes)
+                    blkio_read:
+                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                        (io) => io.op === "Read" // 바이트 수
+                      )?.value ?? 0,
+                    blkio_write:
+                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                        (io) => io.op === "Write" // 바이트 수
+                      )?.value ?? 0,
+                    container_id: containerId,
+                  });
+              }
+            );
+          });
+
+          console.log(`Fetched stats for container ${containerId}:`, stats);
+        } catch (error) {
+          console.error("Error fetching container stats:", error);
+        }
+      }, 60000); // 1분마다 실행
+
+      return intervalId; // Interval ID를 반환하여 필요 시 clear할 수 있음
+    }
+  );
 }
 
 // export function monitorAllContainersCpuUsage(): void {
@@ -217,8 +270,6 @@ export const handleMonitorContainersCpuUsage = (): void => {
       console.log(`Monitoring ended for container ${data.containerId}`);
       event.sender.send("container-end", data);
     });
-
-    // statsEmitter 반환 없이 단순히 이벤트를 처리
   });
 };
 
@@ -279,7 +330,7 @@ export const handleFetchDockerContainerList = (all: boolean = false): void => {
   });
 };
 
-//------------------- Docker 컨테이너 로그 스트리밍
+// Docker 컨테이너 로그 스트리밍
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",

@@ -19,7 +19,7 @@ interface ComputeConnectRequest {
   deployments: number;
 }
 
-let client: Client | null = null;
+export let client: Client | null = null;
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
@@ -92,7 +92,6 @@ function setupClientHandlers(userId: string): void {
       `/sub/compute-create/2`,
       async (message: Message) => {
         //도커 이벤트 핸들러 등록
-        // registerDockerEventHandlers();
         const computes = JSON.parse(message.body);
         computes.forEach(async (compute: DeploymentCommand) => {
           if (compute.hasDockerImage) {
@@ -117,7 +116,6 @@ function setupClientHandlers(userId: string): void {
                 console.log(`이미지 생성 실패`);
               } else {
                 addDockerImage(image);
-                // createAndStartContainers([image], inboundPort, outboundPort);
                 const containers = await createAndStartContainers(
                   [image],
                   inboundPort,
@@ -126,6 +124,8 @@ function setupClientHandlers(userId: string): void {
                 // 배열값
                 containers.forEach((container) => {
                   addDockerContainer(container);
+                  // 컨테이너가 성공적으로 생성 및 실행된 이후 stats를 주기적으로 가져오기 시작
+                  window.electronAPI.getContainerStats(container.Id);
                 });
 
                 window.electronAPI
@@ -202,77 +202,11 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   } catch (error) {
     console.error("Error sending compute connect message:", error);
   }
-  sendContainersHealthCheck();
+  // sendContainersHealthCheck();
 };
 
 export function getStompClient(): Client | null {
   return client;
-}
-
-export const sendDockerHealthCheck = () => {};
-
-export const sendContainersHealthCheck = () => {
-  console.log("stats 출력 테스트, 내용 확인 필요");
-
-  const containerIds = [
-    "176c669bb15ad24ff3cad031ae51dc6c38300011b3bccb6db4d4f05389cde024",
-    // 추가적인 컨테이너 ID
-  ];
-
-  containerIds.forEach((containerId) => {
-    window.electronAPI.monitorSingleContainer(containerId).then((stats) => {
-      console.log(`Monitoring CPU usage for container ${containerId} started`);
-
-      // 필요한 값 파싱
-      const parsedStats = parseContainerStats(stats);
-      console.log(parsedStats);
-
-      // WebSocket을 통해 파싱된 컨테이너 상태 전송
-      //   client?.publish({
-      //     destination: "/pub/container/stats",
-      //     body: JSON.stringify({
-      //       containerId,
-      //       ...parsedStats,
-      //     }),
-      //   });
-      // })
-      // .catch((error) => {
-      //   console.error(`Error monitoring container ${containerId}:`, error);
-      // });
-    });
-  });
-};
-
-// 필요한 값을 파싱하는 함수
-function parseContainerStats(stats: ContainerStats) {
-  // CPU 사용률 계산
-  console.log(stats);
-  const cpuDelta =
-    stats.cpu_stats.cpu_usage.total_usage -
-    stats.precpu_stats.cpu_usage.total_usage;
-  const systemCpuDelta =
-    stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
-  const numberOfCpus = stats.cpu_stats.online_cpus;
-  const cpuUsage = (cpuDelta / systemCpuDelta) * numberOfCpus * 100;
-
-  // 디스크 I/O 읽기 및 쓰기
-  const blkioStats = stats.blkio_stats.io_service_bytes_recursive;
-  const diskRead = blkioStats
-    .filter((io: any) => io.op === "Read")
-    .reduce((acc: number, io: any) => acc + io.value, 0);
-  const diskWrite = blkioStats
-    .filter((io: any) => io.op === "Write")
-    .reduce((acc: number, io: any) => acc + io.value, 0);
-
-  // 컨테이너의 현재 상태
-  const status = stats.state.Status;
-
-  return {
-    cpuUsage: cpuUsage.toFixed(2), // 소수점 2자리까지
-    diskRead,
-    diskWrite,
-    status,
-  };
 }
 
 // const subscribeToDockerEvents = () => {
