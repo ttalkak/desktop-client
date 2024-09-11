@@ -130,7 +130,7 @@ function setupClientHandlers(userId: string): void {
                 containers.forEach((container) => {
                   addDockerContainer(container);
                   // 컨테이너가 성공적으로 생성 및 실행된 이후 stats를 주기적으로 가져오기 시작
-                  window.electronAPI.getContainerStats(container.Id);
+                  window.electronAPI.startContainerStats(container.Id);
                   sendDeploymentStatus("container_created", compute, {
                     containerId: container.Id,
                   }); //생성 성공 ping
@@ -191,6 +191,7 @@ export const disconnectWebSocket = (): void => {
   }
 };
 
+//웹소켓 오픈시 처음에 보내는 코드
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();

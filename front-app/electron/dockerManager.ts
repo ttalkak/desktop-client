@@ -1,4 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent } from "electron";
+import { ipcMain } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Docker from "dockerode";
@@ -6,7 +6,6 @@ import { EventEmitter } from "events";
 import path from "node:path";
 import * as fs from "fs";
 import { Readable } from "stream";
-import { getStompClient } from "src/utils/stompService";
 
 const execAsync = promisify(exec);
 
@@ -154,50 +153,78 @@ export function getContainerStatsStream(containerId: string): EventEmitter {
   // statsEmitter를 반환하여 외부에서 이벤트를 수신할 수 있도록 함
   return statsEmitter;
 }
-
+const statsIntervals = new Map<string, NodeJS.Timeout>();
 export function handleGetContainerStatsPeriodic() {
   ipcMain.handle(
-    "get-container-stats",
-    async (_event: IpcMainInvokeEvent, containerId: string) => {
-      console.log(
-        `Starting periodic stats monitoring for container ${containerId}`
-      );
+    "start-container-stats",
+    async (event, containerId: string) => {
+      console.log(`Starting stats monitoring for container ${containerId}`);
+
+      // 이미 모니터링 중이라면 기존 인터벌 제거
+      if (statsIntervals.has(containerId)) {
+        clearInterval(statsIntervals.get(containerId));
+      }
 
       const intervalId = setInterval(async () => {
         try {
           const container = docker.getContainer(containerId);
           const stats = await new Promise((resolve, reject) => {
-            container.stats(
-              { stream: false, "one-shot": true },
-              (err, stats) => {
-                if (err) reject(err);
-                else
-                  resolve({
-                    cpu_usage: stats?.cpu_stats?.cpu_usage?.total_usage ?? 0, // 나노초 (nanoseconds)
-                    memory_usage: stats?.memory_stats?.usage ?? 0, // 바이트 (bytes)
-                    blkio_read:
-                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
-                        (io) => io.op === "Read" // 바이트 수
-                      )?.value ?? 0,
-                    blkio_write:
-                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
-                        (io) => io.op === "Write" // 바이트 수
-                      )?.value ?? 0,
-                    container_id: containerId,
-                  });
-              }
-            );
+            container.stats({ stream: false }, (err, stats) => {
+              if (err) reject(err);
+              else
+                resolve({
+                  cpu_usage: stats?.cpu_stats.cpu_usage.total_usage,
+                  memory_usage: stats?.memory_stats.usage,
+                  container_id: containerId,
+                  blkio_read:
+                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                      (io) => io.op === "Read" // 바이트 수
+                    )?.value ?? 0,
+                  blkio_write:
+                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                      (io) => io.op === "Write" // 바이트 수
+                    )?.value ?? 0,
+                });
+            });
           });
 
           console.log(`Fetched stats for container ${containerId}:`, stats);
+          event.sender.send("container-stats-update", stats);
         } catch (error) {
-          console.error("Error fetching container stats:", error);
+          console.error(
+            `Error fetching stats for container ${containerId}:`,
+            error
+          );
+          event.sender.send("container-stats-error", {
+            containerId,
+            error: error,
+          });
         }
-      }, 60000); // 1분마다 실행
+      }, 60000);
 
-      return intervalId; // Interval ID를 반환하여 필요 시 clear할 수 있음
+      statsIntervals.set(containerId, intervalId);
+      return {
+        success: true,
+        message: `Started monitoring container ${containerId}`,
+      };
     }
   );
+
+  ipcMain.handle("stop-container-stats", (_event, containerId: string) => {
+    if (statsIntervals.has(containerId)) {
+      clearInterval(statsIntervals.get(containerId));
+      statsIntervals.delete(containerId);
+      return {
+        success: true,
+        message: `Stopped monitoring container ${containerId}`,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Container ${containerId} is not being monitored`,
+      };
+    }
+  });
 }
 
 // Docker 컨테이너 CPU 사용량 모니터링 핸들러
@@ -619,21 +646,6 @@ export const createContainer = async (
     return { success: false, error: (error as Error).message };
   }
 };
-
-//컨테이너 실행
-// export const startContainer = async (
-//   containerId: string
-// ): Promise<{ success: boolean; error?: string }> => {
-//   try {
-//     const container = docker.getContainer(containerId);
-//     await container.start();
-//     console.log(`Container ${containerId} started successfully`);
-//     return { success: true };
-//   } catch (error) {
-//     console.error(`Error starting container ${containerId}:`, error);
-//     return { success: false, error: (error as Error).message };
-//   }
-// };
 
 export const startContainer = async (
   containerId: string

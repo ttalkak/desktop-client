@@ -4,11 +4,12 @@ export {};
 declare global {
   // 기존 형식
 
-  // TypeScript 타입 정의
   interface ContainerStats {
+    container_id: string;
     cpu_usage: number;
     memory_usage: number;
-    // 필요한 다른 데이터 추가
+    blkio_read: number;
+    blkio_write: number;
   }
 
   interface databasesDTO {
@@ -33,26 +34,10 @@ declare global {
     databases?: databasesDTO[] | [];
   }
 
-  // interface EnvironmentVariables {
-  //   [key: string]: string; // key-value 쌍으로 된 환경 변수들
-  // }
-
-  // export interface DeploymentCommand {
-  //   deploymentId: string;
-  //   envs: EnvironmentVariables[];
-  //   port: string;
-  //   subdomainName: string;
-  //   subdomainKey: string;
-  //   serviceType: string; //FrontEnd/BackEnd
-  //   branch: string; //main인지 아닌지
-  //   hasDockerImage?: boolean; //도커 이미지 여부 확인
-  //   containerName?: string; //container 이름
-  //   inboundPort?: number;
-  //   outboundPort?: number;
-  //   repositoryUrl: string;
-  //   rootDirectory: string;
-  //   databases: databasesDTO[];
-  // }
+  interface ContainerStatsError {
+    containerId: string;
+    error: string;
+  }
 
   // 콜백 타입 정의
   type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
@@ -148,8 +133,19 @@ declare global {
     clearLogListeners: () => void;
 
     // 개별 컨테이너 stats 가져오기
-    getContainerStats(containerId: string): Promise<any>; // `any` 대신 적절한 타입을 정의하세요
-    stopContainerStats(intervalId: NodeJS.Timeout): void;
+    startContainerStats: (
+      containerId: string
+    ) => Promise<{ success: boolean; message: string }>;
+    stopContainerStats: (
+      containerId: string
+    ) => Promise<{ success: boolean; message: string }>;
+    onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
+    onContainerStatsError: (
+      callback: (error: ContainerStatsError) => void
+    ) => void;
+
+    // getContainerStats(containerId: string): Promise<any>;
+    // stopContainerStats(intervalId: NodeJS.Timeout): void;
     //1회성 요청 방식
     // getContainerStats: (containerId: string) => Promise<void>;
     // onContainerStats: (

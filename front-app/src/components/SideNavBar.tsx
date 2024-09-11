@@ -33,8 +33,8 @@ const SideNavBar = () => {
     string
   > = {
     running: "text-color-7",
-    "not running": "text-color-8",
-    unknown: "text-color-3",
+    "not running": "text-color-2",
+    unknown: "text-color-2",
   } as const;
 
   const websocketStatusColor: Record<
@@ -42,15 +42,15 @@ const SideNavBar = () => {
     string
   > = {
     connected: "text-color-7",
-    connecting: "text-color-6",
-    disconnected: "text-color-8",
+    connecting: "text-color-2",
+    disconnected: "text-color-2",
   } as const;
 
   const serviceStatusColor: Record<"running" | "loading" | "stopped", string> =
     {
       running: "text-color-7",
-      loading: "text-color-6",
-      stopped: "text-color-8",
+      loading: "text-color-2",
+      stopped: "text-color-2",
     } as const;
 
   const dockerCheckHandler = async () => {
