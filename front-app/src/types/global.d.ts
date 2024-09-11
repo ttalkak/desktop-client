@@ -20,6 +20,7 @@ declare global {
     port: number;
   }
   export interface DeploymentCommand {
+    deploymentId?: string;
     hasDockerImage: boolean;
     envs?: EnvironmentVariables[];
     containerName: string;

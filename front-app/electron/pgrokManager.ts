@@ -15,7 +15,9 @@ export function setMainWindow(mainWindow: BrowserWindow) {
 async function runPgrok(
   remoteAddr: string,
   forwardAddr: string,
-  token: string
+  token: string,
+  deploymentId: string,
+  domain: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
   const pgrokExePath = path.join(ttalkakDirectory, "pgrok.exe");
@@ -24,7 +26,7 @@ async function runPgrok(
     throw new Error("pgrok.exe not found. Please download it first.");
   }
 
-  const command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token}`;
+  const command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token} --deployment-id ${deploymentId} --domain ${domain}.ttalkak.com`;
 
   // 명령 프롬프트를 사용하여 pgrok 실행
   const child = execFile(
@@ -124,9 +126,16 @@ export function registerPgrokIpcHandlers() {
   // pgrok 실행 IPC 핸들러
   ipcMain.handle(
     "run-pgrok",
-    async (_, remoteAddr: string, forwardAddr: string, token: string) => {
+    async (
+      _,
+      remoteAddr: string,
+      forwardAddr: string,
+      token: string,
+      deploymentId: string,
+      domain: string
+    ) => {
       try {
-        await runPgrok(remoteAddr, forwardAddr, token);
+        await runPgrok(remoteAddr, forwardAddr, token, deploymentId, domain);
         return "pgrok started successfully";
       } catch (error) {
         return `pgrok failed to start: ${error}`;

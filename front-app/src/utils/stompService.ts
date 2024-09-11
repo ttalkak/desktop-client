@@ -101,6 +101,7 @@ function setupClientHandlers(_userId: string): void {
     client?.subscribe(`/sub/compute-create/2`, async (message: Message) => {
       //도커 이벤트 핸들러 등록
       const computes = JSON.parse(message.body);
+      console.log(computes);
       computes.forEach(async (compute: DeploymentCommand) => {
         if (compute.hasDockerImage) {
           //Docker 이미지가 이미 있을 경우=> 추가 작업필요
@@ -152,6 +153,8 @@ function setupClientHandlers(_userId: string): void {
                   "34.47.108.121:2222",
                   `http://localhost:${8080}`,
                   compute.subdomainKey
+                  // compute.deploymentId,
+                  // compute.subdomainName
                 )
                 .then((message) => {
                   console.log(`pgrok started: ${message}`);
