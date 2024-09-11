@@ -2,7 +2,6 @@ import { ipcMain } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Docker from "dockerode";
-import { EventEmitter } from "events";
 import path from "node:path";
 import * as fs from "fs";
 import { Readable } from "stream";
@@ -137,7 +136,7 @@ export async function getContainerMemoryUsage(
 export function handleGetContainerMemoryUsage() {
   ipcMain.handle(
     "get-container-memory-usage",
-    async (event, containerId: string) => {
+    async (_event, containerId: string) => {
       try {
         // getContainerMemoryUsage 함수 호출하여 메모리 사용량 가져옴
         const memoryUsage = await getContainerMemoryUsage(containerId);

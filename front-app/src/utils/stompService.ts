@@ -77,7 +77,7 @@ export async function initializeStompClient(): Promise<Client> {
   }
 }
 
-function setupClientHandlers(userId: string): void {
+function setupClientHandlers(_userId: string): void {
   if (!client) return;
 
   // 1. WebSocket 연결 및 초기 설정
@@ -362,34 +362,42 @@ function handleContianerCommand(
   containerId: string,
   command: string
 ) {
-  switch (command) {
-    case "START":
-      window.electronAPI.startContainer(containerId);
-      break;
-    case "RESTART":
-      window.electronAPI.startContainer(containerId);
-      break;
-    case "DELETE":
-      window.electronAPI.removeContainer(containerId);
-      break;
-    case "STOP":
-      window.electronAPI.stopContainer(containerId);
+  if (deploymentId) {
+    switch (command) {
+      case "START":
+        window.electronAPI.startContainer(containerId);
+        break;
+      case "RESTART":
+        window.electronAPI.startContainer(containerId);
+        break;
+      case "DELETE":
+        window.electronAPI.removeContainer(containerId);
+        break;
+      case "STOP":
+        window.electronAPI.stopContainer(containerId);
 
-      break;
-    default:
-      console.log(`Unknown command: ${command}`);
+        break;
+      default:
+        console.log(`Unknown command: ${command}`);
+    }
   }
 }
 
-// 인스턴스 수정 시 메시지 전송 함수
-function sendInstanceUpdate(deploymentId: string, status: string) {
+// 인스턴스 수정 시=> 도커 이벤트 감지시 메시지 전송 함수
+function sendInstanceUpdate(
+  deploymentId: string,
+  status: string,
+  userId: string
+) {
   const message = {
     status: status, // 가능한 값: "RUNNING", "STOPPED", "DELETED", "PENDING"
     message: "",
   };
 
+  console.log(userId);
   const headers = {
-    "X-USER-ID": "exampleUserId", // 실제 사용자 ID로 대체
+    // "X-USER-ID": userId,
+    "X-USER-ID": "2", // 실제 사용자 ID로 대체
   };
 
   // WebSocket 메시지 전송
