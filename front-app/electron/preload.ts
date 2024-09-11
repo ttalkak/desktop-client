@@ -60,9 +60,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
   downloadAndUnzip: async (
-    repoUrl: string,
-    branch: string,
-    dockerRootDirectory: string
+    repositoryUrl: string,
+    // branch: string,
+    rootDirectory: string
   ): Promise<{
     success: boolean;
     message?: string;
@@ -71,9 +71,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }> => {
     return await ipcRenderer.invoke(
       "download-and-unzip",
-      repoUrl,
-      branch,
-      dockerRootDirectory
+      repositoryUrl,
+      // branch,
+      rootDirectory
     );
   },
 
@@ -159,32 +159,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  //컨테이너별 stats 연결 함수
-  monitorSingleContainer: (containerId: string) =>
-    ipcRenderer.invoke("monitor-single-container", containerId),
-  addContainerStatsListener: (
-    channel: string,
-    listener: (...args: any[]) => void
-  ) => {
-    const validChannels = [
-      "container-stats",
-      "container-error",
-      "container-end",
-    ];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, listener);
-    }
+  //컨테이너별 memory 가져오는 함수
+  async getContainerMemoryUsage(containerId: string) {
+    return ipcRenderer.invoke("get-container-memory-usage", containerId);
   },
-  removeContainerStatsListener: (
-    channel: string,
-    listener: (...args: any[]) => void
-  ) => {
-    ipcRenderer.removeListener(channel, listener);
-  },
-  // removeAllCpuListeners: () => {
-  //   ipcRenderer.removeAllListeners("average-cpu-usage");
-  //   ipcRenderer.removeAllListeners("get-cpu-usage");
-  // },
+
+  //개별 요청 방식
+  startContainerStats: (containerId: string) =>
+    ipcRenderer.invoke("start-container-stats", containerId),
+  stopContainerStats: (containerId: string) =>
+    ipcRenderer.invoke("stop-container-stats", containerId),
+  onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) =>
+    ipcRenderer.on("container-stats-update", (_event, stats) =>
+      callback(stats)
+    ),
+  onContainerStatsError: (callback: (error: ContainerStatsError) => void) =>
+    ipcRenderer.on("container-stats-error", (_event, error) => callback(error)),
+
   //---------------------- 도커 로그
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);

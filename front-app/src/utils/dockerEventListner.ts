@@ -5,9 +5,7 @@ export const registerDockerEventHandlers = (): (() => void) => {
   window.electronAPI.sendDockerEventRequest();
 
   console.log("registerDockerEventHandlers 호출됨");
-  // 추가
-  // const addDockerImage = useDockerStore.getState().addDockerImage;
-  // const addDockerContainer = useDockerStore.getState().addDockerContainer;
+
   //삭제
   const removeDockerImage = useDockerStore.getState().removeDockerImage;
   const removeDockerContainer = useDockerStore.getState().removeDockerContainer;
@@ -56,16 +54,6 @@ export const registerDockerEventHandlers = (): (() => void) => {
   //컨테이너 생성, 시작, 정지, 죽음..? , 재시작, 삭제
   const handleContainerEvent = (event: DockerEvent) => {
     switch (event.Action) {
-      // case "create":
-      //   window.electronAPI.getDockerContainers(true).then((containers) => {
-      //     const container = containers.find((c) => c.Id === event.Actor.ID);
-      //     if (container) {
-      //       addDockerContainer(container);
-      //     } else {
-      //       console.error(`Container with ID ${event.Actor.ID} not found.`);
-      //     }
-      //   });
-      //   break;
       case "start":
         console.log("컨테이너 시작함");
         window.electronAPI.getDockerContainers(true).then((containers) => {
@@ -79,39 +67,44 @@ export const registerDockerEventHandlers = (): (() => void) => {
           }
         });
         break;
-      // case "stop":
-      //   window.electronAPI.getDockerContainers(true).then((containers) => {
-      //     const container = containers.find((c) => c.Id === event.Actor.ID);
-      //     if (container) {
-      //       updateDockerContainer({
-      //         ...container,
-      //         State: { ...container.State, Status: event.status }, // 이벤트에서 받아온 값을 직접 설정
-      //       });
-      //     } else {
-      //       console.error(
-      //         `Container with ID ${event.Actor.ID} not found during stop.`
-      //       );
-      //     }
-      //   });
-      //   break;
 
-      // case "die":
-      //   window.electronAPI.getDockerContainers(true).then((containers) => {
-      //     const container = containers.find((c) => c.Id === event.Actor.ID);
-      //     if (container) {
-      //       updateDockerContainer({
-      //         ...container,
-      //         State: { ...container.State, Status: event.status }, // 이벤트에서 받아온 값을 직접 설정
-      //       });
-      //     } else {
-      //       console.error(
-      //         `Container with ID ${event.Actor.ID} not found during die.`
-      //       );
-      //     }
-      //   });
-      //   break;
+      case "stop":
+        console.log("컨테이너 정지함");
+        window.electronAPI.getDockerContainers(true).then((containers) => {
+          const container = containers.find((c) => c.Id === event.Actor.ID);
+          if (container) {
+            updateDockerContainer({
+              ...container,
+              State: { ...container.State, Status: "stopped" }, // 이벤트에서 받아온 값을 직접 설정
+            });
+          } else {
+            console.error(
+              `Container with ID ${event.Actor.ID} not found during stop.`
+            );
+          }
+        });
+        break;
 
-      case "restart" || "die" || "stop":
+      case "kill":
+        console.log("컨테이너 강제 종료됨");
+        window.electronAPI.getDockerContainers(true).then((containers) => {
+          const container = containers.find((c) => c.Id === event.Actor.ID);
+          if (container) {
+            updateDockerContainer({
+              ...container,
+              State: { ...container.State, Status: "killed" }, // 이벤트에서 받아온 값을 직접 설정
+            });
+          } else {
+            console.error(
+              `Container with ID ${event.Actor.ID} not found during kill.`
+            );
+          }
+        });
+        break;
+
+      case "restart":
+      case "die":
+        console.log("컨테이너 재시작 또는 죽음");
         window.electronAPI.getDockerContainers(true).then((containers) => {
           const updatedContainer = containers.find(
             (c) => c.Id === event.Actor.ID
@@ -123,9 +116,12 @@ export const registerDockerEventHandlers = (): (() => void) => {
           }
         });
         break;
+
       case "destroy":
+        console.log("컨테이너 삭제됨");
         removeDockerContainer(event.Actor.ID);
         break;
+
       default:
         console.log(`Unhandled container action: ${event.Action}`);
     }
@@ -133,7 +129,6 @@ export const registerDockerEventHandlers = (): (() => void) => {
 
   // Docker 이벤트 감지 시작
   window.electronAPI.onDockerEventResponse((event: DockerEvent) => {
-    console.log(event, "Docker Event 감지");
     switch (event.Type) {
       case "container":
         console.log(event, "컨테이너 이벤트 감지");

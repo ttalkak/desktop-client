@@ -33,8 +33,8 @@ const SideNavBar = () => {
     string
   > = {
     running: "text-color-7",
-    "not running": "text-color-8",
-    unknown: "text-color-3",
+    "not running": "text-color-2",
+    unknown: "text-color-2",
   } as const;
 
   const websocketStatusColor: Record<
@@ -42,15 +42,15 @@ const SideNavBar = () => {
     string
   > = {
     connected: "text-color-7",
-    connecting: "text-color-6",
-    disconnected: "text-color-8",
+    connecting: "text-color-2",
+    disconnected: "text-color-2",
   } as const;
 
   const serviceStatusColor: Record<"running" | "loading" | "stopped", string> =
     {
       running: "text-color-7",
-      loading: "text-color-6",
-      stopped: "text-color-8",
+      loading: "text-color-2",
+      stopped: "text-color-2",
     } as const;
 
   const dockerCheckHandler = async () => {
@@ -99,12 +99,6 @@ const SideNavBar = () => {
           start
         </button>
 
-        {!isLoggedIn && (
-          <div className="text-red-500 text-center mt-2">
-            Please log in to start the service.
-          </div>
-        )}
-
         <div className="flex justify-end">
           <FaCircle
             className={`text-tiny mr-1 ${
@@ -130,7 +124,11 @@ const SideNavBar = () => {
             }`}
           />
         </div>
-
+        {!isLoggedIn && (
+          <div className="text-red-500 text-center mt-2 text-sm">
+            Please log in to start the service.
+          </div>
+        )}
         <div className="flex flex-col mt-6">
           <Link to="/" className={`${navText} ${isActive("/")}`}>
             <div className="ml-1">Home</div>

@@ -17,7 +17,8 @@ import {
   // createAndStartContainer,
   registerContainerIpcHandlers,
   handleFindDockerFile,
-  handleMonitorContainersCpuUsage,
+  // handleMonitorContainersCpuUsage,
+  handleGetContainerStatsPeriodic,
 } from "./dockerManager";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
@@ -53,11 +54,11 @@ function registerIpcHandlers() {
   // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
   // createAndStartContainer();
   githubDownLoadAndUnzip();
-  handleMonitorContainersCpuUsage();
+  // handleMonitorContainersCpuUsage();
 
   //컨테이너 생성, 실행, 정지, 삭제
   registerContainerIpcHandlers();
-
+  handleGetContainerStatsPeriodic();
   // pgrok 관련 IPC 핸들러 등록
   registerPgrokIpcHandlers();
 
@@ -124,6 +125,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: true,
       webSecurity: true,
+      nodeIntegrationInWorker: true,
     },
     autoHideMenuBar: true,
   });

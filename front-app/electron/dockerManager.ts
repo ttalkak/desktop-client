@@ -82,7 +82,14 @@ export const handleGetDockerEvent = (): void => {
         stream.on("data", (chunk: Buffer) => {
           try {
             const dockerEvent = JSON.parse(chunk.toString());
-            event.reply("docker-event-response", dockerEvent);
+
+            // 이벤트 필터링: heartbeat 또는 불필요한 이벤트 필터링
+            if (
+              dockerEvent.Type === "container" &&
+              dockerEvent.Action !== "heartbeat"
+            ) {
+              event.reply("docker-event-response", dockerEvent);
+            }
           } catch (parseError) {
             console.error("Error parsing Docker event:", parseError);
             event.reply("docker-event-error", parseError);
@@ -106,121 +113,143 @@ export const handleGetDockerEvent = (): void => {
 };
 
 //------------------- 개별 컨테이너 stats cpu, 디스크 리딩 포함
-export function getContainerStatsStream(containerId: string): EventEmitter {
+
+//1회성 요청, 하나의 컨테이너 stats 가져옴
+
+export async function getContainerMemoryUsage(
+  containerId: string
+): Promise<number> {
   const container = docker.getContainer(containerId);
-  const statsEmitter = new EventEmitter();
 
-  // Docker 컨테이너의 stats를 스트리밍 방식으로 수신
-  container.stats({ stream: true }, (err, stream) => {
-    if (err) {
-      console.error("Error fetching stats:", err);
-      statsEmitter.emit("error", { containerId, error: err });
-      return;
-    }
+  try {
+    // Docker 컨테이너의 stats를 1회성으로 수신
+    const stats = await container.stats({ stream: false });
 
-    // 스트림에서 데이터가 들어올 때마다 이벤트 발생
-    stream?.on("data", (data: Buffer) => {
+    // 메모리 사용량 추출 (stats.memory_stats.usage가 메모리 사용량을 나타냄)
+    const memoryUsage = stats.memory_stats.usage;
+
+    return memoryUsage;
+  } catch (error) {
+    console.error("Error fetching memory usage:", error);
+    throw error;
+  }
+}
+export function handleGetContainerMemoryUsage() {
+  ipcMain.handle(
+    "get-container-memory-usage",
+    async (event, containerId: string) => {
       try {
-        const stats = JSON.parse(data.toString());
-        console.log(stats);
-        // 데이터를 `data` 이벤트로 전달
-        statsEmitter.emit("data", { containerId, stats });
+        // getContainerMemoryUsage 함수 호출하여 메모리 사용량 가져옴
+        const memoryUsage = await getContainerMemoryUsage(containerId);
+        return { success: true, memoryUsage };
       } catch (error) {
-        console.error("Error parsing stats data:", error);
-        statsEmitter.emit("error", { containerId, error });
+        console.error("Failed to get memory usage:", error);
+        return { success: false, error: error };
       }
-    });
-
-    // 스트림에서 오류가 발생할 때
-    stream?.on("error", (err: Error) => {
-      console.error("Stream error:", err);
-      statsEmitter.emit("error", { containerId, error: err });
-    });
-
-    // 스트림이 종료될 때
-    stream?.on("end", () => {
-      statsEmitter.emit("end", { containerId });
-    });
-  });
-
-  // statsEmitter를 반환하여 외부에서 이벤트를 수신할 수 있도록 함
-  return statsEmitter;
+    }
+  );
 }
 
-// export function monitorAllContainersCpuUsage(): void {
-//   docker.listContainers((err, containers) => {
-//     if (!containers || containers.length === 0) {
-//       return;
-//     }
-//     if (err) {
-//       console.error("Error listing containers:", err);
-//       return;
-//     }
+//주기적으로 컨테이너 정보가져오는 함수
+const statsIntervals = new Map<string, NodeJS.Timeout>();
 
-//     let totalCpuUsage = 0;
-//     let containerCount = containers.length;
-//     const mainWindow = BrowserWindow.getAllWindows()[0]; // 첫 번째 창을 가져옴
+export function handleGetContainerStatsPeriodic() {
+  ipcMain.handle(
+    "start-container-stats",
+    async (event, containerId: string) => {
+      console.log(`Starting stats monitoring for container ${containerId}`);
 
-//     containers.forEach((container) => {
-//       const statsEmitter = getContainerStatsStream(container.Id);
+      // 이미 모니터링 중이라면 기존 인터벌 제거
+      if (statsIntervals.has(containerId)) {
+        clearInterval(statsIntervals.get(containerId));
+      }
 
-//       statsEmitter.on(
-//         "data",
-//         ({ containerId, cpuUsagePercent }: CpuUsageData) => {
-//           totalCpuUsage += cpuUsagePercent;
-//           const averageCpuUsage = totalCpuUsage / containerCount;
+      const intervalId = setInterval(async () => {
+        try {
+          const container = docker.getContainer(containerId);
+          const stats = await new Promise((resolve, reject) => {
+            container.stats({ stream: false }, (err, stats) => {
+              if (err) reject(err);
+              else
+                resolve({
+                  cpu_usage: stats?.cpu_stats.cpu_usage.total_usage,
+                  memory_usage: stats?.memory_stats.usage,
+                  container_id: containerId,
+                  blkio_read:
+                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                      (io) => io.op === "Read" // 바이트 수
+                    )?.value ?? 0,
+                  blkio_write:
+                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                      (io) => io.op === "Write" // 바이트 수
+                    )?.value ?? 0,
+                });
+            });
+          });
 
-//           mainWindow.webContents.send("cpu-usage-percent", {
-//             containerId,
-//             cpuUsagePercent,
-//           });
+          console.log(`Fetched stats for container ${containerId}:`, stats);
+          event.sender.send("container-stats-update", stats);
+        } catch (error) {
+          console.error(
+            `Error fetching stats for container ${containerId}:`,
+            error
+          );
+          event.sender.send("container-stats-error", {
+            containerId,
+            error: error,
+          });
+        }
+      }, 60000);
 
-//           mainWindow.webContents.send("average-cpu-usage", {
-//             averageCpuUsage,
-//           });
-//         }
-//       );
+      statsIntervals.set(containerId, intervalId);
+      return {
+        success: true,
+        message: `Started monitoring container ${containerId}`,
+      };
+    }
+  );
 
-//       statsEmitter.on("error", ({ containerId, error }) => {
-//         console.error(`Error in container ${containerId}:`, error);
-//       });
-
-//       statsEmitter.on("end", ({ containerId }) => {
-//         console.log(`Monitoring ended for container ${containerId}`);
-//         containerCount--;
-//         // 종료된 컨테이너의 CPU 사용률을 총합에서 제거
-//         // totalCpuUsage -= 해당 컨테이너의 cpuUsagePercent;
-//       });
-//     });
-//   });
-// }
+  ipcMain.handle("stop-container-stats", (_event, containerId: string) => {
+    if (statsIntervals.has(containerId)) {
+      clearInterval(statsIntervals.get(containerId));
+      statsIntervals.delete(containerId);
+      return {
+        success: true,
+        message: `Stopped monitoring container ${containerId}`,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Container ${containerId} is not being monitored`,
+      };
+    }
+  });
+}
 
 // Docker 컨테이너 CPU 사용량 모니터링 핸들러
-export const handleMonitorContainersCpuUsage = (): void => {
-  ipcMain.handle("monitor-single-container", (event, containerId: string) => {
-    const statsEmitter = getContainerStatsStream(containerId);
+// export const handleMonitorContainersCpuUsage = (): void => {
+//   ipcMain.handle("monitor-single-container", (event, containerId: string) => {
+//     const statsEmitter = getContainerStatsStream(containerId);
 
-    // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("data", (data) => {
-      console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
-      event.sender.send("container-stats", data);
-    });
+//     // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("data", (data) => {
+//       console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
+//       event.sender.send("container-stats", data);
+//     });
 
-    // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("error", (error) => {
-      console.error(`Error for container ${error.containerId}:`, error.error);
-      event.sender.send("container-error", error);
-    });
+//     // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("error", (error) => {
+//       console.error(`Error for container ${error.containerId}:`, error.error);
+//       event.sender.send("container-error", error);
+//     });
 
-    // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("end", (data) => {
-      console.log(`Monitoring ended for container ${data.containerId}`);
-      event.sender.send("container-end", data);
-    });
-
-    // statsEmitter 반환 없이 단순히 이벤트를 처리
-  });
-};
+//     // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("end", (data) => {
+//       console.log(`Monitoring ended for container ${data.containerId}`);
+//       event.sender.send("container-end", data);
+//     });
+//   });
+// };
 
 //----------Docker 이미지 및 컨테이너 Fetch
 
@@ -279,7 +308,7 @@ export const handleFetchDockerContainerList = (all: boolean = false): void => {
   });
 };
 
-//------------------- Docker 컨테이너 로그 스트리밍
+// Docker 컨테이너 로그 스트리밍
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
@@ -368,6 +397,7 @@ export function handleFindDockerFile() {
     }
   });
 }
+
 export async function buildDockerImage(
   contextPath: string,
   dockerfilePath: string,
@@ -379,21 +409,29 @@ export async function buildDockerImage(
 }> {
   const fullTag = `${imageName}:${tag}`;
 
+  // 이미지 목록을 가져옵니다.
   const dockerImages = await docker.listImages();
   const imageInDocker = dockerImages.find((img) =>
     img.RepoTags?.includes(fullTag)
   );
 
-  //이미 목록에 있는 경우
+  // 이미지가 이미 존재하는 경우
   if (imageInDocker) {
-    console.log(`Image ${fullTag} already exists. delete and rebuild`);
-    const imageInspect = await docker.getImage(fullTag).inspect();
-    return { status: "exists", image: imageInspect };
+    console.log(`Image ${fullTag} already exists. Deleting and rebuilding...`);
+
+    // 이미지 삭제
+    const removeResult = await removeImage(fullTag);
+    if (!removeResult.success) {
+      return { status: "failed" };
+    }
+
+    // 삭제 후 다시 빌드
+    console.log(`Rebuilding Docker image ${fullTag}`);
   }
 
   const dockerfileRelativePath = path.basename(dockerfilePath);
-  // console.log("1111.Context Path:", contextPath);
-  // console.log("2222.Dockerfile Relative Path:", dockerfileRelativePath);
+
+  // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: [dockerfileRelativePath] },
@@ -412,6 +450,7 @@ export async function buildDockerImage(
 
   stream.pipe(process.stdout, { end: true });
 
+  // 빌드 결과를 처리합니다.
   return new Promise<{
     status: "success" | "exists" | "failed";
     image?: DockerImage;
@@ -466,13 +505,36 @@ export async function processAndBuildImage(
   }
 }
 
-//이미지 삭제
+// 이미지 삭제 함수
 export const removeImage = async (
   imageId: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const image = docker.getImage(imageId);
-    await image.remove();
+
+    // 먼저 이미지가 사용 중인지 확인
+    const containers = await docker.listContainers({ all: true });
+    const usingContainers = containers.filter(
+      (container) => container.Image === imageId
+    );
+
+    if (usingContainers.length > 0) {
+      console.log(`Image ${imageId} is used by the following containers:`);
+      usingContainers.forEach((container) => {
+        console.log(`Stopping and removing container ${container.Id}`);
+      });
+
+      // 사용 중인 컨테이너 중지 및 삭제
+      for (const container of usingContainers) {
+        const cont = docker.getContainer(container.Id);
+        await cont.stop();
+        await cont.remove();
+        console.log(`Container ${container.Id} removed successfully`);
+      }
+    }
+
+    // 강제 삭제를 시도합니다.
+    await image.remove({ force: true });
     console.log(`Image ${imageId} removed successfully`);
     return { success: true };
   } catch (error) {
@@ -584,15 +646,27 @@ export const createContainer = async (
   }
 };
 
-//컨테이너 실행
 export const startContainer = async (
   containerId: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.start();
-    console.log(`Container ${containerId} started successfully`);
-    return { success: true };
+    const containerInfo = await container.inspect();
+
+    // 컨테이너가 존재하고 실행 중이 아닌 경우에만 시작
+    if (containerInfo.State && containerInfo.State.Status !== "running") {
+      await container.start();
+      console.log(`Container ${containerId} started successfully`);
+      return { success: true };
+    } else if (containerInfo.State.Status === "running") {
+      console.log(`Container ${containerId} is already running`);
+      return { success: true };
+    } else {
+      console.error(
+        `Container ${containerId} is not in a state that can be started`
+      );
+      return { success: false, error: "Container is not in a startable state" };
+    }
   } catch (error) {
     console.error(`Error starting container ${containerId}:`, error);
     return { success: false, error: (error as Error).message };

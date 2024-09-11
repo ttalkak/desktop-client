@@ -3,7 +3,6 @@ import { downloadFile, unzipFile, getTtalkakDirectory } from "./utils";
 import { findDockerfile } from "./dockerManager";
 import { ipcMain } from "electron";
 import fs from "fs";
-import * as url from "url";
 
 export function getProjectSourceDirectory(): string {
   const projectSourceDirectory = path.join(
@@ -24,7 +23,6 @@ export function getProjectSourceDirectory(): string {
 // 다운로드 하고 바로 unzip//도커 파일 경로 반환
 async function downloadAndUnzip(
   repoUrl: string,
-  branch: string = "main",
   dockerRootDirectory?: string
 ): Promise<{
   success: boolean;
@@ -37,16 +35,12 @@ async function downloadAndUnzip(
     const extractDir = getProjectSourceDirectory();
 
     // URL을 파싱하여 경로 부분을 추출
-    const parsedUrl = url.parse(repoUrl);
-    const pathSegments = parsedUrl.pathname?.split("/") || [];
 
-    // "archive" 이전의 부분을 추출하여 레포지토리 이름을 확인
-    const repoName =
-      pathSegments.length > 1
-        ? pathSegments[pathSegments.length - 5]
-        : "unknown-repo";
+    const urlParts = repoUrl.split("/");
+    const branch = urlParts[urlParts.length - 1].split(".")[0];
+    const repoName = urlParts[urlParts.length - 5];
 
-    console.log("reponame", repoName);
+    console.log("reponame", repoName, branch);
 
     const zipFileName = `${repoName}-${branch}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
@@ -107,8 +101,8 @@ ipcMain.handle("get-project-source-directory", async () => {
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(
     "download-and-unzip",
-    async (_, repoUrl: string, branch: string, dockerRootDirectory: string) => {
-      return await downloadAndUnzip(repoUrl, branch, dockerRootDirectory);
+    async (_, repoUrl: string, dockerRootDirectory: string) => {
+      return await downloadAndUnzip(repoUrl, dockerRootDirectory);
     }
   );
 };

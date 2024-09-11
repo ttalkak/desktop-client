@@ -85,7 +85,7 @@ export const createAndStartContainers = async (
   try {
     console.log("Starting createAndStartContainers function");
 
-    let dockerContainers = await window.storeAPI.getAllDockerContainers();
+    let dockerContainers = await window.electronAPI.getDockerContainers(false);
     console.log("Retrieved docker containers:", dockerContainers);
 
     const existingImages = await window.electronAPI.getDockerImages();
