@@ -7,7 +7,7 @@ import { registerDockerEventHandlers } from "./dockerEventListner";
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
-  registerDockerEventHandlers(); //나중에 삭제할거임
+
   try {
     console.log("1. ServiceUtil: Starting service");
     setServiceStatus("loading");

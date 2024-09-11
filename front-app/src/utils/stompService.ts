@@ -136,7 +136,7 @@ function setupClientHandlers(userId: string): void {
                   }); //생성 성공 ping
                 });
 
-                startSendingCurrentState(); //1분 주기로 컨테이너,이미지 갯수 보내줌
+                startSendingCurrentState(); //1분 주기로 컨테이너,이미지, cpu 사용률, 현재 실행중인 컨테이너 보내줌
 
                 window.electronAPI
                   .runPgrok(
@@ -194,7 +194,8 @@ export const disconnectWebSocket = (): void => {
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
-    const usedCompute = await window.electronAPI.getDockerContainers(true);
+    const usedCompute = await getRunningContainers(); //할당받은 컨테이너 중 실제 돌아가는 컨테이너
+    // const usedCompute = await window.electronAPI.getDockerContainers(true);
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
@@ -220,14 +221,14 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   }
 };
 
-//빌드 상태 전달
+//빌드 상태 전달 컨테이너별
 const sendDeploymentStatus = (
   status: string,
   compute: DeploymentCommand,
   details?: any
 ): void => {
   client?.publish({
-    destination: "/pub/compute/deployment-status", //변졍예정
+    destination: "/pub/compute/deployment-status", //변경예정
     body: JSON.stringify({
       status,
       compute,
@@ -237,16 +238,43 @@ const sendDeploymentStatus = (
   });
 };
 
-// 상태를 가져와서 전송하는 함수
+//나에게 할당 된 컨테이너중 실제로 작동중인 컨테이너 목록
+const getRunningContainers = async () => {
+  try {
+    const allContainers = await window.electronAPI.getDockerContainers(true);
+    const dockerStore = useDockerStore.getState();
+
+    // dockerStore에 있는 컨테이너 ID 목록
+    const storeContainerIds = new Set(
+      dockerStore.dockerContainers.map((container) => container.Id)
+    );
+
+    // allContainers에서 dockerStore에 있는 ID와 일치하고 실행 중인 컨테이너만 필터링
+    const runningContainers = allContainers.filter((container) =>
+      storeContainerIds.has(container.Id)
+    );
+
+    return runningContainers;
+  } catch (error) {
+    console.error("Error fetching running containers:", error);
+    throw error;
+  }
+};
+
+// 현재 상태를 가져와서 전송하는 함수
 const sendCurrentState = async () => {
   try {
     const { dockerImages, dockerContainers } = useDockerStore.getState();
     const usedCPU = await window.electronAPI.getCpuUsage();
-
+    const runningContainers = await getRunningContainers();
     const currentState = {
       containerCount: dockerContainers.length,
       imageCount: dockerImages.length,
       cpuUsage: usedCPU,
+      runningContainers: runningContainers.map((container) => ({
+        Id: container.Id,
+      })),
+      runningContainersCount: runningContainers.length,
     };
 
     client?.publish({
@@ -258,7 +286,7 @@ const sendCurrentState = async () => {
     console.error("Error sending current state:", error);
   }
 };
-// 1분마다 상태를 전송하는 함수
+// 1분마다 현재상태를 전송하는 함수
 const startSendingCurrentState = () => {
   console.log("Starting to send current state periodically...");
   sendCurrentState(); // 즉시 호출

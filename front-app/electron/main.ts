@@ -125,6 +125,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: true,
       webSecurity: true,
+      nodeIntegrationInWorker: true,
     },
     autoHideMenuBar: true,
   });
