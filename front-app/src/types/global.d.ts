@@ -4,6 +4,11 @@ export {};
 declare global {
   // 기존 형식
 
+  interface ContainerStatsError {
+    containerId: string;
+    error: string;
+  }
+
   interface ContainerStats {
     container_id: string;
     cpu_usage: number;
@@ -19,6 +24,7 @@ declare global {
     password: string;
     port: number;
   }
+
   export interface DeploymentCommand {
     deploymentId?: string;
     hasDockerImage: boolean;
@@ -114,9 +120,6 @@ declare global {
     findDockerfile: (directory: string) => Promise<string | null>;
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
-    createAndStartContainer: (
-      containerOptions: Dockerode.ContainerCreateOptions
-    ) => Promise<{ success: boolean; containerId: string; error?: string }>;
 
     // Docker 이벤트 감지 및 렌더러 연결
     sendDockerEventRequest: () => void;
@@ -139,17 +142,15 @@ declare global {
     ): Promise<{ success: boolean; memoryUsage?: number; error?: string }>;
 
     // 주기적으로 개별 컨테이너 stats 가져오기
-    startContainerStats: (
-      containerId: string
-    ) => Promise<{ success: boolean; message: string }>;
-    stopContainerStats: (
-      containerId: string
-    ) => Promise<{ success: boolean; message: string }>;
+    startContainerStats: (containerId: string) => Promise<StatsResult>;
+    stopContainerStats: (containerId: string) => Promise<StatsResult>;
     onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
     onContainerStatsError: (
       callback: (error: ContainerStatsError) => void
     ) => void;
+    removeContainerStatsListeners: () => void;
 
+    //CPU 사용률
     getCpuUsage: () => Promise<number>; // 전체 CPU 사용률
     removeAllCpuListeners: () => void; // 컨테이너 cpu 사용률 리스너 제거
     monitorCpuUsage: () => void; // 컨테이너별 cpu 사용률 스트림 가져오는

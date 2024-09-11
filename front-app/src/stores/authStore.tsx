@@ -10,7 +10,7 @@ export interface SettingState {
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
-  userSettings: object | null;
+  userSettings: SettingState | null;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setUserSettings: (settings: SettingState) => void;
   clearTokens: () => void;

@@ -127,6 +127,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   startContainer: (containerId: string) =>
     ipcRenderer.invoke("start-container", containerId),
 
+  removeContainer: (containerId: string, options?: ContainerRemoveOptions) =>
+    ipcRenderer.invoke("remove-container", containerId, options),
+
   removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
   //--------------------- CPU 사용률
@@ -147,7 +150,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => {
     ipcRenderer.on("average-cpu-usage", callback);
   },
-  // 전체 컨테이너들의 사용량
 
   //데스크탑 cpu 사용량
   getCpuUsage: async () => {
@@ -159,12 +161,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  //컨테이너별 memory 가져오는 함수
+  //컨테이너별 memory 가져오는 함수-웹소켓 healthcheck용
   async getContainerMemoryUsage(containerId: string) {
     return ipcRenderer.invoke("get-container-memory-usage", containerId);
   },
 
-  //개별 요청 방식
+  //컨테이너 stats
   startContainerStats: (containerId: string) =>
     ipcRenderer.invoke("start-container-stats", containerId),
   stopContainerStats: (containerId: string) =>
@@ -175,8 +177,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ),
   onContainerStatsError: (callback: (error: ContainerStatsError) => void) =>
     ipcRenderer.on("container-stats-error", (_event, error) => callback(error)),
-
-  //---------------------- 도커 로그
+  removeContainerStatsListeners: () => {
+    ipcRenderer.removeAllListeners("container-stats-update");
+    ipcRenderer.removeAllListeners("container-stats-error");
+  },
+  //도커 로그렌더링
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);
   },
@@ -231,37 +236,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onPgrokLog: (callback: (log: string) => void) => {
     ipcRenderer.on("pgrok-log", (_event, log) => callback(log));
   },
-});
-
-//electron store용 API
-contextBridge.exposeInMainWorld("storeAPI", {
-  initializeStore: (): Promise<void> => ipcRenderer.invoke("initialize-store"),
-
-  getDockerImage: (imageId: string): Promise<DockerImage | undefined> =>
-    ipcRenderer.invoke("get-docker-image", imageId),
-
-  getAllDockerImages: (): Promise<DockerImage[]> =>
-    ipcRenderer.invoke("get-all-docker-images"),
-
-  setDockerImage: (image: DockerImage): Promise<void> =>
-    ipcRenderer.invoke("set-docker-image", image),
-
-  removeDockerImage: (imageId: string): Promise<void> =>
-    ipcRenderer.invoke("remove-docker-image", imageId),
-
-  getDockerContainer: (
-    containerId: string
-  ): Promise<DockerContainer | undefined> =>
-    ipcRenderer.invoke("get-docker-container", containerId),
-
-  getAllDockerContainers: (): Promise<DockerContainer[]> =>
-    ipcRenderer.invoke("get-all-docker-containers"),
-
-  setDockerContainer: (container: DockerContainer): Promise<void> =>
-    ipcRenderer.invoke("set-docker-container", container),
-
-  removeDockerContainer: (containerId: string): Promise<void> =>
-    ipcRenderer.invoke("remove-docker-container", containerId),
 });
 
 // --------- Expose some API to the Renderer process ---------

@@ -2,7 +2,7 @@
 import { useAppStore } from "../stores/appStatusStore";
 import { checkDockerStatus, startDocker } from "./dockerUtils";
 import { connectWebSocket } from "./stompService";
-import { registerDockerEventHandlers } from "./dockerEventListner";
+// import { registerDockerEventHandlers } from "./dockerEventListner";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -25,7 +25,7 @@ export const startService = async () => {
 
     // 2. dockerEvent 감지 시작
     // Docker 이벤트 핸들러 등록
-    registerDockerEventHandlers();
+    // registerDockerEventHandlers();
 
     // 3. WebSocket 연결
     connectWebSocket();

@@ -133,6 +133,8 @@ export async function getContainerMemoryUsage(
     throw error;
   }
 }
+
+//메모리 사용량
 export function handleGetContainerMemoryUsage() {
   ipcMain.handle(
     "get-container-memory-usage",
@@ -224,31 +226,6 @@ export function handleGetContainerStatsPeriodic() {
     }
   });
 }
-
-// Docker 컨테이너 CPU 사용량 모니터링 핸들러
-// export const handleMonitorContainersCpuUsage = (): void => {
-//   ipcMain.handle("monitor-single-container", (event, containerId: string) => {
-//     const statsEmitter = getContainerStatsStream(containerId);
-
-//     // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-//     statsEmitter.on("data", (data) => {
-//       console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
-//       event.sender.send("container-stats", data);
-//     });
-
-//     // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-//     statsEmitter.on("error", (error) => {
-//       console.error(`Error for container ${error.containerId}:`, error.error);
-//       event.sender.send("container-error", error);
-//     });
-
-//     // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-//     statsEmitter.on("end", (data) => {
-//       console.log(`Monitoring ended for container ${data.containerId}`);
-//       event.sender.send("container-end", data);
-//     });
-//   });
-// };
 
 //----------Docker 이미지 및 컨테이너 Fetch
 

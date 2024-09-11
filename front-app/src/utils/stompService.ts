@@ -1,8 +1,9 @@
 import { Client, Message } from "@stomp/stompjs";
-import { useAppStore } from "../stores/appStatusStore";
+import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
-import { useDockerStore } from "../stores/appStatusStore";
+import { registerDockerEventHandlers } from "./dockerEventListner";
 
+// 세션 데이터와 관련된 인터페이스 정의
 interface SessionData {
   userId: number;
   maxCompute: number;
@@ -10,6 +11,7 @@ interface SessionData {
   availablePortEnd: number;
 }
 
+// Compute 연결 요청 관련 인터페이스 정의
 interface ComputeConnectRequest {
   userId: string;
   computerType: string;
@@ -19,12 +21,31 @@ interface ComputeConnectRequest {
   deployments: number;
 }
 
-export let client: Client | null = null;
+// 컨테이너 상태와 관련된 인터페이스 정의
+interface ContainerStats {
+  cpu_usage: number;
+  memory_usage: number;
+  container_id: string;
+  blkio_read: number;
+  blkio_write: number;
+}
 
+// 컨테이너 상태 오류와 관련된 인터페이스 정의
+interface ContainerStatsError {
+  containerId: string;
+  error: string;
+}
+
+export let client: Client; // STOMP 클라이언트를 저장하는 변수
+
+// Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
+let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
+
+// 세션 데이터를 세션 스토리지에서 가져오는 함수
 function getSessionData(): SessionData | null {
   const data = sessionStorage.getItem("userSettings");
   if (!data) return null;
@@ -35,20 +56,18 @@ function getSessionData(): SessionData | null {
   }
 }
 
+// STOMP 클라이언트를 생성하는 함수
 function createStompClient(userId: string): Client {
   console.log("세션 userID", userId);
   return new Client({
-    brokerURL: "wss://ttalkak.com/ws",
+    brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
     connectHeaders: {
-      // "X-USER-ID": userId,
-      "X-USER-ID": "2",
+      "X-USER-ID": userId,
     },
-    // debug: (str) => {
-    //   console.log(new Date(), str);
-    // },
   });
 }
 
+// 세션 데이터가 로드될 때까지 기다리는 함수
 async function waitForSessionData(
   maxAttempts: number = 10,
   interval: number = 1000
@@ -58,11 +77,12 @@ async function waitForSessionData(
     if (sessionData && sessionData.userId) {
       return sessionData;
     }
-    await new Promise((resolve) => setTimeout(resolve, interval));
+    await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
   }
   throw new Error("Failed to get session data after maximum attempts");
 }
 
+// STOMP 클라이언트를 초기화하는 함수
 export async function initializeStompClient(): Promise<Client> {
   try {
     const sessionData = await waitForSessionData();
@@ -77,34 +97,31 @@ export async function initializeStompClient(): Promise<Client> {
   }
 }
 
+// STOMP 클라이언트에 이벤트 핸들러를 설정하는 함수-----------------------------
 function setupClientHandlers(_userId: string): void {
   if (!client) return;
 
-  // 1. WebSocket 연결 및 초기 설정
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
-    //2. 연결이후 메세지 보냄
-    sendComputeConnectMessage("2");
+    sendComputeConnectMessage("2"); // 연결 시 Compute 연결 메시지 전송
+    registerDockerEventHandlers(client, "2"); // Docker 이벤트 핸들러 등록
 
-    //업데이트요청 구독
-    client?.subscribe(`/sub/compute-update/2`, async (message) => {
-      // 수신한 메시지 처리 로직 작성
+    // 컴퓨트 업데이트 구독
+    client.subscribe(`/sub/compute-update/2`, async (message) => {
       const commands = JSON.parse(message.body);
       console.log("Received updateCommand:", commands);
     });
 
-    //3.현재 state ping 1분에 한번씩 보냄
-    startSendingCurrentState();
+    startSendingCurrentState(); // 현재 상태 전송 시작
 
-    //4. 생성요청 구독
-    client?.subscribe(`/sub/compute-create/2`, async (message: Message) => {
-      //도커 이벤트 핸들러 등록
+    // 컴퓨트 생성 구독
+    client.subscribe(`/sub/compute-create/2`, async (message: Message) => {
       const computes = JSON.parse(message.body);
       console.log(computes);
       computes.forEach(async (compute: DeploymentCommand) => {
         if (compute.hasDockerImage) {
-          //Docker 이미지가 이미 있을 경우=> 추가 작업필요
+          // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
         } else {
           // 이미지가 없을 경우 빌드
           const inboundPort = 80;
@@ -113,7 +130,6 @@ function setupClientHandlers(_userId: string): void {
           const { success, dockerfilePath, contextPath } =
             await window.electronAPI.downloadAndUnzip(
               compute.sourceCodeLink,
-              // compute.branch,
               compute.dockerRootDirectory
             );
           if (success) {
@@ -124,11 +140,10 @@ function setupClientHandlers(_userId: string): void {
             console.log(`도커 파일 위치임 ${dockerfilePath}`);
             if (!image) {
               console.log(`이미지 생성 실패`);
-              sendDeploymentStatus("image_creation_failed", compute); //이미지생성실패 웹소켓
+              sendDeploymentStatus("image_creation_failed", compute);
             } else {
               addDockerImage(image);
               sendDeploymentStatus("image_created", compute, {
-                //이미지 생성 성공 소켓
                 imageId: image.Id,
               });
               const containers = await createAndStartContainers(
@@ -136,25 +151,20 @@ function setupClientHandlers(_userId: string): void {
                 inboundPort,
                 outboundPort
               );
-              // 배열값
               containers.forEach((container) => {
                 addDockerContainer(container);
-                // 컨테이너가 성공적으로 생성 및 실행된 이후 stats를 주기적으로 가져오기 시작
                 window.electronAPI.startContainerStats(container.Id);
                 sendDeploymentStatus("container_created", compute, {
                   containerId: container.Id,
-                }); //생성 성공 ping
+                });
               });
-
-              startSendingCurrentState(); //1분 주기로 컨테이너,이미지, cpu 사용률, 현재 실행중인 컨테이너 보내줌
-
+              startContainerStatsMonitoring();
+              // pgrok 시작
               window.electronAPI
                 .runPgrok(
                   "34.47.108.121:2222",
                   `http://localhost:${8080}`,
                   compute.subdomainKey
-                  // compute.deploymentId,
-                  // compute.subdomainName
                 )
                 .then((message) => {
                   console.log(`pgrok started: ${message}`);
@@ -180,8 +190,14 @@ function setupClientHandlers(_userId: string): void {
     console.error("Additional details: " + frame.body);
     setWebsocketStatus("disconnected");
   };
+
+  client.onDisconnect = () => {
+    console.log("Disconnected");
+    stopContainerStatsMonitoring(); // 연결 해제 시 컨테이너 모니터링 중지
+  };
 }
 
+// WebSocket 연결 함수
 export const connectWebSocket = async (): Promise<void> => {
   try {
     await initializeStompClient();
@@ -194,34 +210,35 @@ export const connectWebSocket = async (): Promise<void> => {
   }
 };
 
+// WebSocket 연결 해제 함수
 export const disconnectWebSocket = (): void => {
   if (client) {
     client.deactivate();
     console.log("웹소켓 연결 종료");
     setWebsocketStatus("disconnected");
+    stopContainerStatsMonitoring();
   }
 };
 
-//2. 최초 연결시 보내는 코드
+// Compute 연결 메시지를 전송하는 함수
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
-    const usedCPU = await window.electronAPI.getCpuUsage(); //
+    const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const usedCompute = useDockerStore.getState().dockerContainers.length;
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
-    const runningContainers = await getRunningContainers(); //할당받은 컨테이너 중 실제 돌아가는 컨테이너
+    const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
 
     const createComputeRequest: ComputeConnectRequest = {
-      // userId: userId,
       userId: "2",
-      computerType: platform, //OS 종류
-      usedCompute: usedCompute || 0, //할당받은 컨테이너량
-      usedMemory: totalUsedMemory || 0, //할당받은 컨테이너중 작동하는 컨테이너 메모리 + 이미지들 메모리
-      usedCPU: usedCPU || 0, //전체 CPU 사용량
-      deployments: runningContainers.length || 0, //할당받은 것중 작동중인 컨테이너
+      computerType: platform,
+      usedCompute: usedCompute || 0,
+      usedMemory: totalUsedMemory || 0,
+      usedCPU: usedCPU || 0,
+      deployments: runningContainers.length || 0,
     };
 
     client?.publish({
@@ -234,14 +251,14 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   }
 };
 
-//4. 빌드 상태 전달 컨테이너별
+// 배포 상태 메시지를 전송하는 함수
 const sendDeploymentStatus = (
   status: string,
   compute: DeploymentCommand,
   details?: any
 ): void => {
   client?.publish({
-    destination: "/pub/compute/deployment-status", //변경예정
+    destination: "/pub/compute/deployment-status",
     body: JSON.stringify({
       status,
       compute,
@@ -251,22 +268,17 @@ const sendDeploymentStatus = (
   });
 };
 
-//나에게 할당 된 컨테이너중 실제로 작동중인 컨테이너 목록
+// 실행 중인 컨테이너 목록을 가져오는 함수
 const getRunningContainers = async () => {
   try {
     const allContainers = await window.electronAPI.getDockerContainers(true);
     const dockerStore = useDockerStore.getState();
-
-    // dockerStore에 있는 컨테이너 ID 목록
     const storeContainerIds = new Set(
       dockerStore.dockerContainers.map((container) => container.Id)
     );
-
-    // allContainers에서 dockerStore에 있는 ID와 일치하고 실행 중인 컨테이너만 필터링
     const runningContainers = allContainers.filter((container) =>
       storeContainerIds.has(container.Id)
     );
-
     return runningContainers;
   } catch (error) {
     console.error("Error fetching running containers:", error);
@@ -274,19 +286,16 @@ const getRunningContainers = async () => {
   }
 };
 
-//핑 데이터 전송을 위한 현재 실행중인 컨테이너 메모리 계산
+// 모든 실행 중인 컨테이너의 메모리 사용량을 합산하는 함수
 async function getTotalMemoryUsage(
   runningContainers: DockerContainer[]
 ): Promise<number> {
   try {
-    // 모든 컨테이너에 대해 getContainerMemoryUsage 호출
     const memoryUsages = await Promise.all(
       runningContainers.map((container) =>
         window.electronAPI.getContainerMemoryUsage(container.Id)
       )
     );
-
-    // 메모리 사용량 합산
     const totalMemoryUsage = memoryUsages.reduce((acc, usage) => {
       if (usage.success && usage.memoryUsage !== undefined) {
         return acc + usage.memoryUsage;
@@ -295,7 +304,6 @@ async function getTotalMemoryUsage(
         return acc;
       }
     }, 0);
-
     return totalMemoryUsage;
   } catch (error) {
     console.error("Error calculating total memory usage:", error);
@@ -303,11 +311,11 @@ async function getTotalMemoryUsage(
   }
 }
 
-//3. 실시간 핑 데이터 (헬스체크)
+// 현재 상태를 WebSocket을 통해 전송하는 함수
 const sendCurrentState = async () => {
   try {
-    const platform = await window.electronAPI.getOsType(); //
-    const usedCPU = await window.electronAPI.getCpuUsage(); //
+    const platform = await window.electronAPI.getOsType();
+    const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
     const runningContainers = await getRunningContainers();
@@ -315,13 +323,12 @@ const sendCurrentState = async () => {
     const totalUsedMemory = totalSize + containerMemoryUsage;
 
     const currentState = {
-      // userId: userId,
       userId: "2",
-      computerType: platform, //OS 종류
-      usedCompute: runningContainers.length, //할당받은것중 현재 실행중인
-      usedMemory: totalUsedMemory, //총 메모리 사용량(할당받은)
-      usedCPU: usedCPU, // 현재 CPU 사용량
-      deployments: [], // 배포중인 deployments ID
+      computerType: platform,
+      usedCompute: runningContainers.length,
+      usedMemory: totalUsedMemory,
+      usedCPU: usedCPU,
+      deployments: [],
     };
 
     client?.publish({
@@ -334,81 +341,138 @@ const sendCurrentState = async () => {
   }
 };
 
-let intervalId: NodeJS.Timeout | null = null;
+let intervalId: NodeJS.Timeout | null = null; // 상태 전송 주기를 관리하는 변수
 
-// 1분마다 현재상태를 전송하는 함수
+// 주기적으로 현재 상태를 전송하기 시작하는 함수
 const startSendingCurrentState = () => {
   console.log("Starting to send current state periodically...");
-  sendCurrentState(); // 즉시 호출
+  sendCurrentState();
   intervalId = setInterval(() => {
     console.log("Sending current state...");
     sendCurrentState();
-  }, 60000); // 1분 (60,000ms)마다 호출
+  }, 60000); // 60초마다 전송
 };
 
-//사용 안할수도 있음
+// 주기적으로 현재 상태 전송을 중지하는 함수
 export const stopSendingCurrentState = () => {
   if (intervalId) {
-    clearInterval(intervalId); // 인터벌 삭제
+    clearInterval(intervalId);
     console.log("Stopped sending current state.");
-    intervalId = null; // intervalId 초기화
+    intervalId = null;
   }
 };
 
+// 주기적으로 컨테이너 상태를 체크하는 함수 시작
+function startPeriodicContainerCheck() {
+  checkAndUpdateContainerMonitoring();
+  containerCheckInterval = setInterval(
+    checkAndUpdateContainerMonitoring,
+    60000
+  );
+}
+
+// 주기적으로 컨테이너 상태 체크를 중지하는 함수
+function stopPeriodicContainerCheck() {
+  if (containerCheckInterval) {
+    clearInterval(containerCheckInterval);
+    containerCheckInterval = null;
+  }
+}
+
+// 컨테이너 모니터링을 업데이트하는 함수
+async function checkAndUpdateContainerMonitoring() {
+  const dockerStore = useDockerStore.getState();
+  const currentContainers = new Set(
+    dockerStore.dockerContainers.map((c) => c.Id)
+  );
+
+  // 실제 실행 중인 모든 컨테이너 가져오기
+  const allRunningContainers = await window.electronAPI.getDockerContainers(
+    true
+  );
+  const allRunningContainerIds = new Set(allRunningContainers.map((c) => c.Id));
+
+  // 현재 Store에 있는 컨테이너 중에서 실행 중인 컨테이너만 필터링
+  const monitoredRunningContainers = allRunningContainers.filter((container) =>
+    currentContainers.has(container.Id)
+  );
+
+  // 새로운 컨테이너 모니터링 시작
+  monitoredRunningContainers.forEach((container) => {
+    if (!currentContainers.has(container.Id)) {
+      window.electronAPI
+        .startContainerStats(container.Id)
+        .then((result) => console.log(result.message))
+        .catch((error) =>
+          console.error("Failed to start container stats:", error)
+        );
+    }
+  });
+
+  // 현재 Store에 있는 컨테이너 중 더 이상 실행 중이지 않은 컨테이너 모니터링 중지
+  dockerStore.dockerContainers.forEach((container) => {
+    if (!allRunningContainerIds.has(container.Id)) {
+      window.electronAPI
+        .stopContainerStats(container.Id)
+        .then((result) => console.log(result.message))
+        .catch((error) =>
+          console.error("Failed to stop container stats:", error)
+        );
+    }
+  });
+  // dockerStore.setDockerContainers(monitoredRunningContainers);
+  // 스토어 업데이트를 제거했으므로, 여기서는 더 이상 스토어를 업데이트하지 않습니다.
+}
+
+// 컨테이너 상태 모니터링을 시작하는 함수
+function startContainerStatsMonitoring() {
+  window.electronAPI.onContainerStatsUpdate(handleContainerStats);
+  window.electronAPI.onContainerStatsError(handleContainerStatsError);
+  startPeriodicContainerCheck();
+}
+
+// 컨테이너 상태 모니터링을 중지하는 함수
+function stopContainerStatsMonitoring() {
+  stopPeriodicContainerCheck();
+  window.electronAPI.removeContainerStatsListeners();
+  useDockerStore.getState().dockerContainers.forEach((container) => {
+    window.electronAPI
+      .stopContainerStats(container.Id)
+      .then((result) => console.log(result.message))
+      .catch((error) =>
+        console.error("Failed to stop container stats:", error)
+      );
+  });
+}
+
+// 컨테이너 상태 업데이트를 처리하는 함수
+function handleContainerStats(stats: ContainerStats) {
+  sendStatsToWebSocket(stats);
+}
+
+// 컨테이너 상태 오류를 처리하는 함수
+function handleContainerStatsError(error: ContainerStatsError) {
+  console.error("Container stats error:", error);
+}
+
+// 컨테이너 상태를 WebSocket으로 전송하는 함수
+function sendStatsToWebSocket(stats: ContainerStats) {
+  if (client && client.connected) {
+    client.publish({
+      destination: `/pub/compute/${stats.container_id}/stats`,
+      headers: { "X-USER-ID": "2" },
+      body: JSON.stringify(stats),
+    });
+  }
+}
+
+// STOMP 클라이언트를 반환하는 함수
 export function getStompClient(): Client | null {
   return client;
 }
 
-// compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
-function handleContianerCommand(
-  deploymentId: string,
-  containerId: string,
-  command: string
-) {
-  if (deploymentId) {
-    switch (command) {
-      case "START":
-        window.electronAPI.startContainer(containerId);
-        break;
-      case "RESTART":
-        window.electronAPI.startContainer(containerId);
-        break;
-      case "DELETE":
-        window.electronAPI.removeContainer(containerId);
-        break;
-      case "STOP":
-        window.electronAPI.stopContainer(containerId);
-
-        break;
-      default:
-        console.log(`Unknown command: ${command}`);
-    }
-  }
-}
-
-// 인스턴스 수정 시=> 도커 이벤트 감지시 메시지 전송 함수
-function sendInstanceUpdate(
-  deploymentId: string,
-  status: string,
-  userId: string
-) {
-  const message = {
-    status: status, // 가능한 값: "RUNNING", "STOPPED", "DELETED", "PENDING"
-    message: "",
-  };
-
-  console.log(userId);
-  const headers = {
-    // "X-USER-ID": userId,
-    "X-USER-ID": "2", // 실제 사용자 ID로 대체
-  };
-
-  // WebSocket 메시지 전송
-  client?.publish({
-    destination: `/pub/compute/${deploymentId}/status`,
-    headers: headers,
-    body: JSON.stringify(message),
-  });
-
-  console.log(`Message sent for deploymentId ${deploymentId}:`, message);
+// 클린업 함수: 컨테이너 모니터링과 상태 전송을 중지
+export function cleanup() {
+  stopContainerStatsMonitoring();
+  stopSendingCurrentState();
 }

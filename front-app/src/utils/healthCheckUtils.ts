@@ -1,89 +1,111 @@
-import { client } from "./stompService";
+import { useDockerStore } from "../stores/appStatusStore";
+import { Client } from "@stomp/stompjs";
 
-interface DockerStoreState {
-  state: {
-    dockerImages: DockerImage[];
-    dockerContainers: DockerContainer[];
-  };
-  version: number;
+interface ContainerStats {
+  cpu_usage: number;
+  memory_usage: number;
+  container_id: string;
+  blkio_read: number;
+  blkio_write: number;
 }
 
-export const sendContainersHealthCheck = () => {
-  console.log("컨테이너 상태 모니터링 시작");
+interface ContainerStatsError {
+  containerId: string;
+  error: string;
+}
 
-  if (!client || !client.connected) {
-    console.error(
-      "STOMP client is not initialized or not connected. Health check aborted."
-    );
-    return;
+let containerCheckInterval: NodeJS.Timeout | null = null;
+
+// 컨테이너 상태 업데이트를 처리하는 함수
+export function handleContainerStats(client: Client, stats: ContainerStats) {
+  sendStatsToWebSocket(client, stats);
+}
+
+// 컨테이너 상태 오류를 처리하는 함수
+export function handleContainerStatsError(error: ContainerStatsError) {
+  console.error("Container stats error:", error);
+}
+
+// 컨테이너 상태를 WebSocket으로 전송하는 함수
+export function sendStatsToWebSocket(client: Client, stats: ContainerStats) {
+  if (client && client.connected) {
+    client.publish({
+      destination: `/pub/compute/${stats.container_id}/stats`,
+      headers: { "X-USER-ID": "2" },
+      body: JSON.stringify(stats),
+    });
   }
+}
 
-  const storedDockerData = sessionStorage.getItem("dockerStore");
-  if (!storedDockerData) {
-    console.error("No docker data found in sessionStorage");
-    return;
-  }
+// 컨테이너 상태 모니터링을 시작하는 함수
+export function startContainerStatsMonitoring(client: Client) {
+  window.electronAPI.onContainerStatsUpdate(handleContainerStats);
+  window.electronAPI.onContainerStatsError(handleContainerStatsError);
+  startPeriodicContainerCheck(client);
+}
 
-  const dockerStore: DockerStoreState = JSON.parse(storedDockerData);
-  const containers = dockerStore.state.dockerContainers;
-  console.log("모니터링할 컨테이너들:", containers);
-
-  containers.forEach((container: DockerContainer) => {
+// 컨테이너 상태 모니터링을 중지하는 함수
+export function stopContainerStatsMonitoring() {
+  stopPeriodicContainerCheck();
+  window.electronAPI.removeContainerStatsListeners();
+  useDockerStore.getState().dockerContainers.forEach((container) => {
     window.electronAPI
-      .getContainerStats(container.Id)
-      .then((stats) => {
-        console.log(`Container ${container.Id}의 stats:`, stats);
-        console.log(
-          `Monitoring CPU usage for container ${container.Id} started`
-        );
-
-        const parsedStats = parseContainerStats(stats);
-        console.log(`Parsed stats for container ${container.Id}:`, parsedStats);
-
-        client?.publish({
-          destination: "/pub/container/stats",
-          body: JSON.stringify({
-            containerId: container.Id,
-            ...parsedStats,
-          }),
-        });
-      })
-      .catch((error) => {
-        console.error(`Error monitoring container ${container.Id}:`, error);
-      });
+      .stopContainerStats(container.Id)
+      .then((result) => console.log(result.message))
+      .catch((error) =>
+        console.error("Failed to stop container stats:", error)
+      );
   });
-};
+}
 
-function parseContainerStats(stats: any) {
-  console.log("Parsing stats:", stats);
+// 주기적으로 컨테이너 상태를 체크하는 함수 시작
+function startPeriodicContainerCheck(client: Client) {
+  checkAndUpdateContainerMonitoring(client);
+  containerCheckInterval = setInterval(
+    () => checkAndUpdateContainerMonitoring(client),
+    30000
+  );
+}
 
-  const cpuDelta =
-    stats.cpu_stats.cpu_usage.total_usage -
-    stats.precpu_stats.cpu_usage.total_usage;
-  const systemCpuDelta =
-    stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
-  const numberOfCpus = stats.cpu_stats.online_cpus;
-  const cpuUsage = (cpuDelta / systemCpuDelta) * numberOfCpus * 100;
+// 주기적으로 컨테이너 상태 체크를 중지하는 함수
+function stopPeriodicContainerCheck() {
+  if (containerCheckInterval) {
+    clearInterval(containerCheckInterval);
+    containerCheckInterval = null;
+  }
+}
 
-  console.log("CPU Usage Calculated:", cpuUsage);
+// 컨테이너 모니터링을 업데이트하는 함수
+async function checkAndUpdateContainerMonitoring(client: Client) {
+  const dockerStore = useDockerStore.getState();
+  const currentContainers = new Set(
+    dockerStore.dockerContainers.map((c) => c.Id)
+  );
 
-  const blkioStats = stats.blkio_stats.io_service_bytes_recursive;
-  const diskRead = blkioStats
-    .filter((io: any) => io.op === "Read")
-    .reduce((acc: number, io: any) => acc + io.value, 0);
-  const diskWrite = blkioStats
-    .filter((io: any) => io.op === "Write")
-    .reduce((acc: number, io: any) => acc + io.value, 0);
+  const newContainers = await window.electronAPI.getDockerContainers(true);
+  const newContainerIds = new Set(newContainers.map((c) => c.Id));
 
-  console.log("Disk Read:", diskRead, "Disk Write:", diskWrite);
+  newContainers.forEach((container) => {
+    if (!currentContainers.has(container.Id)) {
+      window.electronAPI
+        .startContainerStats(container.Id)
+        .then((result) => console.log(result.message))
+        .catch((error) =>
+          console.error("Failed to start container stats:", error)
+        );
+    }
+  });
 
-  const status = stats.state.Status;
-  console.log("Container Status:", status);
+  currentContainers.forEach((containerId) => {
+    if (!newContainerIds.has(containerId)) {
+      window.electronAPI
+        .stopContainerStats(containerId)
+        .then((result) => console.log(result.message))
+        .catch((error) =>
+          console.error("Failed to stop container stats:", error)
+        );
+    }
+  });
 
-  return {
-    cpuUsage: cpuUsage.toFixed(2),
-    diskRead,
-    diskWrite,
-    status,
-  };
+  dockerStore.setDockerContainers(newContainers);
 }
