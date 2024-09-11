@@ -61,7 +61,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("get-project-source-directory"),
   downloadAndUnzip: async (
     repositoryUrl: string,
-    branch: string,
+    // branch: string,
     rootDirectory: string
   ): Promise<{
     success: boolean;
@@ -72,7 +72,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return await ipcRenderer.invoke(
       "download-and-unzip",
       repositoryUrl,
-      branch,
+      // branch,
       rootDirectory
     );
   },
@@ -159,7 +159,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
-  //컨테이너별 stats 연결 함수
+  //컨테이너별 memory 가져오는 함수
+  async getContainerMemoryUsage(containerId: string) {
+    return ipcRenderer.invoke("get-container-memory-usage", containerId);
+  },
 
   //개별 요청 방식
   startContainerStats: (containerId: string) =>

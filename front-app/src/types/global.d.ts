@@ -132,7 +132,12 @@ declare global {
     stopLogStream: (containerId: string) => void;
     clearLogListeners: () => void;
 
-    // 개별 컨테이너 stats 가져오기
+    //1회성 컨테이너 메모리 가져오기
+    getContainerMemoryUsage(
+      containerId: string
+    ): Promise<{ success: boolean; memoryUsage?: number; error?: string }>;
+
+    // 주기적으로 개별 컨테이너 stats 가져오기
     startContainerStats: (
       containerId: string
     ) => Promise<{ success: boolean; message: string }>;
@@ -144,49 +149,9 @@ declare global {
       callback: (error: ContainerStatsError) => void
     ) => void;
 
-    // getContainerStats(containerId: string): Promise<any>;
-    // stopContainerStats(intervalId: NodeJS.Timeout): void;
-    //1회성 요청 방식
-    // getContainerStats: (containerId: string) => Promise<void>;
-    // onContainerStats: (
-    //   callback: (
-    //     event: Electron.IpcRendererEvent,
-    //     data: { containerId: string; stats: any }
-    //   ) => void
-    // ) => void;
-    // removeContainerStatsListener: (
-    //   callback: (
-    //     event: Electron.IpcRendererEvent,
-    //     data: { containerId: string; stats: any }
-    //   ) => void
-    // ) => void;
-    //스트림 방식
-    // monitorSingleContainer: (containerId: string) => Promise<void>;
-    // addContainerStatsListener: (
-    //   channel: string,
-    //   listener: (...args: any[]) => void
-    // ) => void;
-    // removeContainerStatsListener: (
-    //   channel: string,
-    //   listener: (...args: any[]) => void
-    // ) => void;
     getCpuUsage: () => Promise<number>; // 전체 CPU 사용률
     removeAllCpuListeners: () => void; // 컨테이너 cpu 사용률 리스너 제거
     monitorCpuUsage: () => void; // 컨테이너별 cpu 사용률 스트림 가져오는
-    //아래 두개 무시하기
-    // onCpuUsagePercent: (
-    //   callback: (
-    //     event: Electron.IpcRendererEvent,
-    //     data: { containerId: string; cpuUsagePercent: number }
-    //   ) => void
-    // ) => void;
-
-    // onAverageCpuUsage: (
-    //   callback: (
-    //     event: Electron.IpcRendererEvent,
-    //     data: { averageCpuUsage: number }
-    //   ) => void
-    // ) => void;
 
     // 기타 기능들
     getInboundRules: () => Promise<string>;
@@ -205,7 +170,7 @@ declare global {
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       sourceCodeLink: string,
-      branch: string,
+      // branch: string,
       dockerRootDirectory: string
     ) => Promise<{
       success: boolean;
@@ -258,23 +223,7 @@ declare global {
     ) => Promise<{ success: boolean; error?: string }>;
   }
 
-  //일렉트론 store 용 API 타입 지정
-  interface storeAPI {
-    initializeStore(): Promise<void>;
-    getDockerImage(imageId: string): Promise<DockerImage | undefined>;
-    getAllDockerImages(): Promise<DockerImage[]>;
-    setDockerImage(image: DockerImage): Promise<void>;
-    removeDockerImage(imageId: string): Promise<void>;
-
-    getDockerContainer(
-      containerId: string
-    ): Promise<DockerContainer | undefined>;
-    getAllDockerContainers(): Promise<DockerContainer[]>;
-    setDockerContainer(container: DockerContainer): Promise<void>;
-    removeDockerContainer(containerId: string): Promise<void>;
-  }
   interface Window {
     electronAPI: ElectronAPI; // Electron API 인터페이스 지정
-    storeAPI: storeAPI;
   }
 }

@@ -17,7 +17,7 @@ import {
   // createAndStartContainer,
   registerContainerIpcHandlers,
   handleFindDockerFile,
-  handleMonitorContainersCpuUsage,
+  // handleMonitorContainersCpuUsage,
   handleGetContainerStatsPeriodic,
 } from "./dockerManager";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
@@ -54,7 +54,7 @@ function registerIpcHandlers() {
   // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
   // createAndStartContainer();
   githubDownLoadAndUnzip();
-  handleMonitorContainersCpuUsage();
+  // handleMonitorContainersCpuUsage();
 
   //컨테이너 생성, 실행, 정지, 삭제
   registerContainerIpcHandlers();

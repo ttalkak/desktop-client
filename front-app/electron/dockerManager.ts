@@ -113,47 +113,46 @@ export const handleGetDockerEvent = (): void => {
 };
 
 //------------------- 개별 컨테이너 stats cpu, 디스크 리딩 포함
-export function getContainerStatsStream(containerId: string): EventEmitter {
+
+//1회성 요청, 하나의 컨테이너 stats 가져옴
+
+export async function getContainerMemoryUsage(
+  containerId: string
+): Promise<number> {
   const container = docker.getContainer(containerId);
-  const statsEmitter = new EventEmitter();
 
-  // Docker 컨테이너의 stats를 스트리밍 방식으로 수신
-  container.stats({ stream: true }, (err, stream) => {
-    if (err) {
-      console.error("Error fetching stats:", err);
-      statsEmitter.emit("error", { containerId, error: err });
-      return;
-    }
+  try {
+    // Docker 컨테이너의 stats를 1회성으로 수신
+    const stats = await container.stats({ stream: false });
 
-    // 스트림에서 데이터가 들어올 때마다 이벤트 발생
-    stream?.on("data", (data: Buffer) => {
-      try {
-        const stats = JSON.parse(data.toString());
-        console.log(stats);
-        // 데이터를 `data` 이벤트로 전달
-        statsEmitter.emit("data", { containerId, stats });
-      } catch (error) {
-        console.error("Error parsing stats data:", error);
-        statsEmitter.emit("error", { containerId, error });
-      }
-    });
+    // 메모리 사용량 추출 (stats.memory_stats.usage가 메모리 사용량을 나타냄)
+    const memoryUsage = stats.memory_stats.usage;
 
-    // 스트림에서 오류가 발생할 때
-    stream?.on("error", (err: Error) => {
-      console.error("Stream error:", err);
-      statsEmitter.emit("error", { containerId, error: err });
-    });
-
-    // 스트림이 종료될 때
-    stream?.on("end", () => {
-      statsEmitter.emit("end", { containerId });
-    });
-  });
-
-  // statsEmitter를 반환하여 외부에서 이벤트를 수신할 수 있도록 함
-  return statsEmitter;
+    return memoryUsage;
+  } catch (error) {
+    console.error("Error fetching memory usage:", error);
+    throw error;
+  }
 }
+export function handleGetContainerMemoryUsage() {
+  ipcMain.handle(
+    "get-container-memory-usage",
+    async (event, containerId: string) => {
+      try {
+        // getContainerMemoryUsage 함수 호출하여 메모리 사용량 가져옴
+        const memoryUsage = await getContainerMemoryUsage(containerId);
+        return { success: true, memoryUsage };
+      } catch (error) {
+        console.error("Failed to get memory usage:", error);
+        return { success: false, error: error };
+      }
+    }
+  );
+}
+
+//주기적으로 컨테이너 정보가져오는 함수
 const statsIntervals = new Map<string, NodeJS.Timeout>();
+
 export function handleGetContainerStatsPeriodic() {
   ipcMain.handle(
     "start-container-stats",
@@ -228,29 +227,29 @@ export function handleGetContainerStatsPeriodic() {
 }
 
 // Docker 컨테이너 CPU 사용량 모니터링 핸들러
-export const handleMonitorContainersCpuUsage = (): void => {
-  ipcMain.handle("monitor-single-container", (event, containerId: string) => {
-    const statsEmitter = getContainerStatsStream(containerId);
+// export const handleMonitorContainersCpuUsage = (): void => {
+//   ipcMain.handle("monitor-single-container", (event, containerId: string) => {
+//     const statsEmitter = getContainerStatsStream(containerId);
 
-    // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("data", (data) => {
-      console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
-      event.sender.send("container-stats", data);
-    });
+//     // statsEmitter에서 'data' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("data", (data) => {
+//       console.log(`Container ID: ${data.containerId}, Stats:`, data.stats);
+//       event.sender.send("container-stats", data);
+//     });
 
-    // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("error", (error) => {
-      console.error(`Error for container ${error.containerId}:`, error.error);
-      event.sender.send("container-error", error);
-    });
+//     // statsEmitter에서 'error' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("error", (error) => {
+//       console.error(`Error for container ${error.containerId}:`, error.error);
+//       event.sender.send("container-error", error);
+//     });
 
-    // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
-    statsEmitter.on("end", (data) => {
-      console.log(`Monitoring ended for container ${data.containerId}`);
-      event.sender.send("container-end", data);
-    });
-  });
-};
+//     // statsEmitter에서 'end' 이벤트 발생 시 IPC를 통해 클라이언트에 전달
+//     statsEmitter.on("end", (data) => {
+//       console.log(`Monitoring ended for container ${data.containerId}`);
+//       event.sender.send("container-end", data);
+//     });
+//   });
+// };
 
 //----------Docker 이미지 및 컨테이너 Fetch
 
