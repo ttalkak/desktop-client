@@ -15,7 +15,7 @@ export const registerDockerEventHandlers = (
   const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
   function sendInstanceUpdate(
-    deploymentId: string,
+    deploymentId: number,
     status?: string,
     details?: string
   ) {

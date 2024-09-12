@@ -15,7 +15,10 @@ const StatusDisplay = () => {
   const userSettings = useAuthStore((state) => state.userSettings);
   const [isUpdating, setIsUpdating] = useState(false);
   const containerCount = dockerContainers.length;
-  const maxCompute = userSettings?.maxCompute || 0;
+  const maxCompute = useAuthStore(
+    (state) => state.userSettings?.maxCompute || 0
+  );
+
   const computeUsagePercentage =
     maxCompute > 0 ? (containerCount / maxCompute) * 100 : 0;
 

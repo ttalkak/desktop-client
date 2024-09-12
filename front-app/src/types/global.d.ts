@@ -26,7 +26,7 @@ declare global {
   }
 
   export interface DeploymentCommand {
-    deploymentId?: string;
+    deploymentId: number;
     hasDockerImage: boolean;
     envs?: EnvironmentVariables[];
     containerName: string;
@@ -117,9 +117,7 @@ declare global {
     getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 
     //도커파일 경로찾기
-    findDockerfile: (
-      directory: string
-    ) => Promise<{
+    findDockerfile: (directory: string) => Promise<{
       success: boolean;
       dockerfilePath?: string;
       message?: string;
@@ -170,7 +168,9 @@ declare global {
     runPgrok: (
       remoteAddr: string,
       forwardAddr: string,
-      token: string
+      token: string,
+      deploymentId: number,
+      subdomainName: string
     ) => Promise<string>; // pgrok 실행 메서드
     onPgrokLog: (callback: LogCallback) => void; // pgrok 로그 수신 메서드
 

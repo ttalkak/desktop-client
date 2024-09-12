@@ -30,6 +30,36 @@ const ContainerList: React.FC = () => {
     return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
   };
 
+  const renderPorts = (ports: string | undefined) => {
+    if (!ports) {
+      return "No ports available";
+    }
+
+    try {
+      const parsedPorts = JSON.parse(ports) as {
+        [portAndProtocol: string]: Array<{
+          HostIp: string;
+          HostPort: string;
+        }>;
+      };
+
+      return Object.entries(parsedPorts).map(
+        ([portAndProtocol, mappings], index) => (
+          <div key={index}>
+            <p className="font-semibold">{portAndProtocol}:</p>
+            {mappings.map((mapping, idx) => (
+              <p key={idx}>
+                {mapping.HostIp}:{mapping.HostPort}
+              </p>
+            ))}
+          </div>
+        )
+      );
+    } catch (error) {
+      return "Invalid port data";
+    }
+  };
+
   if (dockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
@@ -55,7 +85,6 @@ const ContainerList: React.FC = () => {
             <th className="py-2 px-4 border-b">Created</th>
             <th className="py-2 px-4 border-b">Ports</th>
             <th className="py-2 px-4 border-b">State</th>
-
             <th className="py-2 px-4 border-b">Logs</th>
           </tr>
         </thead>
@@ -64,7 +93,6 @@ const ContainerList: React.FC = () => {
             const { Id, Name, Image, Created, State, NetworkSettings } =
               container;
 
-            const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
 
             return (
@@ -78,33 +106,16 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {Object.entries(Ports).map(([key, value]) =>
-                      value.map((port, index) => (
-                        <div key={index}>
-                          <p>
-                            {port.HostPort}:{key.split("/")[0]} (
-                            {key.split("/")[1]})
-                          </p>
-                        </div>
-                      ))
-                    )}
+                    {" "}
+                    {renderPorts(JSON.stringify(NetworkSettings?.Ports))}
                   </td>
                   <td className="py-2 px-4 border-b">
                     {State ? (
-                      <div>
-                        {State.Running && <p>Running</p>}
-                        {State.Paused && <p>Paused</p>}
-                        {State.Restarting && <p>Restarting</p>}
-                        {State.OOMKilled && <p>Out of Memory</p>}
-                        {State.Dead && <p>Dead</p>}
-                        {State.Error && <p>{State.Error}</p>}
-                        {State.ExitCode !== 0 && <p>{State.ExitCode}</p>}
-                      </div>
+                      <div>{State.Status}</div>
                     ) : (
                       <p>No health information available</p>
                     )}
                   </td>
-
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}
@@ -121,7 +132,7 @@ const ContainerList: React.FC = () => {
                 </tr>
                 {isSelected && (
                   <tr>
-                    <td colSpan={10} className="p-4 bg-gray-100 border-b">
+                    <td colSpan={6} className="p-4 bg-gray-100 border-b">
                       <ContainerLogs containerId={Id} />
                     </td>
                   </tr>

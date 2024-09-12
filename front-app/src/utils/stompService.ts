@@ -161,11 +161,14 @@ function setupClientHandlers(userId: string): void {
               });
               startContainerStatsMonitoring();
               // pgrok 시작
+              console.log(compute);
               window.electronAPI
                 .runPgrok(
-                  "34.47.108.121:2222",
-                  `http://localhost:${8080}`,
-                  compute.subdomainKey
+                  "pgrok.ttalkak.com:2222",
+                  `http://localhost:8080`, //나중에 바꿀거임
+                  compute.subdomainKey,
+                  compute.deploymentId,
+                  compute.subdomainName
                 )
                 .then((message) => {
                   console.log(`pgrok started: ${message}`);

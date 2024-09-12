@@ -81,11 +81,28 @@ export const handleGetDockerEvent = (): void => {
         stream.on("data", (chunk: Buffer) => {
           try {
             const dockerEvent = JSON.parse(chunk.toString());
-
+            const filteredActions = [
+              "exec_start",
+              "exec_create",
+              "exec_die",
+              "attach",
+              // "health_status",
+              "network_connect",
+              "network_disconnect",
+              "volume_create",
+              "volume_remove",
+              "image_pull",
+              "image_push",
+              "checkpoint_create",
+              "checkpoint_delete",
+              "container_kill",
+            ];
             // 이벤트 필터링: heartbeat 또는 불필요한 이벤트 필터링
             if (
-              dockerEvent.Type === "container" &&
-              dockerEvent.Action !== "heartbeat"
+              (dockerEvent.Type === "container" ||
+                dockerEvent.Type === "image") &&
+              dockerEvent.Action !== "heartbeat" &&
+              !filteredActions.includes(dockerEvent.Action)
             ) {
               event.reply("docker-event-response", dockerEvent);
             }
