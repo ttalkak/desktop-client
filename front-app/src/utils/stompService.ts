@@ -62,7 +62,7 @@ function createStompClient(userId: string): Client {
   return new Client({
     brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
     connectHeaders: {
-      "X-USER-ID": userId,
+      "X-USER-ID": "2", //수정하기
     },
   });
 }
@@ -106,12 +106,6 @@ function setupClientHandlers(userId: string): void {
     setWebsocketStatus("connected");
     sendComputeConnectMessage("2"); // 연결 시 Compute 연결 메시지 전송
     registerDockerEventHandlers(client, "2"); // Docker 이벤트 핸들러 등록
-
-    // 컴퓨트 업데이트 구독
-    client.subscribe(`/sub/compute-update/2`, async (message) => {
-      const commands = JSON.parse(message.body);
-      console.log("Received updateCommand:", commands);
-    });
 
     startSendingCurrentState(); // 현재 상태 전송 시작
 
@@ -186,6 +180,12 @@ function setupClientHandlers(userId: string): void {
           }
         }
       });
+    });
+    //업데이트요청 구독=> 사용자 아이디로 바꾸기
+    client?.subscribe(`/sub/compute-update/2`, async (message) => {
+      // 수신한 메시지 처리 로직 작성
+      const commands = JSON.parse(message.body);
+      console.log("Received updateCommand:", commands);
     });
   };
 
@@ -271,6 +271,33 @@ const sendDeploymentStatus = (
     }),
   });
 };
+
+// compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
+function handleContianerCommand(
+  deploymentId: string,
+  containerId: string,
+  command: string
+) {
+  if (deploymentId) {
+    switch (command) {
+      case "START":
+        window.electronAPI.startContainer(containerId);
+        break;
+      case "RESTART":
+        window.electronAPI.startContainer(containerId);
+        break;
+      case "DELETE":
+        window.electronAPI.removeContainer(containerId);
+        break;
+      case "STOP":
+        window.electronAPI.stopContainer(containerId);
+
+        break;
+      default:
+        console.log(`Unknown command: ${command}`);
+    }
+  }
+}
 
 // 실행 중인 컨테이너 목록을 가져오는 함수
 const getRunningContainers = async () => {
