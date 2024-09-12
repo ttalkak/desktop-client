@@ -57,8 +57,8 @@ export const handleBuildImage = async (
     console.log(`Building Docker image: ${name}:${tag} from ${contextPath}`);
     const result = await window.electronAPI.buildDockerImage(
       contextPath,
-      dockerfilePath
-      // name,
+      dockerfilePath,
+      name
       // tag
     );
     console.log(`Docker build status: ${result.status}`);

@@ -135,7 +135,8 @@ function setupClientHandlers(userId: string): void {
           if (success) {
             const { image } = await handleBuildImage(
               contextPath,
-              dockerfilePath.toLowerCase()
+              dockerfilePath.toLowerCase(),
+              compute.subdomainName
             );
             console.log(`도커 파일 위치임 ${dockerfilePath}`);
             if (!image) {
