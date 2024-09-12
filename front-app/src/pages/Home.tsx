@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
+import PaymentStatusItem from "../features/home/PaymentStatusItem";
 
 const Home = () => {
   const [pgrokLogs, setPgrokLogs] = useState<string[]>([]);
@@ -33,30 +34,23 @@ const Home = () => {
 
   return (
     <>
-      <div className="m-10">
-        <div className="border-2 min-w-1 min-h-10">
-          <div>코인영역</div>
+      <div className="">
+        <div className="flex">
+          <CpuStatusItem />
+          <PaymentStatusItem />
         </div>
 
-        <div>
-          <CpuStatusItem />
-        </div>
-        <div>
-          <button onClick={handleRunPgrok}>pgrok 실행</button>
-          <div>
-            <h2>pgrok Logs:</h2>
-            <div
-              style={{
-                whiteSpace: "pre-wrap",
-                backgroundColor: "#333",
-                color: "#eee",
-                padding: "10px",
-                borderRadius: "5px",
-              }}
-            >
-              {pgrokLogs.length > 0 ? pgrokLogs.join("\n") : "No logs yet."}
-            </div>
-          </div>
+        <div
+          className="mt-2"
+          style={{
+            whiteSpace: "pre-wrap",
+            backgroundColor: "#333",
+            color: "#eee",
+            padding: "10px",
+            borderRadius: "5px",
+          }}
+        >
+          {pgrokLogs.length > 0 ? pgrokLogs.join("\n") : "No logs yet."}
         </div>
       </div>
     </>
