@@ -42,10 +42,10 @@ export const registerDockerEventHandlers = (
     console.log("이미지 이벤트 :", event.Action);
     switch (event.Action) {
       case "pull":
-        sendInstanceUpdate(deploymentId, "PENDING", "Image pull started");
+        // sendInstanceUpdate(deploymentId, "PENDING");
         break;
       case "import":
-        sendInstanceUpdate(deploymentId, "PENDING", "Image import started");
+        // sendInstanceUpdate(deploymentId, "PENDING");
         break;
       case "build":
         window.electronAPI.getDockerImages().then((images) => {
@@ -64,14 +64,14 @@ export const registerDockerEventHandlers = (
         break;
       case "delete":
         removeDockerImage(event.Actor.ID);
-        sendInstanceUpdate(deploymentId, "DELETED", "Image deleted");
+        sendInstanceUpdate(deploymentId, "DELETED");
         break;
       case "tag":
         window.electronAPI.getDockerImages().then((images) => {
           const updatedImage = images.find((img) => img.Id === event.Actor.ID);
           if (updatedImage) {
             updateDockerImage(updatedImage);
-            sendInstanceUpdate(deploymentId, "PENDING", "Image tagged");
+            sendInstanceUpdate(deploymentId, "PENDING");
           } else {
             console.error(
               `Image with ID ${event.Actor.ID} not found during tagging.`
@@ -94,7 +94,7 @@ export const registerDockerEventHandlers = (
     switch (event.Action) {
       case "create":
         console.log("컨테이너 생성됨");
-        sendInstanceUpdate(deploymentId, "PENDING", "Container created");
+        sendInstanceUpdate(deploymentId, "PENDING");
         break;
       case "start":
         console.log("컨테이너 시작함");
@@ -102,7 +102,7 @@ export const registerDockerEventHandlers = (
           const container = containers.find((c) => c.Id === event.Actor.ID);
           if (container) {
             updateDockerContainer(container);
-            sendInstanceUpdate(deploymentId, "RUNNING", "Container started");
+            sendInstanceUpdate(deploymentId, "RUNNING");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during start.`
@@ -122,7 +122,7 @@ export const registerDockerEventHandlers = (
           const container = containers.find((c) => c.Id === event.Actor.ID);
           if (container) {
             updateDockerContainer(container);
-            sendInstanceUpdate(deploymentId, "RUNNING", "Container restarted");
+            sendInstanceUpdate(deploymentId, "RUNNING");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during restart.`
@@ -144,7 +144,7 @@ export const registerDockerEventHandlers = (
               ...container,
               State: { ...container.State, Status: "killed" },
             });
-            sendInstanceUpdate(deploymentId, "STOPPED", "Container killed");
+            sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during kill.`
@@ -165,7 +165,7 @@ export const registerDockerEventHandlers = (
           );
           if (updatedContainer) {
             updateDockerContainer(updatedContainer);
-            sendInstanceUpdate(deploymentId, "STOPPED", "Container died");
+            sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(`Container with ID ${event.Actor.ID} not found.`);
             sendInstanceUpdate(
@@ -185,7 +185,7 @@ export const registerDockerEventHandlers = (
               ...container,
               State: { ...container.State, Status: "stopped" },
             });
-            sendInstanceUpdate(deploymentId, "STOPPED", "Container stopped");
+            sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during stop.`
@@ -201,7 +201,7 @@ export const registerDockerEventHandlers = (
       case "destroy":
         console.log("컨테이너 삭제됨");
         removeDockerContainer(event.Actor.ID);
-        sendInstanceUpdate(deploymentId, "DELETED", "Container destroyed");
+        sendInstanceUpdate(deploymentId, "DELETED");
         break;
       default:
         console.log(`Unhandled container action: ${event.Action}`);
