@@ -220,11 +220,12 @@ declare global {
 
     createAndStartContainer: (
       options: ContainerCreateOptions
-    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+    ) => Promise<{ success: boolean; containerId: string; error?: string }>;
 
-    stopContainer: (
+    stopContainer(
       containerId: string
-    ) => Promise<{ success: boolean; error?: string }>;
+    ): Promise<{ success: boolean; error?: string }>;
+
     removeContainer: (
       containerId: string,
       options?: ContainerRemoveOptions

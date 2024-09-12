@@ -697,7 +697,7 @@ export const removeContainer = async (
 ): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.remove(options);
+    await container.remove({ force: true, ...options });
     console.log(`Container ${containerId} removed successfully`);
   } catch (err) {
     console.error(`Error removing container ${containerId}:`, err);

@@ -130,6 +130,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeContainer: (containerId: string, options?: ContainerRemoveOptions) =>
     ipcRenderer.invoke("remove-container", containerId, options),
 
+  stopContainer: async (
+    containerId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke("stop-container", containerId);
+  },
+
   removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
   //--------------------- CPU 사용률

@@ -4,6 +4,12 @@ import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
 import { ContainerInspectInfo } from "dockerode";
 
+interface PortMapping {
+  inboundPort: string;
+  outboundPort: string;
+  protocol: string;
+}
+
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
@@ -30,34 +36,42 @@ const ContainerList: React.FC = () => {
     return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
   };
 
-  const renderPorts = (ports: string | undefined) => {
-    if (!ports) {
-      return "No ports available";
-    }
+  const renderPorts = (
+    ports:
+      | {
+          [portAndProtocol: string]: Array<{
+            HostIp: string;
+            HostPort: string;
+          }>;
+        }
+      | undefined
+  ) => {
+    if (!ports) return <div>No Ports</div>;
 
-    try {
-      const parsedPorts = JSON.parse(ports) as {
-        [portAndProtocol: string]: Array<{
-          HostIp: string;
-          HostPort: string;
-        }>;
-      };
+    const portMappings: PortMapping[] = [];
 
-      return Object.entries(parsedPorts).map(
-        ([portAndProtocol, mappings], index) => (
-          <div key={index}>
-            <p className="font-semibold">{portAndProtocol}:</p>
-            {mappings.map((mapping, idx) => (
-              <p key={idx}>
-                {mapping.HostIp}:{mapping.HostPort}
-              </p>
-            ))}
-          </div>
-        )
-      );
-    } catch (error) {
-      return "Invalid port data";
-    }
+    Object.entries(ports).forEach(([portAndProtocol, hostBindings]) => {
+      const [port, protocol] = portAndProtocol.split("/");
+      hostBindings.forEach((binding) => {
+        portMappings.push({
+          inboundPort: port,
+          outboundPort: binding.HostPort,
+          protocol: protocol,
+        });
+      });
+    });
+
+    return portMappings.length > 0 ? (
+      <ul>
+        {portMappings.map((mapping, index) => (
+          <li key={index}>
+            {mapping.inboundPort} : {mapping.outboundPort} ({mapping.protocol})
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div>No Ports</div>
+    );
   };
 
   if (dockerContainers.length === 0) {
@@ -106,8 +120,7 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {" "}
-                    {renderPorts(JSON.stringify(NetworkSettings?.Ports))}
+                    {renderPorts(NetworkSettings.Ports)}
                   </td>
                   <td className="py-2 px-4 border-b">
                     {State ? (

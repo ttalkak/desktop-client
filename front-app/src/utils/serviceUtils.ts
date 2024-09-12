@@ -24,8 +24,6 @@ export const startService = async () => {
     console.log("4. ServiceUtil: Docker is running");
 
     // 2. dockerEvent 감지 시작
-    // Docker 이벤트 핸들러 등록
-    // registerDockerEventHandlers();
 
     // 3. WebSocket 연결
     connectWebSocket();
