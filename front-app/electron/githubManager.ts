@@ -20,7 +20,6 @@ export function getProjectSourceDirectory(): string {
   return projectSourceDirectory; // 경로 반환
 }
 
-// 다운로드 하고 바로 unzip//도커 파일 경로 반환
 async function downloadAndUnzip(
   repoUrl: string,
   dockerRootDirectory?: string
@@ -35,12 +34,11 @@ async function downloadAndUnzip(
     const extractDir = getProjectSourceDirectory();
 
     // URL을 파싱하여 경로 부분을 추출
-
     const urlParts = repoUrl.split("/");
     const branch = urlParts[urlParts.length - 1].split(".")[0];
     const repoName = urlParts[urlParts.length - 5];
 
-    console.log("reponame", repoName, branch);
+    console.log("reponame", `${repoName}-${branch}`);
 
     const zipFileName = `${repoName}-${branch}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
@@ -58,12 +56,13 @@ async function downloadAndUnzip(
     console.log("Unzipping completed:", extractDir);
 
     let dockerfilePath: string | null = null;
+    const dockerDir = path.resolve(extractDir, `${repoName}-${branch}`);
 
     // 사용자가 제공한 dockerRootDirectory가 있는 경우
     if (dockerRootDirectory) {
-      const dockerDir = path.resolve(extractDir, dockerRootDirectory);
+      console.log(dockerDir);
       if (fs.existsSync(dockerDir)) {
-        dockerfilePath = findDockerfile(dockerDir);
+        dockerfilePath = await findDockerfile(dockerDir);
       } else {
         console.error(
           `Provided dockerRootDirectory not found at: ${dockerDir}`
@@ -75,7 +74,7 @@ async function downloadAndUnzip(
       }
     } else {
       // Dockerfile을 찾기 위해 디렉토리 내 탐색
-      dockerfilePath = findDockerfile(extractDir);
+      dockerfilePath = await findDockerfile(dockerDir);
     }
 
     if (!dockerfilePath) {
@@ -97,6 +96,7 @@ async function downloadAndUnzip(
 ipcMain.handle("get-project-source-directory", async () => {
   return getProjectSourceDirectory();
 });
+
 // IPC 핸들러를 설정하여 다운로드 및 압축 해제를 처리
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(

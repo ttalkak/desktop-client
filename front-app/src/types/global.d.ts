@@ -117,7 +117,13 @@ declare global {
     getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 
     //도커파일 경로찾기
-    findDockerfile: (directory: string) => Promise<string | null>;
+    findDockerfile: (
+      directory: string
+    ) => Promise<{
+      success: boolean;
+      dockerfilePath?: string;
+      message?: string;
+    }>;
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
 

@@ -342,34 +342,36 @@ ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
 //------------------- Docker 이미지 생성
 
 //도커파일 찾기
-export function findDockerfile(directory: string): string | null {
-  const files = fs.readdirSync(directory);
+export function findDockerfile(directory: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const files = fs.readdirSync(directory);
 
-  for (const file of files) {
-    const fullPath = path.join(directory, file);
-    const stat = fs.statSync(fullPath);
+    for (const file of files) {
+      const fullPath = path.join(directory, file);
+      const stat = fs.statSync(fullPath);
 
-    if (stat.isDirectory()) {
-      const result = findDockerfile(fullPath);
-      if (result) {
-        return result;
+      console.log(fullPath);
+      if (stat.isDirectory()) {
+        findDockerfile(fullPath).then(resolve).catch(reject);
+        return;
+      } else if (file === "Dockerfile") {
+        resolve(fullPath);
+        return;
       }
-    } else if (file === "Dockerfile") {
-      return fullPath;
     }
-  }
 
-  return null;
+    reject(new Error("Dockerfile not found in the specified directory."));
+  });
 }
 
 export function handleFindDockerFile() {
   ipcMain.handle("find-dockerfile", async (_, directory: string) => {
     try {
-      const dockerfilePath = findDockerfile(directory);
-      return dockerfilePath;
+      const dockerfilePath = await findDockerfile(directory);
+      return { success: true, dockerfilePath };
     } catch (error) {
       console.error("Error finding Dockerfile:", error);
-      return null;
+      return { success: false, message: (error as Error).message };
     }
   });
 }
