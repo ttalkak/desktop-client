@@ -346,20 +346,31 @@ export function findDockerfile(directory: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const files = fs.readdirSync(directory);
 
+    // 파일들 먼저 탐색 (루트 디렉토리에서 Dockerfile을 먼저 찾음)
     for (const file of files) {
       const fullPath = path.join(directory, file);
       const stat = fs.statSync(fullPath);
 
-      console.log(fullPath);
-      if (stat.isDirectory()) {
-        findDockerfile(fullPath).then(resolve).catch(reject);
-        return;
-      } else if (file === "Dockerfile") {
+      if (!stat.isDirectory() && file === "Dockerfile") {
+        console.log(`Dockerfile found at: ${fullPath}`);
         resolve(fullPath);
         return;
       }
     }
 
+    // 디렉토리 탐색 (루트에서 찾지 못했을 경우에만 하위 디렉토리를 탐색)
+    for (const file of files) {
+      const fullPath = path.join(directory, file);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        findDockerfile(fullPath).then(resolve).catch(reject);
+        return;
+      }
+    }
+
+    // Dockerfile을 찾지 못한 경우
+    console.log(`No Dockerfile found in directory: ${directory}`);
     reject(new Error("Dockerfile not found in the specified directory."));
   });
 }
