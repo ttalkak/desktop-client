@@ -212,10 +212,6 @@ export const registerDockerEventHandlers = (
         removeDockerContainer(event.Actor.ID);
         sendInstanceUpdate(event.Actor.ID, "DELETED", "Container destroyed");
         break;
-      case "restart":
-        console.log("컨테이너 재시작");
-        sendInstanceUpdate(event.Actor.ID, "PENDING", "Container restarting");
-        break;
       default:
         console.log(`Unhandled container action: ${event.Action}`);
       // sendInstanceUpdate(

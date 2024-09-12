@@ -98,7 +98,7 @@ export async function initializeStompClient(): Promise<Client> {
 }
 
 // STOMP 클라이언트에 이벤트 핸들러를 설정하는 함수-----------------------------
-function setupClientHandlers(_userId: string): void {
+function setupClientHandlers(userId: string): void {
   if (!client) return;
 
   client.onConnect = (frame) => {
