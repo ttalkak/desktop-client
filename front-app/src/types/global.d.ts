@@ -13,6 +13,7 @@ declare global {
     container_id: string;
     cpu_usage: number;
     memory_usage: number;
+    running_time: number;
     blkio_read: number;
     blkio_write: number;
   }

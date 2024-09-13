@@ -17,16 +17,17 @@ export const registerDockerEventHandlers = (
 
   function sendInstanceUpdate(
     deploymentId: number,
-    status?: string,
+    status: string,
     details?: string
   ) {
     const message = {
       status: status,
-      message: details || `event : ${status}`,
+      message: details || "",
     };
 
     const headers = {
-      "X-USER-ID": userId,
+      // "X-USER-ID": userId,
+      "X-USER-ID": "2",
     };
 
     client?.publish({
@@ -140,10 +141,7 @@ export const registerDockerEventHandlers = (
         window.electronAPI.getDockerContainers(true).then((containers) => {
           const container = containers.find((c) => c.Id === event.Actor.ID);
           if (container) {
-            updateDockerContainer({
-              ...container,
-              State: { ...container.State, Status: "killed" },
-            });
+            updateDockerContainer(container);
             sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(
@@ -160,11 +158,9 @@ export const registerDockerEventHandlers = (
       case "die":
         console.log("컨테이너 die");
         window.electronAPI.getDockerContainers(true).then((containers) => {
-          const updatedContainer = containers.find(
-            (c) => c.Id === event.Actor.ID
-          );
-          if (updatedContainer) {
-            updateDockerContainer(updatedContainer);
+          const container = containers.find((c) => c.Id === event.Actor.ID);
+          if (container) {
+            updateDockerContainer(container);
             sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(`Container with ID ${event.Actor.ID} not found.`);
@@ -181,10 +177,7 @@ export const registerDockerEventHandlers = (
         window.electronAPI.getDockerContainers(true).then((containers) => {
           const container = containers.find((c) => c.Id === event.Actor.ID);
           if (container) {
-            updateDockerContainer({
-              ...container,
-              State: { ...container.State, Status: "stopped" },
-            });
+            updateDockerContainer(container);
             sendInstanceUpdate(deploymentId, "STOPPED");
           } else {
             console.error(

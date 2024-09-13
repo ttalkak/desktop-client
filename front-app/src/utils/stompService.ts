@@ -19,7 +19,6 @@ interface ComputeConnectRequest {
   usedCompute: number;
   usedMemory: number;
   usedCPU: number;
-  deployments: number;
 }
 
 // 컨테이너 상태와 관련된 인터페이스 정의
@@ -260,7 +259,6 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
       usedCompute: usedCompute || 0,
       usedMemory: totalUsedMemory || 0,
       usedCPU: usedCPU || 0,
-      deployments: runningContainers.length || 0,
     };
 
     client?.publish({
@@ -363,23 +361,30 @@ async function getTotalMemoryUsage(
 }
 
 // 현재 상태를 WebSocket을 통해 전송하는 함수
-const sendCurrentState = async () => {
+const sendCurrentState = async (deploymentId: string) => {
   try {
-    const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
     const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
+    // deployments 객체를 배열 형태로 변환
+    const currentDeployments = JSON.stringify(
+      Object.entries(useDeploymentStore.getState().deployments).map(
+        ([deploymentId, containerId]) => ({
+          deploymentId,
+          containerId,
+        })
+      )
+    );
 
     const currentState = {
       userId: "2",
-      computerType: platform,
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
       usedCPU: usedCPU,
-      deployments: [],
+      deployments: currentDeployments || [],
     };
 
     client?.publish({
