@@ -83,35 +83,36 @@ export const handleGetDockerEvent = (): void => {
             const dockerEvent = JSON.parse(chunk.toString());
             const necessaryActions = [
               // 컨테이너 이벤트
-              "container_create",
-              "start",
-              "container_restart",
-              "container_stop",
-              "container_die",
-              "container_kill",
-              "container_destroy",
-              "exec_create",
-              "exec_start",
-              "exec_die",
-              "attach",
-              "health_status",
-              "network_connect",
-              "network_disconnect",
-              "container_oom",
-              "checkpoint_create",
-              "checkpoint_delete",
+              "create", // 컨테이너가 생성되었을 때
+              "start", // 컨테이너가 시작되었을 때
+              "restart", // 컨테이너가 재시작되었을 때
+              "stop", // 컨테이너가 중지되었을 때
+              "die", // 컨테이너가 종료되었을 때
+              "kill", // 컨테이너가 강제로 종료되었을 때
+              "destroy", // 컨테이너가 삭제되었을 때
+              "exec_create", // exec 명령어로 새 프로세스가 생성되었을 때
+              "exec_start", // exec 명령어로 새 프로세스가 시작되었을 때
+              "exec_die", // exec 명령어로 실행된 프로세스가 종료되었을 때
+              "attach", // 컨테이너에 접속했을 때
+              "health_status", // 컨테이너의 건강 상태가 변경되었을 때
+              "network_connect", // 컨테이너가 네트워크에 연결되었을 때
+              "network_disconnect", // 컨테이너가 네트워크에서 분리되었을 때
+              "oom", // 컨테이너에서 메모리 부족 상태가 발생했을 때 (Out Of Memory)
+              "checkpoint_create", // 체크포인트가 생성되었을 때
+              "checkpoint_delete", // 체크포인트가 삭제되었을 때
+
               // 이미지 이벤트
-              "image_pull",
-              "image_push",
-              "image_remove",
-              "image_load",
-              "image_save",
+              "pull", // 이미지가 가져와질 때
+              "push", // 이미지가 푸시될 때
+              "delete", // 이미지가 삭제될 때
+              "load", // 이미지가 로드될 때
+              "save", // 이미지가 저장될 때
             ];
 
             if (
-              dockerEvent.Type === "container" ||
-              dockerEvent.Type === "image"
-              // && necessaryActions.includes(dockerEvent.Action)
+              (dockerEvent.Type === "container" ||
+                dockerEvent.Type === "image") &&
+              necessaryActions.includes(dockerEvent.Action)
             ) {
               event.reply("docker-event-response", dockerEvent);
             }
