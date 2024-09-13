@@ -53,9 +53,7 @@ function registerIpcHandlers() {
   handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
   handleFindDockerFile(); //도커 파일 위치 경로 찾기
   // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
-  // createAndStartContainer();
   githubDownLoadAndUnzip();
-  // handleMonitorContainersCpuUsage();
   handleGetContainerMemoryUsage();
   //컨테이너 생성, 실행, 정지, 삭제
   registerContainerIpcHandlers();

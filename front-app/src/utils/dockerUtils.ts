@@ -120,7 +120,7 @@ export const createAndStartContainers = async (
 
         const containerName = `${repoTag.replace(/[:/]/g, "-")}-container`;
         console.log("Generated container name:", containerName);
-
+        console.log(`컨테이너 생성 옵션 포트`, inboundPort, outboundPort);
         try {
           const containerOptions =
             await window.electronAPI.createContainerOptions(

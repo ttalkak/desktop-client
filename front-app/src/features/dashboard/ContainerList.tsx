@@ -4,6 +4,12 @@ import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
 import { ContainerInspectInfo } from "dockerode";
 
+interface PortMapping {
+  inboundPort: string;
+  outboundPort: string;
+  protocol: string;
+}
+
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
@@ -28,6 +34,44 @@ const ContainerList: React.FC = () => {
       typeof created === "string" ? created : Number(created) * 1000
     );
     return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+  };
+
+  const renderPorts = (
+    ports:
+      | {
+          [portAndProtocol: string]: Array<{
+            HostIp: string;
+            HostPort: string;
+          }>;
+        }
+      | undefined
+  ) => {
+    if (!ports) return <div>No Ports</div>;
+
+    const portMappings: PortMapping[] = [];
+
+    Object.entries(ports).forEach(([portAndProtocol, hostBindings]) => {
+      const [port, protocol] = portAndProtocol.split("/");
+      hostBindings.forEach((binding) => {
+        portMappings.push({
+          inboundPort: port,
+          outboundPort: binding.HostPort,
+          protocol: protocol,
+        });
+      });
+    });
+
+    return portMappings.length > 0 ? (
+      <ul>
+        {portMappings.map((mapping, index) => (
+          <li key={index}>
+            {mapping.inboundPort} : {mapping.outboundPort} ({mapping.protocol})
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div>No Ports</div>
+    );
   };
 
   if (dockerContainers.length === 0) {
@@ -55,7 +99,6 @@ const ContainerList: React.FC = () => {
             <th className="py-2 px-4 border-b">Created</th>
             <th className="py-2 px-4 border-b">Ports</th>
             <th className="py-2 px-4 border-b">State</th>
-
             <th className="py-2 px-4 border-b">Logs</th>
           </tr>
         </thead>
@@ -64,7 +107,6 @@ const ContainerList: React.FC = () => {
             const { Id, Name, Image, Created, State, NetworkSettings } =
               container;
 
-            const Ports = NetworkSettings?.Ports || {};
             const isSelected = selectedContainerId === Id;
 
             return (
@@ -78,33 +120,15 @@ const ContainerList: React.FC = () => {
                     {formatCreatedTime(Created)}
                   </td>
                   <td className="py-2 px-4 border-b">
-                    {Object.entries(Ports).map(([key, value]) =>
-                      value.map((port, index) => (
-                        <div key={index}>
-                          <p>
-                            {port.HostPort}:{key.split("/")[0]} (
-                            {key.split("/")[1]})
-                          </p>
-                        </div>
-                      ))
-                    )}
+                    {renderPorts(NetworkSettings.Ports)}
                   </td>
                   <td className="py-2 px-4 border-b">
                     {State ? (
-                      <div>
-                        {State.Running && <p>Running</p>}
-                        {State.Paused && <p>Paused</p>}
-                        {State.Restarting && <p>Restarting</p>}
-                        {State.OOMKilled && <p>Out of Memory</p>}
-                        {State.Dead && <p>Dead</p>}
-                        {State.Error && <p>{State.Error}</p>}
-                        {State.ExitCode !== 0 && <p>{State.ExitCode}</p>}
-                      </div>
+                      <div>{State.Status}</div>
                     ) : (
                       <p>No health information available</p>
                     )}
                   </td>
-
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => handleContainerSelect(Id)}
@@ -121,7 +145,7 @@ const ContainerList: React.FC = () => {
                 </tr>
                 {isSelected && (
                   <tr>
-                    <td colSpan={10} className="p-4 bg-gray-100 border-b">
+                    <td colSpan={6} className="p-4 bg-gray-100 border-b">
                       <ContainerLogs containerId={Id} />
                     </td>
                   </tr>

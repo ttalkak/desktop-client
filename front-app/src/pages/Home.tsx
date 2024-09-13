@@ -5,21 +5,6 @@ import PaymentStatusItem from "../features/home/PaymentStatusItem";
 const Home = () => {
   const [pgrokLogs, setPgrokLogs] = useState<string[]>([]);
 
-  const handleRunPgrok = () => {
-    const remoteAddr = "34.47.108.121:2222";
-    const forwardAddr = "http://localhost:3000";
-    const token = "asdjkf2-qwenjf-wendka";
-
-    window.electronAPI
-      .runPgrok(remoteAddr, forwardAddr, token)
-      .then((message) => {
-        console.log(`pgrok started: ${message}`);
-      })
-      .catch((error) => {
-        alert(`Failed to start pgrok: ${error}`);
-      });
-  };
-
   useEffect(() => {
     const handlePgrokLog = (log: string) => {
       setPgrokLogs((prevLogs) => [...prevLogs, log]);

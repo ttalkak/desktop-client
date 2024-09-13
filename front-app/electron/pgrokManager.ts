@@ -16,7 +16,7 @@ async function runPgrok(
   remoteAddr: string,
   forwardAddr: string,
   token: string,
-  deploymentId: string,
+  deploymentId: number,
   domain: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
@@ -131,7 +131,7 @@ export function registerPgrokIpcHandlers() {
       remoteAddr: string,
       forwardAddr: string,
       token: string,
-      deploymentId: string,
+      deploymentId: number,
       domain: string
     ) => {
       try {

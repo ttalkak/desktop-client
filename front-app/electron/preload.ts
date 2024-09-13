@@ -130,6 +130,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeContainer: (containerId: string, options?: ContainerRemoveOptions) =>
     ipcRenderer.invoke("remove-container", containerId, options),
 
+  stopContainer: async (
+    containerId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke("stop-container", containerId);
+  },
+
   removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
   //--------------------- CPU 사용률
@@ -229,8 +235,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("download-pgrok");
   },
 
-  runPgrok: (remoteAddr: string, forwardAddr: string, token: string) => {
-    return ipcRenderer.invoke("run-pgrok", remoteAddr, forwardAddr, token);
+  runPgrok: (
+    remoteAddr: string,
+    forwardAddr: string,
+    token: string,
+    deploymentId: number,
+    subdomainName: string
+  ) => {
+    return ipcRenderer.invoke(
+      "run-pgrok",
+      remoteAddr,
+      forwardAddr,
+      token,
+      deploymentId,
+      subdomainName
+    );
   },
 
   onPgrokLog: (callback: (log: string) => void) => {

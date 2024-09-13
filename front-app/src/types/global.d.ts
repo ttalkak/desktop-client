@@ -13,6 +13,7 @@ declare global {
     container_id: string;
     cpu_usage: number;
     memory_usage: number;
+    running_time: number;
     blkio_read: number;
     blkio_write: number;
   }
@@ -26,7 +27,7 @@ declare global {
   }
 
   export interface DeploymentCommand {
-    deploymentId?: string;
+    deploymentId: number;
     hasDockerImage: boolean;
     envs?: EnvironmentVariables[];
     containerName: string;
@@ -117,7 +118,11 @@ declare global {
     getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 
     //도커파일 경로찾기
-    findDockerfile: (directory: string) => Promise<string | null>;
+    findDockerfile: (directory: string) => Promise<{
+      success: boolean;
+      dockerfilePath?: string;
+      message?: string;
+    }>;
     getDockerExecutablePath: () => Promise<string | null>;
     openDockerDesktop: (dockerPath: string) => Promise<void>;
 
@@ -164,7 +169,9 @@ declare global {
     runPgrok: (
       remoteAddr: string,
       forwardAddr: string,
-      token: string
+      token: string,
+      deploymentId: number,
+      subdomainName: string
     ) => Promise<string>; // pgrok 실행 메서드
     onPgrokLog: (callback: LogCallback) => void; // pgrok 로그 수신 메서드
 
@@ -214,11 +221,12 @@ declare global {
 
     createAndStartContainer: (
       options: ContainerCreateOptions
-    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+    ) => Promise<{ success: boolean; containerId: string; error?: string }>;
 
-    stopContainer: (
+    stopContainer(
       containerId: string
-    ) => Promise<{ success: boolean; error?: string }>;
+    ): Promise<{ success: boolean; error?: string }>;
+
     removeContainer: (
       containerId: string,
       options?: ContainerRemoveOptions

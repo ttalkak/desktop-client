@@ -81,11 +81,37 @@ export const handleGetDockerEvent = (): void => {
         stream.on("data", (chunk: Buffer) => {
           try {
             const dockerEvent = JSON.parse(chunk.toString());
+            const necessaryActions = [
+              // 컨테이너 이벤트
+              "container_create",
+              "start",
+              "container_restart",
+              "container_stop",
+              "container_die",
+              "container_kill",
+              "container_destroy",
+              "exec_create",
+              "exec_start",
+              "exec_die",
+              "attach",
+              "health_status",
+              "network_connect",
+              "network_disconnect",
+              "container_oom",
+              "checkpoint_create",
+              "checkpoint_delete",
+              // 이미지 이벤트
+              "image_pull",
+              "image_push",
+              "image_remove",
+              "image_load",
+              "image_save",
+            ];
 
-            // 이벤트 필터링: heartbeat 또는 불필요한 이벤트 필터링
             if (
-              dockerEvent.Type === "container" &&
-              dockerEvent.Action !== "heartbeat"
+              dockerEvent.Type === "container" ||
+              dockerEvent.Type === "image"
+              // && necessaryActions.includes(dockerEvent.Action)
             ) {
               event.reply("docker-event-response", dockerEvent);
             }
@@ -111,10 +137,7 @@ export const handleGetDockerEvent = (): void => {
   });
 };
 
-//------------------- 개별 컨테이너 stats cpu, 디스크 리딩 포함
-
-//1회성 요청, 하나의 컨테이너 stats 가져옴
-
+//메모리 사용량 --- 개별 컨테이너 ->
 export async function getContainerMemoryUsage(
   containerId: string
 ): Promise<number> {
@@ -134,7 +157,7 @@ export async function getContainerMemoryUsage(
   }
 }
 
-//메모리 사용량
+//메모리 사용량 ipc 핸들러
 export function handleGetContainerMemoryUsage() {
   ipcMain.handle(
     "get-container-memory-usage",
@@ -151,7 +174,7 @@ export function handleGetContainerMemoryUsage() {
   );
 }
 
-//주기적으로 컨테이너 정보가져오는 함수
+//주기적으로 컨테이너 정보가져오는 함수------- 개별 컨테이너 stats cpu, 디스크 리딩 포함
 const statsIntervals = new Map<string, NodeJS.Timeout>();
 
 export function handleGetContainerStatsPeriodic() {
@@ -168,6 +191,13 @@ export function handleGetContainerStatsPeriodic() {
       const intervalId = setInterval(async () => {
         try {
           const container = docker.getContainer(containerId);
+
+          // 컨테이너 시작 시간 가져오기=> runningTime 계산용
+          const inspectData = await container.inspect();
+          const startedAt = new Date(inspectData.State.StartedAt).getTime();
+          const currentTime = Date.now();
+          const runningTime = Math.floor((currentTime - startedAt) / 1000); // 초 단위
+
           const stats = await new Promise((resolve, reject) => {
             container.stats({ stream: false }, (err, stats) => {
               if (err) reject(err);
@@ -176,6 +206,7 @@ export function handleGetContainerStatsPeriodic() {
                   cpu_usage: stats?.cpu_stats.cpu_usage.total_usage,
                   memory_usage: stats?.memory_stats.usage,
                   container_id: containerId,
+                  running_time: runningTime,
                   blkio_read:
                     stats?.blkio_stats?.io_service_bytes_recursive?.find(
                       (io) => io.op === "Read" // 바이트 수
@@ -342,34 +373,47 @@ ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
 //------------------- Docker 이미지 생성
 
 //도커파일 찾기
-export function findDockerfile(directory: string): string | null {
-  const files = fs.readdirSync(directory);
+export function findDockerfile(directory: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const files = fs.readdirSync(directory);
 
-  for (const file of files) {
-    const fullPath = path.join(directory, file);
-    const stat = fs.statSync(fullPath);
+    // 파일들 먼저 탐색 (루트 디렉토리에서 Dockerfile을 먼저 찾음)
+    for (const file of files) {
+      const fullPath = path.join(directory, file);
+      const stat = fs.statSync(fullPath);
 
-    if (stat.isDirectory()) {
-      const result = findDockerfile(fullPath);
-      if (result) {
-        return result;
+      if (!stat.isDirectory() && file === "Dockerfile") {
+        console.log(`Dockerfile found at: ${fullPath}`);
+        resolve(fullPath);
+        return;
       }
-    } else if (file === "Dockerfile") {
-      return fullPath;
     }
-  }
 
-  return null;
+    // 디렉토리 탐색 (루트에서 찾지 못했을 경우에만 하위 디렉토리를 탐색)
+    for (const file of files) {
+      const fullPath = path.join(directory, file);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        findDockerfile(fullPath).then(resolve).catch(reject);
+        return;
+      }
+    }
+
+    // Dockerfile을 찾지 못한 경우
+    console.log(`No Dockerfile found in directory: ${directory}`);
+    reject(new Error("Dockerfile not found in the specified directory."));
+  });
 }
 
 export function handleFindDockerFile() {
   ipcMain.handle("find-dockerfile", async (_, directory: string) => {
     try {
-      const dockerfilePath = findDockerfile(directory);
-      return dockerfilePath;
+      const dockerfilePath = await findDockerfile(directory);
+      return { success: true, dockerfilePath };
     } catch (error) {
       console.error("Error finding Dockerfile:", error);
-      return null;
+      return { success: false, message: (error as Error).message };
     }
   });
 }
@@ -488,8 +532,8 @@ export const removeImage = async (
   try {
     const image = docker.getImage(imageId);
 
-    // 먼저 이미지가 사용 중인지 확인
-    const containers = await docker.listContainers({ all: true });
+    // 먼저 이미지가 사용 중인지 확인[정지, 비정지 구분 없이 ]
+    const containers = await docker.listContainers({ all: false });
     const usingContainers = containers.filter(
       (container) => container.Image === imageId
     );
@@ -667,7 +711,7 @@ export const removeContainer = async (
 ): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.remove(options);
+    await container.remove({ force: true, ...options });
     console.log(`Container ${containerId} removed successfully`);
   } catch (err) {
     console.error(`Error removing container ${containerId}:`, err);

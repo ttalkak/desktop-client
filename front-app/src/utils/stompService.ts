@@ -2,6 +2,7 @@ import { Client, Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
+import { useDeploymentStore } from "../stores/deploymentStore";
 
 // 세션 데이터와 관련된 인터페이스 정의
 interface SessionData {
@@ -18,7 +19,6 @@ interface ComputeConnectRequest {
   usedCompute: number;
   usedMemory: number;
   usedCPU: number;
-  deployments: number;
 }
 
 // 컨테이너 상태와 관련된 인터페이스 정의
@@ -62,7 +62,7 @@ function createStompClient(userId: string): Client {
   return new Client({
     brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
     connectHeaders: {
-      "X-USER-ID": userId,
+      "X-USER-ID": "2", //수정하기
     },
   });
 }
@@ -105,13 +105,6 @@ function setupClientHandlers(userId: string): void {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
     sendComputeConnectMessage("2"); // 연결 시 Compute 연결 메시지 전송
-    registerDockerEventHandlers(client, "2"); // Docker 이벤트 핸들러 등록
-
-    // 컴퓨트 업데이트 구독
-    client.subscribe(`/sub/compute-update/2`, async (message) => {
-      const commands = JSON.parse(message.body);
-      console.log("Received updateCommand:", commands);
-    });
 
     startSendingCurrentState(); // 현재 상태 전송 시작
 
@@ -120,13 +113,10 @@ function setupClientHandlers(userId: string): void {
       const computes = JSON.parse(message.body);
       console.log(computes);
       computes.forEach(async (compute: DeploymentCommand) => {
+        registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
         if (compute.hasDockerImage) {
           // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
         } else {
-          // 이미지가 없을 경우 빌드
-          const inboundPort = 80;
-          const outboundPort = 8080;
-
           const { success, dockerfilePath, contextPath } =
             await window.electronAPI.downloadAndUnzip(
               compute.sourceCodeLink,
@@ -149,8 +139,10 @@ function setupClientHandlers(userId: string): void {
               });
               const containers = await createAndStartContainers(
                 [image],
-                inboundPort,
-                outboundPort
+                80,
+                8080
+                // compute.inboundPort ?? 80,
+                // compute.outboundPort ?? 8080
               );
               containers.forEach((container) => {
                 addDockerContainer(container);
@@ -158,14 +150,42 @@ function setupClientHandlers(userId: string): void {
                 sendDeploymentStatus("container_created", compute, {
                   containerId: container.Id,
                 });
+                // Use the deployment store to add the container to the deployment
+                useDeploymentStore
+                  .getState()
+                  .addDeployment(compute.deploymentId, container.Id);
               });
+
               startContainerStatsMonitoring();
+
+              //업데이트요청 구독=> 사용자 아이디로 바꾸기
+              client?.subscribe(`/sub/compute-update/2`, async (message) => {
+                try {
+                  // 수신한 메시지 처리 로직 작성
+                  const { deploymentId, command } = JSON.parse(message.body);
+                  console.log("Received updateCommand:", {
+                    deploymentId,
+                    command,
+                  });
+
+                  // handleContainerCommand 함수를 호출하여 명령을 처리
+                  handleContainerCommand(deploymentId, command);
+                } catch (error) {
+                  console.error(
+                    "Error processing compute update message:",
+                    error
+                  );
+                }
+              });
               // pgrok 시작
+              console.log(compute);
               window.electronAPI
                 .runPgrok(
-                  "34.47.108.121:2222",
-                  `http://localhost:${8080}`,
-                  compute.subdomainKey
+                  "pgrok.ttalkak.com:2222",
+                  `http://localhost:8080`, //나중에 바꿀거임
+                  compute.subdomainKey,
+                  compute.deploymentId,
+                  compute.subdomainName
                 )
                 .then((message) => {
                   console.log(`pgrok started: ${message}`);
@@ -239,7 +259,6 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
       usedCompute: usedCompute || 0,
       usedMemory: totalUsedMemory || 0,
       usedCPU: usedCPU || 0,
-      deployments: runningContainers.length || 0,
     };
 
     client?.publish({
@@ -268,6 +287,35 @@ const sendDeploymentStatus = (
     }),
   });
 };
+
+// compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
+function handleContainerCommand(deploymentId: number, command: string) {
+  const containerId = useDeploymentStore
+    .getState()
+    .getContainerByDeployment(deploymentId);
+
+  if (!containerId) {
+    console.error(`No container found for deploymentId: ${deploymentId}`);
+    return;
+  }
+
+  switch (command) {
+    case "START":
+      window.electronAPI.startContainer(containerId);
+      break;
+    case "RESTART":
+      window.electronAPI.startContainer(containerId);
+      break;
+    case "DELETE":
+      window.electronAPI.removeContainer(containerId);
+      break;
+    case "STOP":
+      window.electronAPI.stopContainer(containerId);
+      break;
+    default:
+      console.log(`Unknown command: ${command}`);
+  }
+}
 
 // 실행 중인 컨테이너 목록을 가져오는 함수
 const getRunningContainers = async () => {
@@ -313,23 +361,30 @@ async function getTotalMemoryUsage(
 }
 
 // 현재 상태를 WebSocket을 통해 전송하는 함수
-const sendCurrentState = async () => {
+const sendCurrentState = async (deploymentId: string) => {
   try {
-    const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
     const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
+    // deployments 객체를 배열 형태로 변환
+    const currentDeployments = JSON.stringify(
+      Object.entries(useDeploymentStore.getState().deployments).map(
+        ([deploymentId, containerId]) => ({
+          deploymentId,
+          containerId,
+        })
+      )
+    );
 
     const currentState = {
       userId: "2",
-      computerType: platform,
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
       usedCPU: usedCPU,
-      deployments: [],
+      deployments: currentDeployments || [],
     };
 
     client?.publish({
@@ -421,8 +476,6 @@ async function checkAndUpdateContainerMonitoring() {
         );
     }
   });
-  // dockerStore.setDockerContainers(monitoredRunningContainers);
-  // 스토어 업데이트를 제거했으므로, 여기서는 더 이상 스토어를 업데이트하지 않습니다.
 }
 
 // 컨테이너 상태 모니터링을 시작하는 함수
