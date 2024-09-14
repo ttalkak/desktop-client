@@ -86,8 +86,8 @@ declare global {
   }
 
   // 도커 이미지, 컨테이너 타입
-  type DockerImage = Dockerode.ImageInspectInfo;
-  type DockerContainer = Dockerode.ContainerInspectInfo;
+  type DockerImage = Dockerode.ImageInfo;
+  type DockerContainer = Dockerode.ContainerInfo;
   type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
   type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
 

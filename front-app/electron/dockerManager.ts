@@ -70,71 +70,73 @@ export const handleStartDocker = (): void => {
 //------------------- 도커 이벤트 스트림 --------------------------
 export const handleGetDockerEvent = (): void => {
   ipcMain.on("get-docker-event", (event) => {
-    docker.getEvents({}, (err, stream) => {
-      if (err) {
-        console.error("Error connecting to Docker events:", err);
-        event.reply("docker-event-error", err.message);
-        return;
-      }
+    docker.getEvents(
+      { filters: { type: ["container", "image", "network", "daemon"] } },
+      (err, stream) => {
+        if (err) {
+          console.error("Error connecting to Docker events:", err);
+          event.reply("docker-event-error", err.message);
+          return;
+        }
 
-      if (stream) {
-        stream.on("data", (chunk: Buffer) => {
-          try {
-            const dockerEvent = JSON.parse(chunk.toString());
-            const necessaryActions = [
-              // 컨테이너 이벤트
-              "create", // 컨테이너가 생성되었을 때
-              "start", // 컨테이너가 시작되었을 때
-              "restart", // 컨테이너가 재시작되었을 때
-              "stop", // 컨테이너가 중지되었을 때
-              "die", // 컨테이너가 종료되었을 때
-              "kill", // 컨테이너가 강제로 종료되었을 때
-              "destroy", // 컨테이너가 삭제되었을 때
-              "exec_create", // exec 명령어로 새 프로세스가 생성되었을 때
-              "exec_start", // exec 명령어로 새 프로세스가 시작되었을 때
-              "exec_die", // exec 명령어로 실행된 프로세스가 종료되었을 때
-              "attach", // 컨테이너에 접속했을 때
-              "health_status", // 컨테이너의 건강 상태가 변경되었을 때
-              "network_connect", // 컨테이너가 네트워크에 연결되었을 때
-              "network_disconnect", // 컨테이너가 네트워크에서 분리되었을 때
-              "oom", // 컨테이너에서 메모리 부족 상태가 발생했을 때 (Out Of Memory)
-              "checkpoint_create", // 체크포인트가 생성되었을 때
-              "checkpoint_delete", // 체크포인트가 삭제되었을 때
+        if (stream) {
+          stream.on("data", (chunk: Buffer) => {
+            try {
+              const dockerEvent = JSON.parse(chunk.toString());
+              const necessaryActions = [
+                "create",
+                "start",
+                "restart",
+                "stop",
+                "die",
+                "kill",
+                "destroy",
+                "attach",
+                "health_status",
+                "network_connect",
+                "network_disconnect",
+                "oom",
+                "checkpoint_create",
+                "checkpoint_delete",
+                "pull",
+                "push",
+                "delete",
+                "load",
+                "save",
+                "reload",
+                "shutdown",
+              ];
 
-              // 이미지 이벤트
-              "pull", // 이미지가 가져와질 때
-              "push", // 이미지가 푸시될 때
-              "delete", // 이미지가 삭제될 때
-              "load", // 이미지가 로드될 때
-              "save", // 이미지가 저장될 때
-            ];
-
-            if (
-              (dockerEvent.Type === "container" ||
-                dockerEvent.Type === "image") &&
-              necessaryActions.includes(dockerEvent.Action)
-            ) {
-              event.reply("docker-event-response", dockerEvent);
+              if (
+                (dockerEvent.Type === "container" ||
+                  dockerEvent.Type === "image") &&
+                necessaryActions.includes(dockerEvent.Action)
+              ) {
+                console.log(
+                  `이벤트타입 : ${dockerEvent.Type}, 이벤트종류: ${dockerEvent.Action} `
+                );
+                event.reply("docker-event-response", dockerEvent);
+              }
+            } catch (parseError) {
+              console.error("Error parsing Docker event:", parseError);
+              event.reply("docker-event-error", parseError);
             }
-          } catch (parseError) {
-            console.error("Error parsing Docker event:", parseError);
-            event.reply("docker-event-error", parseError);
-          }
-        });
+          });
 
-        stream.on("error", (error: Error) => {
-          console.error("Stream Error:", error);
-          event.reply("docker-event-error", error.message);
-        });
+          stream.on("error", (error: Error) => {
+            console.error("Stream Error:", error);
+            event.reply("docker-event-error", error.message);
+          });
 
-        stream.on("end", () => {
-          console.log("Docker events stream ended");
-          event.reply("docker-event-end");
-        });
-      } else {
-        event.reply("docker-event-error", "No stream returned");
+          stream.on("end", () => {
+            console.log("Docker events stream ended");
+            event.reply("docker-event-end");
+          });
+        } else {
+          event.reply("docker-event-error", "No stream returned");
+        }
       }
-    });
+    );
   });
 };
 
@@ -274,13 +276,42 @@ export const handleFetchDockerImages = (): void => {
   });
 };
 
-//단일 컨테이너[컨테이너 파일 있음]
+//단일 컨테이너 정보반환? 타입을 어떻게 한담..
 export const handleFetchDockerContainer = (): void => {
   ipcMain.handle(
     "fetch-docker-container",
     async (_event, containerId: string) => {
       try {
-        const container = await docker.getContainer(containerId).inspect();
+        const container = await docker.getContainer(containerId);
+        return container;
+      } catch (err) {
+        console.error(`Failed to fetch Docker container ${containerId}:`, err);
+        throw err;
+      }
+    }
+  );
+};
+
+//단일 이미지 객체 자체 반환
+export const handleGetDockerImage = (): void => {
+  ipcMain.handle("get-docker-image", async (_event, imageId: string) => {
+    try {
+      const container = await docker.getContainer(imageId);
+      return container;
+    } catch (err) {
+      console.error(`Failed to get Docker image ${imageId}:`, err);
+      throw err;
+    }
+  });
+};
+
+//단일 컨테이너 객체 자체 반환
+export const handleGetDockerContainer = (): void => {
+  ipcMain.handle(
+    "get-docker-container",
+    async (_event, containerId: string) => {
+      try {
+        const container = await docker.getContainer(containerId);
         return container;
       } catch (err) {
         console.error(`Failed to fetch Docker container ${containerId}:`, err);
@@ -291,7 +322,7 @@ export const handleFetchDockerContainer = (): void => {
 };
 
 //이미지리스트[실제 실행중인 전체목록]
-export const handleFetchDockerImageList = (): void => {
+export const handleGetDockerImageList = (): void => {
   ipcMain.handle("get-all-docker-images", async () => {
     try {
       const images = await docker.listImages({ all: true });
@@ -304,7 +335,7 @@ export const handleFetchDockerImageList = (): void => {
 };
 
 //컨테이너리스트[실제 실행중인 전체목록]
-export const handleFetchDockerContainerList = (all: boolean = false): void => {
+export const handleGetDockerContainerList = (all: boolean = false): void => {
   ipcMain.handle("get-all-docker-containers", async () => {
     try {
       const containers = await docker.listContainers({ all, size: true });
@@ -480,7 +511,12 @@ export async function buildDockerImage(
       console.log(`Docker image ${fullTag} built successfully`);
 
       try {
-        const builtImage = await docker.getImage(fullTag).inspect();
+        const images = await docker.listImages({
+          filters: { reference: [fullTag] },
+        });
+        const builtImage = images.find((img) =>
+          img.RepoTags?.includes(fullTag)
+        );
         resolve({ status: "success", image: builtImage });
       } catch (error) {
         console.error("Error inspecting built image:", error);
@@ -515,7 +551,7 @@ export async function processAndBuildImage(
         tag
       );
       console.log(`Docker image build status: ${buildStatus.status}`);
-      return buildStatus; // ImageInspectInfo 타입의 이미지 정보 반환
+      return buildStatus;
     } catch (error) {
       console.error("Failed to build Docker image:", error);
       return { status: "failed" };
@@ -698,22 +734,45 @@ export const startContainer = async (
 export const stopContainer = async (containerId: string): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
-    await container.stop();
-    console.log(`Container ${containerId} stopped successfully`);
+
+    // 컨테이너 상태 확인
+    const containerInfo = await container.inspect();
+
+    if (containerInfo.State.Running) {
+      await container.stop();
+      console.log(`Container ${containerId} stopped successfully.`);
+    } else if (containerInfo.State.Status === "exited") {
+      console.log(`Container ${containerId} is already stopped.`);
+    } else if (containerInfo.State.Status === "stopping") {
+      console.log(`Container ${containerId} is already stopping.`);
+    } else {
+      console.log(`Container ${containerId} is not running.`);
+    }
   } catch (err) {
     console.error(`Error stopping container ${containerId}:`, err);
   }
 };
 
-// 컨테이너 삭제 함수
 export const removeContainer = async (
   containerId: string,
-  options?: ContainerRemoveOptions
+  options?: Docker.ContainerRemoveOptions
 ): Promise<void> => {
   try {
     const container = docker.getContainer(containerId);
+
+    // 컨테이너 상태 확인
+    const containerInfo = await container.inspect();
+
+    // 컨테이너가 실행 중이면 정지
+    if (containerInfo.State.Running) {
+      console.log(`Container ${containerId} is running. Stopping container...`);
+      await container.stop();
+      console.log(`Container ${containerId} stopped successfully.`);
+    }
+
+    // 컨테이너 삭제
     await container.remove({ force: true, ...options });
-    console.log(`Container ${containerId} removed successfully`);
+    console.log(`Container ${containerId} removed successfully.`);
   } catch (err) {
     console.error(`Error removing container ${containerId}:`, err);
   }

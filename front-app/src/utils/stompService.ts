@@ -3,6 +3,7 @@ import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
+import { handleGetDockerEvent } from "electron/dockerManager";
 
 // 세션 데이터와 관련된 인터페이스 정의
 interface SessionData {
@@ -361,7 +362,7 @@ async function getTotalMemoryUsage(
 }
 
 // 현재 상태를 WebSocket을 통해 전송하는 함수
-const sendCurrentState = async (deploymentId: string) => {
+const sendCurrentState = async () => {
   try {
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();

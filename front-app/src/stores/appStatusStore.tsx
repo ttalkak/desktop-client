@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { ImageInspectInfo, ContainerInspectInfo } from "dockerode";
 
 // App State
 interface AppState {
@@ -33,16 +32,16 @@ export const useAppStore = create<AppState>()(
 
 // Docker State
 interface DockerState {
-  dockerImages: ImageInspectInfo[];
-  dockerContainers: ContainerInspectInfo[];
-  setDockerImages: (images: ImageInspectInfo[]) => void;
-  addDockerImage: (newImage: ImageInspectInfo) => void;
-  updateDockerImage: (updatedImage: ImageInspectInfo) => void;
+  dockerImages: DockerImage[];
+  dockerContainers: DockerContainer[];
+  setDockerImages: (images: DockerImage[]) => void;
+  addDockerImage: (newImage: DockerImage) => void;
+  updateDockerImage: (updatedImage: DockerImage) => void;
   removeDockerImage: (imageId: string) => void;
   clearDockerImages: () => void;
-  setDockerContainers: (containers: ContainerInspectInfo[]) => void;
-  addDockerContainer: (newContainer: ContainerInspectInfo) => void;
-  updateDockerContainer: (updatedContainer: ContainerInspectInfo) => void;
+  setDockerContainers: (containers: DockerContainer[]) => void;
+  addDockerContainer: (newContainer: DockerContainer) => void;
+  updateDockerContainer: (updatedContainer: DockerContainer) => void;
   removeDockerContainer: (containerId: string) => void;
   clearDockerContainers: () => void;
 }
@@ -54,13 +53,25 @@ export const useDockerStore = create<DockerState>()(
       dockerContainers: [],
       setDockerImages: (images) => set({ dockerImages: images }),
       addDockerImage: (newImage) =>
-        set((state) => ({
-          dockerImages: [...state.dockerImages, newImage],
-        })),
+        set((state) => {
+          // Check if the image already exists
+          const existingImageIndex = state.dockerImages.findIndex(
+            (image) => image.Id === newImage.Id
+          );
+          if (existingImageIndex !== -1) {
+            // Update existing image
+            const updatedImages = [...state.dockerImages];
+            updatedImages[existingImageIndex] = newImage;
+            return { dockerImages: updatedImages };
+          } else {
+            // Add new image
+            return { dockerImages: [...state.dockerImages, newImage] };
+          }
+        }),
       updateDockerImage: (updatedImage) =>
         set((state) => ({
-          dockerImages: state.dockerImages.map((img) =>
-            img.Id === updatedImage.Id ? { ...img, ...updatedImage } : img
+          dockerImages: state.dockerImages.map((image) =>
+            image.Id === updatedImage.Id ? updatedImage : image
           ),
         })),
       removeDockerImage: (imageId) =>
@@ -73,17 +84,33 @@ export const useDockerStore = create<DockerState>()(
       setDockerContainers: (containers) =>
         set({ dockerContainers: containers }),
       addDockerContainer: (newContainer) =>
-        set((state) => ({
-          dockerContainers: [...state.dockerContainers, newContainer],
-        })),
-      updateDockerContainer: (updatedContainer) =>
-        set((state) => ({
-          dockerContainers: state.dockerContainers.map((container) =>
-            container.Id === updatedContainer.Id
-              ? { ...container, ...updatedContainer }
-              : container
-          ),
-        })),
+        set((state) => {
+          const existingContainerIndex = state.dockerContainers.findIndex(
+            (container) => container.Id === newContainer.Id
+          );
+
+          if (existingContainerIndex !== -1) {
+            // Update existing container
+            const updatedContainers = [...state.dockerContainers];
+            updatedContainers[existingContainerIndex] = newContainer;
+            return { dockerContainers: updatedContainers };
+          } else {
+            // Add new container
+            return {
+              dockerContainers: [...state.dockerContainers, newContainer],
+            };
+          }
+        }),
+      updateDockerContainer: (updatedContainer) => {
+        set((state) => {
+          const newContainers = state.dockerContainers.map((container) =>
+            container.Id === updatedContainer.Id ? updatedContainer : container
+          );
+          console.log("새로운 컨ㅇ테인", newContainers);
+          return { dockerContainers: newContainers };
+        });
+      },
+
       removeDockerContainer: (containerId) =>
         set((state) => ({
           dockerContainers: state.dockerContainers.filter(
@@ -122,10 +149,12 @@ export const useCpuStore = create<CpuState>()(
             (container) => container.containerId === containerId
           );
           if (existingUsageIndex >= 0) {
+            // Update existing CPU usage
             const updatedUsages = [...state.containerCpuUsages];
             updatedUsages[existingUsageIndex].cpuUsagePercent = cpuUsagePercent;
             return { containerCpuUsages: updatedUsages };
           } else {
+            // Add new CPU usage
             return {
               containerCpuUsages: [
                 ...state.containerCpuUsages,

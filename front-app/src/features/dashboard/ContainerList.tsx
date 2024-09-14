@@ -2,19 +2,12 @@ import React, { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/appStatusStore";
-import { ContainerInspectInfo } from "dockerode";
-
-interface PortMapping {
-  inboundPort: string;
-  outboundPort: string;
-  protocol: string;
-}
+import Dockerode from "dockerode";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
-
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
 
   const handleContainerSelect = (containerId: string) => {
@@ -28,49 +21,22 @@ const ContainerList: React.FC = () => {
     return parts[parts.length - 1].split(":")[0];
   };
 
-  const formatCreatedTime = (created: string | number | undefined) => {
-    if (created === undefined) return "Unknown";
-    const date = new Date(
-      typeof created === "string" ? created : Number(created) * 1000
-    );
-    return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+  const formatCreatedTime = (created: number) => {
+    const date = new Date(created * 1000);
+    return date.toLocaleString();
   };
 
-  const renderPorts = (
-    ports:
-      | {
-          [portAndProtocol: string]: Array<{
-            HostIp: string;
-            HostPort: string;
-          }>;
-        }
-      | undefined
-  ) => {
-    if (!ports) return <div>No Ports</div>;
+  const renderPorts = (ports: Dockerode.Port[]) => {
+    if (!ports || ports.length === 0) return <div>No Ports</div>;
 
-    const portMappings: PortMapping[] = [];
-
-    Object.entries(ports).forEach(([portAndProtocol, hostBindings]) => {
-      const [port, protocol] = portAndProtocol.split("/");
-      hostBindings.forEach((binding) => {
-        portMappings.push({
-          inboundPort: port,
-          outboundPort: binding.HostPort,
-          protocol: protocol,
-        });
-      });
-    });
-
-    return portMappings.length > 0 ? (
+    return (
       <ul>
-        {portMappings.map((mapping, index) => (
-          <li key={index}>
-            {mapping.inboundPort} : {mapping.outboundPort} ({mapping.protocol})
+        {ports.map((port, index) => (
+          <li key={`${port.PrivatePort}-${port.PublicPort}-${index}`}>
+            {port.PrivatePort} : {port.PublicPort || "N/A"} ({port.Type})
           </li>
         ))}
       </ul>
-    ) : (
-      <div>No Ports</div>
     );
   };
 
@@ -103,31 +69,23 @@ const ContainerList: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {dockerContainers.map((container: ContainerInspectInfo) => {
-            const { Id, Name, Image, Created, State, NetworkSettings } =
-              container;
-
+          {dockerContainers.map((container: DockerContainer) => {
+            const { Id, Names, Image, Created, Status, Ports } = container;
             const isSelected = selectedContainerId === Id;
 
             return (
               <React.Fragment key={Id}>
                 <tr>
-                  <td className="py-2 px-4 border-b">{Name}</td>
+                  <td className="py-2 px-4 border-b">{Names}</td>
                   <td className="py-2 px-4 border-b" title={Image}>
                     {shortenImageName(Image)}
                   </td>
                   <td className="py-2 px-4 border-b">
                     {formatCreatedTime(Created)}
                   </td>
+                  <td className="py-2 px-4 border-b">{renderPorts(Ports)}</td>
                   <td className="py-2 px-4 border-b">
-                    {renderPorts(NetworkSettings.Ports)}
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    {State ? (
-                      <div>{State.Status}</div>
-                    ) : (
-                      <p>No health information available</p>
-                    )}
+                    <div>{Status}</div>
                   </td>
                   <td className="py-2 px-4 border-b">
                     <button
@@ -144,7 +102,7 @@ const ContainerList: React.FC = () => {
                   </td>
                 </tr>
                 {isSelected && (
-                  <tr>
+                  <tr key={`${Id}-logs`}>
                     <td colSpan={6} className="p-4 bg-gray-100 border-b">
                       <ContainerLogs containerId={Id} />
                     </td>

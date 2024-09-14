@@ -26,7 +26,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("open-docker-desktop", dockerPath);
   },
 
-  //컨테이너, 이미지 로드
+  //컨테이너, 이미지 정보 로드
   fetchDockerImage: (imageId: string) =>
     ipcRenderer.invoke("fetch-docker-image", imageId),
   fetchDockerContainer: (containerId: string) =>

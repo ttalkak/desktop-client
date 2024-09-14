@@ -1,8 +1,6 @@
-// src/utils/serviceUtils.ts
 import { useAppStore } from "../stores/appStatusStore";
 import { checkDockerStatus, startDocker } from "./dockerUtils";
 import { connectWebSocket } from "./stompService";
-// import { registerDockerEventHandlers } from "./dockerEventListner";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -22,8 +20,6 @@ export const startService = async () => {
 
     setDockerStatus("running");
     console.log("4. ServiceUtil: Docker is running");
-
-    // 2. dockerEvent 감지 시작
 
     // 3. WebSocket 연결
     connectWebSocket();

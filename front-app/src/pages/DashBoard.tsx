@@ -61,7 +61,7 @@ const DashBoard: React.FC = () => {
             )}%)`}
           </p>
         </div>
-        <div className="flex justify-center h-full">
+        <div className="justify-center h-full">
           <TabsContent value="account">
             <ContainerList />
           </TabsContent>

@@ -8,9 +8,9 @@ import {
   getDockerPath,
   handleStartDocker,
   handleGetDockerEvent,
-  handleFetchDockerImageList,
+  handleGetDockerImageList,
   handleFetchDockerImages,
-  handleFetchDockerContainerList,
+  handleGetDockerContainerList,
   handleFetchDockerContainer,
   handleFetchContainerLogs,
   handleBuildDockerImage,
@@ -45,9 +45,9 @@ function registerIpcHandlers() {
   getDockerPath(); // Docker 경로 핸들러 초기화
   handleStartDocker(); // Docker 데스크탑 시작 핸들러 초기화
   handleGetDockerEvent(); // Docker 이벤트 핸들러 초기화
-  handleFetchDockerImageList(); // Docker 이미지 목록 핸들러 초기화
+  handleGetDockerImageList(); // Docker 이미지 목록 핸들러 초기화
   handleFetchDockerImages(); // Docker 단일 이미지 핸들러 초기화
-  handleFetchDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
+  handleGetDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
   handleFetchDockerContainer(); // Docker 단일 컨테이너 핸들러 초기화
   handleFetchContainerLogs(); // Docker 컨테이너 로그 핸들러 초기화
   handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
