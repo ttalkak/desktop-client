@@ -1,3 +1,5 @@
+import { useDockerStore } from "../stores/appStatusStore";
+
 // 도커 상태 확인 함수
 export const checkDockerStatus = async (): Promise<
   "running" | "not running" | "unknown"
@@ -76,91 +78,152 @@ export const handleBuildImage = async (
   }
 };
 
+// // 컨테이너 생성 및 시작
+// export const createAndStartContainers = async (
+//   dockerImages: DockerImage[],
+//   inboundPort: number,
+//   outboundPort: number
+// ): Promise<DockerContainer[]> => {
+//   try {
+//     console.log("Starting createAndStartContainers function");
+
+//     let [dockerContainers, existingImages] = await Promise.all([
+//       window.electronAPI.getDockerContainers(false), //실행중이지 않은 전체 컨테이너까지 가져옴
+//       window.electronAPI.getDockerImages(), // 이미지 목록 가져옴
+//     ]);
+
+//     for (const image of dockerImages) {
+//       const repoTag = image.RepoTags?.[0];
+//       if (!repoTag) {
+//         console.error("Error: No RepoTag found for image:", image);
+//         continue;
+//       }
+
+//       if (!existingImages.some((img) => img.RepoTags?.includes(repoTag))) {
+//         console.log("Image does not exist, skipping:", repoTag);
+//         continue;
+//       }
+
+//       const existingContainer = dockerContainers.find(
+//         (container) => container.Image === repoTag
+//       );
+
+//       if (existingContainer) {
+//         if (existingContainer.Status !== "running") {
+//           console.log("Starting existing container:", existingContainer.Id);
+//           try {
+//             await window.electronAPI.startContainer(existingContainer.Id);
+//             console.log("Successfully started existing container");
+//             const updatedContainer =
+//               await window.electronAPI.fetchDockerContainer(
+//                 existingContainer.Id
+//               );
+//             dockerContainers = dockerContainers.map((c) =>
+//               c.Id === updatedContainer.Id ? updatedContainer : c
+//             );
+//           } catch (startError) {
+//             console.error("Error starting existing container:", startError);
+//           }
+//         } else {
+//           console.log("Container is already running:", existingContainer.Id);
+//         }
+//       } else {
+//         console.log("No existing container found for image:", repoTag);
+//         const containerName = `${repoTag.replace(/[:/]/g, "-")}-container`;
+//         try {
+//           const containerOptions =
+//             await window.electronAPI.createContainerOptions(
+//               repoTag,
+//               containerName,
+//               inboundPort,
+//               outboundPort
+//             );
+//           console.log("Created container options:", containerOptions);
+
+//           const result = await window.electronAPI.createAndStartContainer(
+//             containerOptions
+//           );
+//           if (result.success) {
+//             console.log("Successfully created and started container");
+//             const newContainer = await window.electronAPI.fetchDockerContainer(
+//               result.containerId
+//             );
+//             dockerContainers.push(newContainer);
+//           } else {
+//             console.error("Failed to start container:", result.error);
+//           }
+//         } catch (containerError) {
+//           console.error("Error in container creation process:", containerError);
+//         }
+//       }
+//     }
+
+//     return dockerContainers;
+//   } catch (error) {
+//     console.error("Error in createAndStartContainers:", error);
+//     return [];
+//   }
+// };
 // 컨테이너 생성 및 시작
-export const createAndStartContainers = async (
-  dockerImages: DockerImage[],
+export const createAndStartContainer = async (
+  dockerImage: DockerImage, // 하나의 이미지만 받음
   inboundPort: number,
   outboundPort: number
-): Promise<DockerContainer[]> => {
+): Promise<string> => {
+  // containerId (string) 또는 실패 시 Error 반환
   try {
-    console.log("Starting createAndStartContainers function");
+    console.log("Starting createAndStartContainer function");
 
-    let [dockerContainers, existingImages] = await Promise.all([
-      window.electronAPI.getDockerContainers(false),
-      window.electronAPI.getDockerImages(),
-    ]);
+    const existingImages = await window.electronAPI.getDockerImages();
 
-    console.log("Retrieved docker containers and images");
-
-    for (const image of dockerImages) {
-      const repoTag = image.RepoTags?.[0];
-      if (!repoTag) {
-        console.error("Error: No RepoTag found for image:", image);
-        continue;
-      }
-
-      if (!existingImages.some((img) => img.RepoTags?.includes(repoTag))) {
-        console.log("Image does not exist, skipping:", repoTag);
-        continue;
-      }
-
-      const existingContainer = dockerContainers.find(
-        (container) => container.Image === repoTag
-      );
-
-      if (existingContainer) {
-        if (existingContainer.Status !== "running") {
-          console.log("Starting existing container:", existingContainer.Id);
-          try {
-            await window.electronAPI.startContainer(existingContainer.Id);
-            console.log("Successfully started existing container");
-            const updatedContainer =
-              await window.electronAPI.fetchDockerContainer(
-                existingContainer.Id
-              );
-            dockerContainers = dockerContainers.map((c) =>
-              c.Id === updatedContainer.Id ? updatedContainer : c
-            );
-          } catch (startError) {
-            console.error("Error starting existing container:", startError);
-          }
-        } else {
-          console.log("Container is already running:", existingContainer.Id);
-        }
-      } else {
-        console.log("No existing container found for image:", repoTag);
-        const containerName = `${repoTag.replace(/[:/]/g, "-")}-container`;
-        try {
-          const containerOptions =
-            await window.electronAPI.createContainerOptions(
-              repoTag,
-              containerName,
-              inboundPort,
-              outboundPort
-            );
-          console.log("Created container options:", containerOptions);
-
-          const result = await window.electronAPI.createAndStartContainer(
-            containerOptions
-          );
-          if (result.success) {
-            console.log("Successfully created and started container");
-            const newContainer = await window.electronAPI.fetchDockerContainer(
-              result.containerId
-            );
-            dockerContainers.push(newContainer);
-          } else {
-            console.error("Failed to start container:", result.error);
-          }
-        } catch (containerError) {
-          console.error("Error in container creation process:", containerError);
-        }
-      }
+    const repoTag = dockerImage.RepoTags?.[0];
+    if (!repoTag) {
+      throw new Error(`No RepoTag found for image: ${dockerImage}`);
     }
 
-    return dockerContainers;
+    if (!existingImages.some((img) => img.RepoTags?.includes(repoTag))) {
+      throw new Error(`Image does not exist: ${repoTag}`);
+    }
+
+    console.log("Creating new container for image:", repoTag);
+    const containerName = `${repoTag.replace(/[:/]/g, "-")}-container`;
+    try {
+      const containerOptions = await window.electronAPI.createContainerOptions(
+        repoTag,
+        containerName,
+        inboundPort,
+        outboundPort
+      );
+      console.log("Created container options:", containerOptions);
+
+      const result = await window.electronAPI.createAndStartContainer(
+        containerOptions
+      );
+      if (result.success) {
+        console.log("Successfully created and started container");
+        // 성공 시 containerId 기반으로 listContainers 사용
+        const containers = await window.electronAPI.getDockerContainers(true);
+        const createdContainer = containers.find(
+          (c) => c.Id === result.containerId
+        );
+
+        if (createdContainer) {
+          // Store에 저장
+          useDockerStore.getState().addDockerContainer(createdContainer);
+          console.log("Container stored in the state:", createdContainer);
+        } else {
+          console.error("Created container not found in the list.");
+        }
+
+        return result.containerId; // 성공 시 containerId 반환
+      } else {
+        throw new Error(`Failed to start container: ${result.error}`);
+      }
+    } catch (containerError) {
+      throw new Error(`Error in container creation process: ${containerError}`);
+    }
   } catch (error) {
-    console.error("Error in createAndStartContainers:", error);
-    return [];
+    console.error("Error in createAndStartContainer:", error);
+    throw error; // 에러 발생 시 Error 객체를 그대로 반환
   }
 };

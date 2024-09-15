@@ -70,7 +70,7 @@ const ContainerList: React.FC = () => {
         </thead>
         <tbody>
           {dockerContainers.map((container: DockerContainer) => {
-            const { Id, Names, Image, Created, Status, Ports } = container;
+            const { Id, Names, Image, Created, State, Ports } = container;
             const isSelected = selectedContainerId === Id;
 
             return (
@@ -85,7 +85,7 @@ const ContainerList: React.FC = () => {
                   </td>
                   <td className="py-2 px-4 border-b">{renderPorts(Ports)}</td>
                   <td className="py-2 px-4 border-b">
-                    <div>{Status}</div>
+                    <div>{State}</div>
                   </td>
                   <td className="py-2 px-4 border-b">
                     <button

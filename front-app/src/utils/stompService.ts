@@ -1,9 +1,8 @@
 import { Client, Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
-import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
+import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
-import { handleGetDockerEvent } from "electron/dockerManager";
 
 // 세션 데이터와 관련된 인터페이스 정의
 interface SessionData {
@@ -138,24 +137,21 @@ function setupClientHandlers(userId: string): void {
               sendDeploymentStatus("image_created", compute, {
                 imageId: image.Id,
               });
-              const containers = await createAndStartContainers(
-                [image],
+              const containerId = await createAndStartContainer(
+                image,
                 80,
                 8080
                 // compute.inboundPort ?? 80,
                 // compute.outboundPort ?? 8080
               );
-              containers.forEach((container) => {
-                addDockerContainer(container);
-                window.electronAPI.startContainerStats(container.Id);
-                sendDeploymentStatus("container_created", compute, {
-                  containerId: container.Id,
-                });
-                // Use the deployment store to add the container to the deployment
-                useDeploymentStore
-                  .getState()
-                  .addDeployment(compute.deploymentId, container.Id);
+              window.electronAPI.startContainerStats(containerId);
+              sendDeploymentStatus("container_created", compute, {
+                containerId: containerId,
               });
+              // Use the deployment store to add the container to the deployment
+              useDeploymentStore
+                .getState()
+                .addDeployment(compute.deploymentId, containerId);
 
               startContainerStatsMonitoring();
 

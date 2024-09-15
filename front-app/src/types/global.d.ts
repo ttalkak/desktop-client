@@ -112,8 +112,10 @@ declare global {
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 
-    fetchDockerImage: (imageId: string) => Promise<DockerImage>;
-    fetchDockerContainer: (containerId: string) => Promise<DockerContainer>;
+    fetchDockerImage: (imageId: string) => Promise<Dockerode.ImageInspectInfo>;
+    fetchDockerContainer: (
+      containerId: string
+    ) => Promise<Dockerode.ContainerInspectInfo>;
     getDockerImages: () => Promise<DockerImage[]>;
     getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 

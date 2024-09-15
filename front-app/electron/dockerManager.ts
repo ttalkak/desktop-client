@@ -263,7 +263,7 @@ export function handleGetContainerStatsPeriodic() {
 
 //----------Docker 이미지 및 컨테이너 Fetch
 
-//단일이미지[이미지 파일있음]
+//단일 이미지 정보반환? 타입을 어떻게 한담..
 export const handleFetchDockerImages = (): void => {
   ipcMain.handle("fetch-docker-image", async (_event, imageId: string) => {
     try {
@@ -276,13 +276,13 @@ export const handleFetchDockerImages = (): void => {
   });
 };
 
-//단일 컨테이너 정보반환? 타입을 어떻게 한담..
+//단일 컨테이너 정보반환? 타입을 어떻게 한담..일단 inspect
 export const handleFetchDockerContainer = (): void => {
   ipcMain.handle(
     "fetch-docker-container",
     async (_event, containerId: string) => {
       try {
-        const container = await docker.getContainer(containerId);
+        const container = await docker.getContainer(containerId).inspect();
         return container;
       } catch (err) {
         console.error(`Failed to fetch Docker container ${containerId}:`, err);
@@ -296,8 +296,8 @@ export const handleFetchDockerContainer = (): void => {
 export const handleGetDockerImage = (): void => {
   ipcMain.handle("get-docker-image", async (_event, imageId: string) => {
     try {
-      const container = await docker.getContainer(imageId);
-      return container;
+      const image = await docker.getImage(imageId).inspect();
+      return image;
     } catch (err) {
       console.error(`Failed to get Docker image ${imageId}:`, err);
       throw err;
@@ -334,7 +334,7 @@ export const handleGetDockerImageList = (): void => {
   });
 };
 
-//컨테이너리스트[실제 실행중인 전체목록]
+//컨테이너리스트[실제 저장되어있는 전체목록/미실행 포함]
 export const handleGetDockerContainerList = (all: boolean = false): void => {
   ipcMain.handle("get-all-docker-containers", async () => {
     try {

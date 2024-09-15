@@ -106,7 +106,7 @@ export const useDockerStore = create<DockerState>()(
           const newContainers = state.dockerContainers.map((container) =>
             container.Id === updatedContainer.Id ? updatedContainer : container
           );
-          console.log("새로운 컨ㅇ테인", newContainers);
+          console.log("컨테이너 업데이트 실행", newContainers);
           return { dockerContainers: newContainers };
         });
       },
