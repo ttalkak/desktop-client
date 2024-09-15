@@ -25,6 +25,7 @@ interface ComputeConnectRequest {
 interface ContainerStats {
   cpu_usage: number;
   memory_usage: number;
+  running_time: number;
   container_id: string;
   blkio_read: number;
   blkio_write: number;
@@ -44,6 +45,9 @@ const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
+
+// 전역 상태 저장소 추가
+const globalStats = new Map<string, ContainerStats>();
 
 // 세션 데이터를 세션 스토리지에서 가져오는 함수
 function getSessionData(): SessionData | null {
@@ -104,11 +108,11 @@ function setupClientHandlers(userId: string): void {
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
-    sendComputeConnectMessage("2"); // 연결 시 Compute 연결 메시지 전송
+    // 1. pub/compute/connect 웹소켓최초 연결시 메시지 전송
+    sendComputeConnectMessage("2");
 
     startSendingCurrentState(); // 현재 상태 전송 시작
-
-    // 컴퓨트 생성 구독
+    //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(`/sub/compute-create/2`, async (message: Message) => {
       const computes = JSON.parse(message.body);
       console.log(computes);
@@ -144,7 +148,7 @@ function setupClientHandlers(userId: string): void {
                 // compute.inboundPort ?? 80,
                 // compute.outboundPort ?? 8080
               );
-              window.electronAPI.startContainerStats(containerId);
+              window.electronAPI.startContainerStats([containerId]);
               sendDeploymentStatus("container_created", compute, {
                 containerId: containerId,
               });
@@ -155,7 +159,7 @@ function setupClientHandlers(userId: string): void {
 
               startContainerStatsMonitoring();
 
-              //업데이트요청 구독=> 사용자 아이디로 바꾸기
+              // sub/compute-update/{userId} 업데이트요청 구독
               client?.subscribe(`/sub/compute-update/2`, async (message) => {
                 try {
                   // 수신한 메시지 처리 로직 작성
@@ -238,7 +242,7 @@ export const disconnectWebSocket = (): void => {
   }
 };
 
-// Compute 연결 메시지를 전송하는 함수
+//1. pub/compute/connect 웹소켓 최초 연결시
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
@@ -357,7 +361,7 @@ async function getTotalMemoryUsage(
   }
 }
 
-// 현재 상태를 WebSocket을 통해 전송하는 함수
+// PING : "/pub/compute/ping"  현재 상태를 WebSocket을 통해 전송
 const sendCurrentState = async () => {
   try {
     const usedCPU = await window.electronAPI.getCpuUsage();
@@ -366,22 +370,34 @@ const sendCurrentState = async () => {
     const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
-    // deployments 객체를 배열 형태로 변환
-    const currentDeployments = JSON.stringify(
-      Object.entries(useDeploymentStore.getState().deployments).map(
-        ([deploymentId, containerId]) => ({
-          deploymentId,
-          containerId,
-        })
-      )
-    );
+
+    const deployments = [];
+    for (const [containerId, stats] of globalStats.entries()) {
+      const deploymentId = useDeploymentStore
+        .getState()
+        .getDeploymentByContainer(containerId);
+      if (deploymentId !== undefined) {
+        deployments.push({
+          deploymentId: deploymentId,
+          status: runningContainers.some((c) => c.Id === containerId)
+            ? "RUNNING"
+            : "STOPPED",
+          useMemory: stats.memory_usage,
+          useCPU: stats.cpu_usage,
+          runningTime: stats.running_time,
+          diskRead: stats.blkio_read,
+          diskWrite: stats.blkio_write,
+        });
+      }
+    }
 
     const currentState = {
       userId: "2",
+      computeType: await window.electronAPI.getOsType(),
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
       usedCPU: usedCPU,
-      deployments: currentDeployments || [],
+      deployments: deployments,
     };
 
     client?.publish({
@@ -454,7 +470,7 @@ async function checkAndUpdateContainerMonitoring() {
   monitoredRunningContainers.forEach((container) => {
     if (!currentContainers.has(container.Id)) {
       window.electronAPI
-        .startContainerStats(container.Id)
+        .startContainerStats([container.Id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to start container stats:", error)
@@ -466,7 +482,7 @@ async function checkAndUpdateContainerMonitoring() {
   dockerStore.dockerContainers.forEach((container) => {
     if (!allRunningContainerIds.has(container.Id)) {
       window.electronAPI
-        .stopContainerStats(container.Id)
+        .stopContainerStats([container.Id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to stop container stats:", error)
@@ -488,7 +504,7 @@ function stopContainerStatsMonitoring() {
   window.electronAPI.removeContainerStatsListeners();
   useDockerStore.getState().dockerContainers.forEach((container) => {
     window.electronAPI
-      .stopContainerStats(container.Id)
+      .stopContainerStats([container.Id])
       .then((result) => console.log(result.message))
       .catch((error) =>
         console.error("Failed to stop container stats:", error)
@@ -498,6 +514,7 @@ function stopContainerStatsMonitoring() {
 
 // 컨테이너 상태 업데이트를 처리하는 함수
 function handleContainerStats(stats: ContainerStats) {
+  globalStats.set(stats.container_id, stats);
   sendStatsToWebSocket(stats);
 }
 

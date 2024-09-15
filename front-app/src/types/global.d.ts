@@ -10,9 +10,9 @@ declare global {
   }
 
   interface ContainerStats {
-    container_id: string;
     cpu_usage: number;
     memory_usage: number;
+    container_id: string;
     running_time: number;
     blkio_read: number;
     blkio_write: number;
@@ -149,8 +149,15 @@ declare global {
     ): Promise<{ success: boolean; memoryUsage?: number; error?: string }>;
 
     // 주기적으로 개별 컨테이너 stats 가져오기
-    startContainerStats: (containerId: string) => Promise<StatsResult>;
-    stopContainerStats: (containerId: string) => Promise<StatsResult>;
+    startContainerStats: (
+      containerIds: string[]
+    ) => Promise<{ success: boolean; message: string }>;
+    stopContainerStats: (containerIds: string[]) => Promise<{
+      success: boolean;
+      stoppedContainers: string[];
+      notMonitoredContainers: string[];
+      message: string;
+    }>;
     onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
     onContainerStatsError: (
       callback: (error: ContainerStatsError) => void

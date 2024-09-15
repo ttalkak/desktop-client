@@ -146,7 +146,7 @@ export const registerDockerEventHandlers = (
               // 컨테이너가 이미 존재하면 업데이트
               useDockerStore.getState().updateDockerContainer(container);
               //stats 출력 다시 시작
-              window.electronAPI.startContainerStats(container.Id);
+              window.electronAPI.startContainerStats([container.Id]);
               console.log(`Container with ID ${container.Id} updated.`);
             } else {
               // 컨테이너가 존재하지 않으면 추가
@@ -170,72 +170,44 @@ export const registerDockerEventHandlers = (
 
       case "kill":
         console.log("kill, 강제종료");
-        try {
-          const containers = await window.electronAPI.getDockerContainers(
-            false
-          );
-          const container = containers.find((c) => c.Id === event.Actor.ID);
+        sendInstanceUpdate(
+          deploymentId,
+          "PENDING",
+          "Container was forcefully stopped (killed)."
+        );
+        // try {
+        //   const containers = await window.electronAPI.getDockerContainers(
+        //     false
+        //   );
+        //   const container = containers.find((c) => c.Id === event.Actor.ID);
 
-          console.log("Container from getDockerContainers:", container);
+        //   console.log("Container from getDockerContainers:", container);
 
-          if (container) {
-            sendInstanceUpdate(
-              deploymentId,
-              "STOPPED",
-              "Container was stopped successfully."
-            );
-          } else {
-            console.error(`Container with ID ${event.Actor.ID} not found.`);
-            sendInstanceUpdate(
-              deploymentId,
-              "PENDING",
-              "Container kill event failed"
-            );
-          }
-        } catch (error) {
-          console.error(`Error handling kill event: ${error}`);
-          sendInstanceUpdate(
-            deploymentId,
-            "PENDING",
-            `Error handling kill event: ${error}`
-          );
-        }
+        //   if (container) {
+        //     sendInstanceUpdate(
+        //       deploymentId,
+        //       "STOPPED",
+        //       "Container was stopped successfully."
+        //     );
+        //   } else {
+        //     console.error(`Container with ID ${event.Actor.ID} not found.`);
+        //     sendInstanceUpdate(
+        //       deploymentId,
+        //       "PENDING",
+        //       "Container kill event failed"
+        //     );
+        //   }
+        // } catch (error) {
+        //   console.error(`Error handling kill event: ${error}`);
+        //   sendInstanceUpdate(
+        //     deploymentId,
+        //     "PENDING",
+        //     `Error handling kill event: ${error}`
+        //   );
+        // }
         break;
 
-      case "die":
-        console.log("컨테이너 die");
-        try {
-          const containers = await window.electronAPI.getDockerContainers(
-            false
-          );
-          const container = containers.find((c) => c.Id === event.Actor.ID);
-
-          console.log("Container from getDockerContainers:", container);
-
-          if (container) {
-            sendInstanceUpdate(
-              deploymentId,
-              "STOPPED",
-              "Container died successfully."
-            );
-          } else {
-            console.error(`Container with ID ${event.Actor.ID} not found.`);
-            sendInstanceUpdate(
-              deploymentId,
-              "STOPPED",
-              "Container die event failed"
-            );
-          }
-        } catch (error) {
-          console.error(`Error handling die event: ${error}`);
-          sendInstanceUpdate(
-            deploymentId,
-            "PENDING",
-            `Error handling die event: ${error}`
-          );
-        }
-        break;
-
+      //컨테이너 정지
       case "stop":
         console.log("컨테이너 정지함");
         try {
@@ -309,10 +281,64 @@ export const registerDockerEventHandlers = (
         }
         break;
 
+      case "die":
+        console.log("컨테이너 die");
+        try {
+          const containers = await window.electronAPI.getDockerContainers(
+            false
+          );
+          const container = containers.find((c) => c.Id === event.Actor.ID);
+
+          console.log("Container from getDockerContainers:", container);
+
+          if (container) {
+            sendInstanceUpdate(
+              deploymentId,
+              "STOPPED",
+              "Container died successfully."
+            );
+          } else {
+            console.error(`Container with ID ${event.Actor.ID} not found.`);
+            sendInstanceUpdate(
+              deploymentId,
+              "STOPPED",
+              "Container die event failed"
+            );
+          }
+        } catch (error) {
+          console.error(`Error handling die event: ${error}`);
+          sendInstanceUpdate(
+            deploymentId,
+            "PENDING",
+            `Error handling die event: ${error}`
+          );
+        }
+        break;
+
+      //컨테이너 삭제
       case "destroy":
         console.log("컨테이너 삭제됨");
-        removeDockerContainer(event.Actor.ID);
-        sendInstanceUpdate(deploymentId, "DELETED");
+        // Stats 모니터링 중지
+        window.electronAPI
+          .stopContainerStats([event.Actor.ID])
+          .then((result) => {
+            console.log(
+              `Stats monitoring stopped for container ${event.Actor.ID}:`,
+              result.message
+            );
+            // Stats 모니터링 중지 후 컨테이너 제거 및 상태 업데이트
+            removeDockerContainer(event.Actor.ID);
+            sendInstanceUpdate(deploymentId, "DELETED");
+          })
+          .catch((error) => {
+            console.error(
+              `Failed to stop stats monitoring for container ${event.Actor.ID}:`,
+              error
+            );
+            // 에러가 발생하더라도 컨테이너 제거 및 상태 업데이트 진행
+            removeDockerContainer(event.Actor.ID);
+            sendInstanceUpdate(deploymentId, "DELETED");
+          });
         break;
       default:
         console.log(`Unhandled container action: ${event.Action}`);

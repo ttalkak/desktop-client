@@ -6,6 +6,7 @@ interface DeploymentState {
   addDeployment: (deploymentId: number, containerId: string) => void;
   removeDeployment: (deploymentId: number) => void;
   getContainerByDeployment: (deploymentId: number) => string | undefined;
+  getDeploymentByContainer: (containerId: string) => number | undefined;
   clearAllDeployments: () => void;
 }
 
@@ -24,6 +25,11 @@ export const useDeploymentStore = create<DeploymentState>()(
         }),
       getContainerByDeployment: (deploymentId) =>
         get().deployments[deploymentId],
+      getDeploymentByContainer: (containerId) => {
+        const entries = Object.entries(get().deployments);
+        const found = entries.find(([_, value]) => value === containerId);
+        return found ? Number(found[0]) : undefined;
+      },
       clearAllDeployments: () =>
         set(() => ({
           deployments: {},

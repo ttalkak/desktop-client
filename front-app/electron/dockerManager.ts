@@ -183,87 +183,100 @@ const statsIntervals = new Map<string, NodeJS.Timeout>();
 export function handleGetContainerStatsPeriodic() {
   ipcMain.handle(
     "start-container-stats",
-    async (event, containerId: string) => {
-      console.log(`Starting stats monitoring for container ${containerId}`);
+    async (event, containerIds: string[]) => {
+      console.log(
+        `Starting stats monitoring for containers: ${containerIds.join(", ")}`
+      );
 
-      // 이미 모니터링 중이라면 기존 인터벌 제거
-      if (statsIntervals.has(containerId)) {
-        clearInterval(statsIntervals.get(containerId));
+      for (const containerId of containerIds) {
+        // 이미 모니터링 중이라면 기존 인터벌 제거
+        if (statsIntervals.has(containerId)) {
+          clearInterval(statsIntervals.get(containerId));
+        }
+
+        const intervalId = setInterval(async () => {
+          try {
+            const container = docker.getContainer(containerId);
+
+            // 컨테이너 시작 시간 가져오기 => runningTime 계산용
+            const inspectData = await container.inspect();
+            const startedAt = new Date(inspectData.State.StartedAt).getTime();
+            const currentTime = Date.now();
+            const runningTime = Math.floor((currentTime - startedAt) / 1000); // 초 단위
+
+            const stats = await new Promise((resolve, reject) => {
+              container.stats({ stream: false }, (err, stats) => {
+                if (err) reject(err);
+                else
+                  resolve({
+                    cpu_usage: stats?.cpu_stats.cpu_usage.total_usage,
+                    memory_usage: stats?.memory_stats.usage,
+                    container_id: containerId,
+                    running_time: runningTime,
+                    blkio_read:
+                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                        (io) => io.op === "Read"
+                      )?.value ?? 0,
+                    blkio_write:
+                      stats?.blkio_stats?.io_service_bytes_recursive?.find(
+                        (io) => io.op === "Write"
+                      )?.value ?? 0,
+                  });
+              });
+            });
+
+            console.log(`Fetched stats for container ${containerId}:`, stats);
+            event.sender.send("container-stats-update", stats);
+          } catch (error) {
+            console.error(
+              `Error fetching stats for container ${containerId}:`,
+              error
+            );
+            event.sender.send("container-stats-error", {
+              containerId,
+              error: error,
+            });
+          }
+        }, 60000);
+
+        statsIntervals.set(containerId, intervalId);
       }
 
-      const intervalId = setInterval(async () => {
-        try {
-          const container = docker.getContainer(containerId);
-
-          // 컨테이너 시작 시간 가져오기=> runningTime 계산용
-          const inspectData = await container.inspect();
-          const startedAt = new Date(inspectData.State.StartedAt).getTime();
-          const currentTime = Date.now();
-          const runningTime = Math.floor((currentTime - startedAt) / 1000); // 초 단위
-
-          const stats = await new Promise((resolve, reject) => {
-            container.stats({ stream: false }, (err, stats) => {
-              if (err) reject(err);
-              else
-                resolve({
-                  cpu_usage: stats?.cpu_stats.cpu_usage.total_usage,
-                  memory_usage: stats?.memory_stats.usage,
-                  container_id: containerId,
-                  running_time: runningTime,
-                  blkio_read:
-                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
-                      (io) => io.op === "Read" // 바이트 수
-                    )?.value ?? 0,
-                  blkio_write:
-                    stats?.blkio_stats?.io_service_bytes_recursive?.find(
-                      (io) => io.op === "Write" // 바이트 수
-                    )?.value ?? 0,
-                });
-            });
-          });
-
-          console.log(`Fetched stats for container ${containerId}:`, stats);
-          event.sender.send("container-stats-update", stats);
-        } catch (error) {
-          console.error(
-            `Error fetching stats for container ${containerId}:`,
-            error
-          );
-          event.sender.send("container-stats-error", {
-            containerId,
-            error: error,
-          });
-        }
-      }, 60000);
-
-      statsIntervals.set(containerId, intervalId);
       return {
         success: true,
-        message: `Started monitoring container ${containerId}`,
+        message: `Started monitoring containers: ${containerIds.join(", ")}`,
       };
     }
   );
 
-  ipcMain.handle("stop-container-stats", (_event, containerId: string) => {
-    if (statsIntervals.has(containerId)) {
-      clearInterval(statsIntervals.get(containerId));
-      statsIntervals.delete(containerId);
-      return {
-        success: true,
-        message: `Stopped monitoring container ${containerId}`,
-      };
-    } else {
-      return {
-        success: false,
-        message: `Container ${containerId} is not being monitored`,
-      };
+  ipcMain.handle("stop-container-stats", (_event, containerIds: string[]) => {
+    const stoppedContainers: string[] = [];
+    const notMonitoredContainers: string[] = [];
+
+    for (const containerId of containerIds) {
+      if (statsIntervals.has(containerId)) {
+        clearInterval(statsIntervals.get(containerId));
+        statsIntervals.delete(containerId);
+        stoppedContainers.push(containerId);
+      } else {
+        notMonitoredContainers.push(containerId);
+      }
     }
+
+    return {
+      success: true,
+      stoppedContainers,
+      notMonitoredContainers,
+      message: `Stopped monitoring containers: ${stoppedContainers.join(
+        ", "
+      )}. Not monitored: ${notMonitoredContainers.join(", ")}`,
+    };
   });
 }
 
 //----------Docker 이미지 및 컨테이너 Fetch
 
-//단일 이미지 정보반환? 타입을 어떻게 한담..
+//단일 이미지 정보반환? 타입을 어떻게 한담..일단 inspect
 export const handleFetchDockerImages = (): void => {
   ipcMain.handle("fetch-docker-image", async (_event, imageId: string) => {
     try {
