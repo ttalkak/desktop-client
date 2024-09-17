@@ -20,7 +20,7 @@ import {
   handleGetContainerMemoryUsage,
   handleGetContainerStatsPeriodic,
 } from "./managers/dockerManager";
-import { powerSaveBlocker } from "electron";
+// import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -196,10 +196,10 @@ function createTray() {
 }
 
 // powerSaveBlocker 시작 함수
-function startPowerSaveBlocker() {
-  const id = powerSaveBlocker.start("prevent-app-suspension");
-  console.log(`PowerSaveBlocker started with id: ${id}`);
-}
+// function startPowerSaveBlocker() {
+//   const id = powerSaveBlocker.start("prevent-app-suspension");
+//   console.log(`PowerSaveBlocker started with id: ${id}`);
+// }
 
 app
   .whenReady()

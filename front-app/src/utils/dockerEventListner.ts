@@ -3,7 +3,7 @@ import { Client } from "@stomp/stompjs";
 
 export const registerDockerEventHandlers = (
   client: Client,
-  userId: string,
+  _userId: string = "2",
   deploymentId: number
 ): (() => void) => {
   window.electronAPI.sendDockerEventRequest();
@@ -20,7 +20,7 @@ export const registerDockerEventHandlers = (
   function sendInstanceUpdate(
     deploymentId: number,
     status: string,
-    details?: string
+    _details?: string
   ) {
     const message = {
       status: status,

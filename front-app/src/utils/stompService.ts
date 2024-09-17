@@ -5,12 +5,12 @@ import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
 
 // 세션 데이터와 관련된 인터페이스 정의
-interface SessionData {
-  userId: number;
-  maxCompute: number;
-  availablePortStart: number;
-  availablePortEnd: number;
-}
+// interface SessionData {
+//   userId: number;
+//   maxCompute: number;
+//   availablePortStart: number;
+//   availablePortEnd: number;
+// }
 
 interface Deployment {
   deploymentId: number;
@@ -59,15 +59,15 @@ let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크
 const globalStats = new Map<string, ContainerStats>();
 
 // 세션 데이터를 세션 스토리지에서 가져오는 함수
-function getSessionData(): SessionData | null {
-  const data = sessionStorage.getItem("userSettings");
-  if (!data) return null;
-  try {
-    return JSON.parse(data) as SessionData;
-  } catch {
-    return null;
-  }
-}
+// function getSessionData(): SessionData | null {
+//   const data = sessionStorage.getItem("userSettings");
+//   if (!data) return null;
+//   try {
+//     return JSON.parse(data) as SessionData;
+//   } catch {
+//     return null;
+//   }
+// }
 
 // STOMP 클라이언트를 생성하는 함수
 function createStompClient(userId: string): Client {
@@ -81,24 +81,24 @@ function createStompClient(userId: string): Client {
 }
 
 // 세션 데이터가 로드될 때까지 기다리는 함수
-async function waitForSessionData(
-  maxAttempts: number = 10,
-  interval: number = 1000
-): Promise<SessionData> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const sessionData = getSessionData();
-    if (sessionData && sessionData.userId) {
-      return sessionData;
-    }
-    await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
-  }
-  throw new Error("Failed to get session data after maximum attempts");
-}
+// async function waitForSessionData(
+//   maxAttempts: number = 10,
+//   interval: number = 1000
+// ): Promise<SessionData> {
+//   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+//     const sessionData = getSessionData();
+//     if (sessionData && sessionData.userId) {
+//       return sessionData;
+//     }
+//     await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
+//   }
+//   throw new Error("Failed to get session data after maximum attempts");
+// }
 
 // STOMP 클라이언트를 초기화하는 함수
 export async function initializeStompClient(): Promise<Client> {
   try {
-    const sessionData = await waitForSessionData();
+    // const sessionData = await waitForSessionData();
     if (!client) {
       // client = createStompClient(sessionData.userId.toString());
       client = createStompClient("2");
@@ -113,7 +113,7 @@ export async function initializeStompClient(): Promise<Client> {
 }
 
 // STOMP 클라이언트 실행 내역
-function setupClientHandlers(userId: string): void {
+function setupClientHandlers(_userId: string): void {
   if (!client) return;
 
   client.onConnect = (frame) => {
@@ -276,7 +276,7 @@ export const disconnectWebSocket = (): void => {
 };
 
 //1. pub/compute/connect 웹소켓 최초 연결시
-const sendComputeConnectMessage = async (userId: string): Promise<void> => {
+const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
