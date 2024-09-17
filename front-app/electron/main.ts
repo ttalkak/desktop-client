@@ -14,13 +14,12 @@ import {
   handleFetchDockerContainer,
   handleFetchContainerLogs,
   handleBuildDockerImage,
-  // createAndStartContainer,
   registerContainerIpcHandlers,
   handleFindDockerFile,
-  // handleMonitorContainersCpuUsage,
   handleGetContainerMemoryUsage,
   handleGetContainerStatsPeriodic,
 } from "./dockerManager";
+import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -195,11 +194,18 @@ function createTray() {
   });
 }
 
+// powerSaveBlocker 시작 함수
+function startPowerSaveBlocker() {
+  const id = powerSaveBlocker.start("prevent-app-suspension");
+  console.log(`PowerSaveBlocker started with id: ${id}`);
+}
+
 app
   .whenReady()
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
+  // .then(startPowerSaveBlocker)
   .catch((error) => {
     console.error("Failed to start application:", error);
   });
