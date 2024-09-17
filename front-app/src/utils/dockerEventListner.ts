@@ -24,7 +24,8 @@ export const registerDockerEventHandlers = (
   ) {
     const message = {
       status: status,
-      message: details || "",
+      // message: details || "",
+      message: "",
     };
 
     const headers = {
@@ -64,7 +65,7 @@ export const registerDockerEventHandlers = (
               console.log(`Image with ID ${builtImage.Id} updated.`);
             } else {
               // 이미지가 존재하지 않으면 추가
-              useDockerStore.getState().addDockerImage(builtImage);
+              addDockerImage(builtImage);
               console.log(`Image with ID ${builtImage.Id} added.`);
             }
           } else {
@@ -111,11 +112,11 @@ export const registerDockerEventHandlers = (
 
             if (existingContainer) {
               // 컨테이너가 이미 존재하면 업데이트
-              useDockerStore.getState().updateDockerContainer(container);
+              updateDockerContainer(container);
               console.log(`Container with ID ${container.Id} updated.`);
             } else {
               // 컨테이너가 존재하지 않으면 추가
-              useDockerStore.getState().addDockerContainer(container);
+              addDockerContainer(container);
               console.log(`Container with ID ${container.Id} added.`);
             }
 
@@ -144,13 +145,15 @@ export const registerDockerEventHandlers = (
 
             if (existingContainer) {
               // 컨테이너가 이미 존재하면 업데이트
-              useDockerStore.getState().updateDockerContainer(container);
+              updateDockerContainer(container);
               //stats 출력 다시 시작
               window.electronAPI.startContainerStats([container.Id]);
+              window.electronAPI.startLogStream(container.Id);
               console.log(`Container with ID ${container.Id} updated.`);
             } else {
               // 컨테이너가 존재하지 않으면 추가
-              useDockerStore.getState().addDockerContainer(container);
+              addDockerContainer(container);
+              window.electronAPI.startLogStream(container.Id);
               console.log(`Container with ID ${container.Id} added.`);
             }
 
@@ -175,36 +178,6 @@ export const registerDockerEventHandlers = (
           "PENDING",
           "Container was forcefully stopped (killed)."
         );
-        // try {
-        //   const containers = await window.electronAPI.getDockerContainers(
-        //     false
-        //   );
-        //   const container = containers.find((c) => c.Id === event.Actor.ID);
-
-        //   console.log("Container from getDockerContainers:", container);
-
-        //   if (container) {
-        //     sendInstanceUpdate(
-        //       deploymentId,
-        //       "STOPPED",
-        //       "Container was stopped successfully."
-        //     );
-        //   } else {
-        //     console.error(`Container with ID ${event.Actor.ID} not found.`);
-        //     sendInstanceUpdate(
-        //       deploymentId,
-        //       "PENDING",
-        //       "Container kill event failed"
-        //     );
-        //   }
-        // } catch (error) {
-        //   console.error(`Error handling kill event: ${error}`);
-        //   sendInstanceUpdate(
-        //     deploymentId,
-        //     "PENDING",
-        //     `Error handling kill event: ${error}`
-        //   );
-        // }
         break;
 
       //컨테이너 정지
@@ -249,6 +222,7 @@ export const registerDockerEventHandlers = (
 
               // 상태를 반영하여 업데이트
               updateDockerContainer(updatedContainer);
+              window.electronAPI.stopLogStream(updatedContainer.Id);
               sendInstanceUpdate(deploymentId, "STOPPED");
               console.log("Container state forcibly updated to 'exited'.");
             } else {

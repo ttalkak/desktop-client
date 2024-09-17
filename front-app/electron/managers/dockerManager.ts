@@ -4,7 +4,6 @@ import { promisify } from "util";
 import Docker from "dockerode";
 import path from "node:path";
 import * as fs from "fs";
-import { Readable } from "stream";
 
 const execAsync = promisify(exec);
 
@@ -12,9 +11,8 @@ const execAsync = promisify(exec);
 export const docker = new Docker();
 
 // 로그 스트림 객체
-export const logStreams: Record<string, Readable> = {};
 
-//------------------- 도커 상태 체크 -----------------------------
+//------------------- 도커 상태 체크
 export async function checkDockerStatus(): Promise<
   "running" | "not running" | "unknown"
 > {
@@ -32,7 +30,7 @@ export const handlecheckDockerStatus = (): void => {
   });
 };
 
-//------------------- Docker Desktop 경로 ------------------------
+//------------------- Docker Desktop 경로
 export const getDockerPath = (): void => {
   ipcMain.handle("get-docker-path", async () => {
     try {
@@ -359,61 +357,6 @@ export const handleGetDockerContainerList = (all: boolean = false): void => {
     }
   });
 };
-
-// Docker 컨테이너 로그 스트리밍
-export const handleFetchContainerLogs = (): void => {
-  ipcMain.on(
-    "start-container-log-stream",
-    async (event, containerId: string) => {
-      try {
-        const container = docker.getContainer(containerId);
-        const logStream = (await container.logs({
-          follow: true,
-          stdout: true,
-          stderr: true,
-          since: 0,
-          timestamps: true,
-        })) as Readable;
-
-        logStreams[containerId] = logStream;
-
-        logStream.on("data", (chunk: Buffer) => {
-          event.sender.send("container-logs-stream", chunk.toString());
-        });
-
-        logStream.on("error", (err: Error) => {
-          event.sender.send("container-logs-error", err.message);
-        });
-
-        logStream.on("end", () => {
-          event.sender.send("container-logs-end");
-        });
-      } catch (err) {
-        event.sender.send(
-          "container-logs-error",
-          (err as Error).message || "Unknown error"
-        );
-      }
-    }
-  );
-};
-
-ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
-  const logStream = logStreams[containerId];
-  if (logStream) {
-    logStream.destroy();
-    delete logStreams[containerId];
-    event.sender.send(
-      "container-logs-end",
-      `Log stream for container ${containerId} has been stopped.`
-    );
-  } else {
-    event.sender.send(
-      "container-logs-error",
-      `No active log stream for container ${containerId}.`
-    );
-  }
-});
 
 //------------------- Docker 이미지 생성
 

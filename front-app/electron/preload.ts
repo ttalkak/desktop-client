@@ -9,7 +9,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-os-type");
   },
 
-  // ------------------------------ 도커 실행 -----------------------------
+  //----DB용 image 다운로드 및 빌드
+  setupDatabase: async (dbInfo: any) => {
+    return ipcRenderer.invoke("setup-database", dbInfo);
+  },
+
+  // ------------------------------ 도커 실행
   checkDockerStatus: async () => {
     try {
       const status = await ipcRenderer.invoke("check-docker-status");
@@ -167,6 +172,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
+
   //컨테이너별 memory 가져오는 함수-웹소켓 healthcheck용
   async getContainerMemoryUsage(containerId: string) {
     return ipcRenderer.invoke("get-container-memory-usage", containerId);

@@ -109,6 +109,12 @@ declare global {
 
     //OS확인용
     getOsType: () => Promise<string>;
+
+    // DB 이미지 빌드위한 db 타입 전달
+    setupDatabase: (
+      dbInfo: any
+    ) => Promise<{ success: boolean; containerId?: string; message?: string }>;
+
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 
