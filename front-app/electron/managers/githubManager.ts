@@ -1,6 +1,6 @@
 import path from "node:path";
-import { downloadFile, unzipFile, getTtalkakDirectory } from "./utils";
-import { findDockerfile } from "./dockerManager";
+import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
+import { findDockerfile } from "../managers/dockerManager";
 import { ipcMain } from "electron";
 import fs from "fs";
 

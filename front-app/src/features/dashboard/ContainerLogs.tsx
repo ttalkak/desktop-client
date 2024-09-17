@@ -46,11 +46,18 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
   }, [containerId]);
 
   return (
-    <div className="mt-1 w-80%">
+    <div className="mt-1 w-full">
       <h2 className="text-sm font-semibold">
         Logs for Container: {containerId}
       </h2>
-      <pre className="text-xs bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words mt-3">
+      <pre
+        className="text-xs bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words mt-3"
+        style={{
+          maxWidth: "100%",
+          wordBreak: "break-all",
+          whiteSpace: "pre-wrap",
+        }}
+      >
         {logs}
       </pre>
     </div>

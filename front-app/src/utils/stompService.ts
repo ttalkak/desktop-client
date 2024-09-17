@@ -1,17 +1,26 @@
 import { Client, Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
-import { createAndStartContainers, handleBuildImage } from "./dockerUtils";
+import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
 
 // 세션 데이터와 관련된 인터페이스 정의
-interface SessionData {
-  userId: number;
-  maxCompute: number;
-  availablePortStart: number;
-  availablePortEnd: number;
-}
+// interface SessionData {
+//   userId: number;
+//   maxCompute: number;
+//   availablePortStart: number;
+//   availablePortEnd: number;
+// }
 
+interface Deployment {
+  deploymentId: number;
+  status: string;
+  useMemory: number;
+  useCPU: number;
+  runningTime: number;
+  diskRead: number;
+  diskWrite: number;
+}
 // Compute 연결 요청 관련 인터페이스 정의
 interface ComputeConnectRequest {
   userId: string;
@@ -19,12 +28,14 @@ interface ComputeConnectRequest {
   usedCompute: number;
   usedMemory: number;
   usedCPU: number;
+  deployments: Deployment[]; // 배열로 수정
 }
 
 // 컨테이너 상태와 관련된 인터페이스 정의
 interface ContainerStats {
   cpu_usage: number;
   memory_usage: number;
+  running_time: number;
   container_id: string;
   blkio_read: number;
   blkio_write: number;
@@ -41,20 +52,22 @@ export let client: Client; // STOMP 클라이언트를 저장하는 변수
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
-const addDockerContainer = useDockerStore.getState().addDockerContainer;
 
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
 
+// 전역 상태 저장소 추가
+const globalStats = new Map<string, ContainerStats>();
+
 // 세션 데이터를 세션 스토리지에서 가져오는 함수
-function getSessionData(): SessionData | null {
-  const data = sessionStorage.getItem("userSettings");
-  if (!data) return null;
-  try {
-    return JSON.parse(data) as SessionData;
-  } catch {
-    return null;
-  }
-}
+// function getSessionData(): SessionData | null {
+//   const data = sessionStorage.getItem("userSettings");
+//   if (!data) return null;
+//   try {
+//     return JSON.parse(data) as SessionData;
+//   } catch {
+//     return null;
+//   }
+// }
 
 // STOMP 클라이언트를 생성하는 함수
 function createStompClient(userId: string): Client {
@@ -68,27 +81,29 @@ function createStompClient(userId: string): Client {
 }
 
 // 세션 데이터가 로드될 때까지 기다리는 함수
-async function waitForSessionData(
-  maxAttempts: number = 10,
-  interval: number = 1000
-): Promise<SessionData> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const sessionData = getSessionData();
-    if (sessionData && sessionData.userId) {
-      return sessionData;
-    }
-    await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
-  }
-  throw new Error("Failed to get session data after maximum attempts");
-}
+// async function waitForSessionData(
+//   maxAttempts: number = 10,
+//   interval: number = 1000
+// ): Promise<SessionData> {
+//   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+//     const sessionData = getSessionData();
+//     if (sessionData && sessionData.userId) {
+//       return sessionData;
+//     }
+//     await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
+//   }
+//   throw new Error("Failed to get session data after maximum attempts");
+// }
 
 // STOMP 클라이언트를 초기화하는 함수
 export async function initializeStompClient(): Promise<Client> {
   try {
-    const sessionData = await waitForSessionData();
+    // const sessionData = await waitForSessionData();
     if (!client) {
-      client = createStompClient(sessionData.userId.toString());
-      setupClientHandlers(sessionData.userId.toString());
+      // client = createStompClient(sessionData.userId.toString());
+      client = createStompClient("2");
+      // setupClientHandlers(sessionData.userId.toString());
+      setupClientHandlers("2");
     }
     return client;
   } catch (error) {
@@ -97,23 +112,42 @@ export async function initializeStompClient(): Promise<Client> {
   }
 }
 
-// STOMP 클라이언트에 이벤트 핸들러를 설정하는 함수-----------------------------
-function setupClientHandlers(userId: string): void {
+// STOMP 클라이언트 실행 내역
+function setupClientHandlers(_userId: string): void {
   if (!client) return;
 
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
-    sendComputeConnectMessage("2"); // 연결 시 Compute 연결 메시지 전송
+    // 1. pub/compute/connect 웹소켓최초 연결시 메시지 전송
+    sendComputeConnectMessage("2");
 
-    startSendingCurrentState(); // 현재 상태 전송 시작
-
-    // 컴퓨트 생성 구독
+    //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(`/sub/compute-create/2`, async (message: Message) => {
       const computes = JSON.parse(message.body);
       console.log(computes);
       computes.forEach(async (compute: DeploymentCommand) => {
         registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
+
+        //db있는 경우 먼저 설치 및 실행
+        if (compute.databases && compute.databases.length > 0) {
+          for (const dbInfo of compute.databases) {
+            const dbSetupResult = await window.electronAPI.setupDatabase(
+              dbInfo
+            );
+
+            if (dbSetupResult.success) {
+              console.log(
+                `Database container started with ID: ${dbSetupResult.containerId}`
+              );
+            } else {
+              console.error(
+                `Failed to setup database: ${dbSetupResult.message}`
+              );
+            }
+          }
+        }
+
         if (compute.hasDockerImage) {
           // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
         } else {
@@ -131,34 +165,27 @@ function setupClientHandlers(userId: string): void {
             console.log(`도커 파일 위치임 ${dockerfilePath}`);
             if (!image) {
               console.log(`이미지 생성 실패`);
-              sendDeploymentStatus("image_creation_failed", compute);
+              // sendDeploymentStatus("image_creation_failed", compute);
             } else {
               addDockerImage(image);
-              sendDeploymentStatus("image_created", compute, {
-                imageId: image.Id,
-              });
-              const containers = await createAndStartContainers(
-                [image],
-                80,
-                8080
-                // compute.inboundPort ?? 80,
-                // compute.outboundPort ?? 8080
+              // sendDeploymentStatus("image_created", compute, {
+              //   imageId: image.Id,
+              // });
+              const containerId = await createAndStartContainer(
+                image,
+                // 80,
+                // 8080
+                compute.inboundPort ?? 80,
+                compute.outboundPort ?? 8080
               );
-              containers.forEach((container) => {
-                addDockerContainer(container);
-                window.electronAPI.startContainerStats(container.Id);
-                sendDeploymentStatus("container_created", compute, {
-                  containerId: container.Id,
-                });
-                // Use the deployment store to add the container to the deployment
-                useDeploymentStore
-                  .getState()
-                  .addDeployment(compute.deploymentId, container.Id);
-              });
+              window.electronAPI.startContainerStats([containerId]);
+              useDeploymentStore
+                .getState()
+                .addDeployment(compute.deploymentId, containerId);
 
               startContainerStatsMonitoring();
 
-              //업데이트요청 구독=> 사용자 아이디로 바꾸기
+              // sub/compute-update/{userId} 업데이트요청 구독
               client?.subscribe(`/sub/compute-update/2`, async (message) => {
                 try {
                   // 수신한 메시지 처리 로직 작성
@@ -177,6 +204,10 @@ function setupClientHandlers(userId: string): void {
                   );
                 }
               });
+
+              //현재 배포 상태 PING 시작
+              startSendingCurrentState();
+
               // pgrok 시작
               console.log(compute);
               window.electronAPI
@@ -214,11 +245,13 @@ function setupClientHandlers(userId: string): void {
 
   client.onDisconnect = () => {
     console.log("Disconnected");
-    stopContainerStatsMonitoring(); // 연결 해제 시 컨테이너 모니터링 중지
+    setWebsocketStatus("disconnected");
+    stopContainerStatsMonitoring(); // 컨테이너 모니터링 해제
+    stopSendingCurrentState(); //ping 전송 해제
   };
 }
 
-// WebSocket 연결 함수
+// WebSocket 연결 함수/클라이언트 초기화
 export const connectWebSocket = async (): Promise<void> => {
   try {
     await initializeStompClient();
@@ -238,11 +271,12 @@ export const disconnectWebSocket = (): void => {
     console.log("웹소켓 연결 종료");
     setWebsocketStatus("disconnected");
     stopContainerStatsMonitoring();
+    stopSendingCurrentState();
   }
 };
 
-// Compute 연결 메시지를 전송하는 함수
-const sendComputeConnectMessage = async (userId: string): Promise<void> => {
+//1. pub/compute/connect 웹소켓 최초 연결시
+const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
@@ -252,6 +286,25 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
     const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
+    const deployments: Deployment[] = [];
+    for (const [containerId, stats] of globalStats.entries()) {
+      const deploymentId = useDeploymentStore
+        .getState()
+        .getDeploymentByContainer(containerId);
+      if (deploymentId !== undefined) {
+        deployments.push({
+          deploymentId: deploymentId,
+          status: runningContainers.some((c) => c.Id === containerId)
+            ? "RUNNING"
+            : "STOPPED",
+          useMemory: stats.memory_usage,
+          useCPU: stats.cpu_usage,
+          runningTime: stats.running_time,
+          diskRead: stats.blkio_read,
+          diskWrite: stats.blkio_write,
+        });
+      }
+    }
 
     const createComputeRequest: ComputeConnectRequest = {
       userId: "2",
@@ -259,6 +312,7 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
       usedCompute: usedCompute || 0,
       usedMemory: totalUsedMemory || 0,
       usedCPU: usedCPU || 0,
+      deployments: deployments, // 배열로 전달
     };
 
     client?.publish({
@@ -360,8 +414,8 @@ async function getTotalMemoryUsage(
   }
 }
 
-// 현재 상태를 WebSocket을 통해 전송하는 함수
-const sendCurrentState = async (deploymentId: string) => {
+// PING : "/pub/compute/ping"  현재 상태를 WebSocket을 통해 전송
+const sendCurrentState = async () => {
   try {
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
@@ -369,26 +423,38 @@ const sendCurrentState = async (deploymentId: string) => {
     const runningContainers = await getRunningContainers();
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
-    // deployments 객체를 배열 형태로 변환
-    const currentDeployments = JSON.stringify(
-      Object.entries(useDeploymentStore.getState().deployments).map(
-        ([deploymentId, containerId]) => ({
-          deploymentId,
-          containerId,
-        })
-      )
-    );
+
+    const deployments = [];
+    for (const [containerId, stats] of globalStats.entries()) {
+      const deploymentId = useDeploymentStore
+        .getState()
+        .getDeploymentByContainer(containerId);
+      if (deploymentId !== undefined) {
+        deployments.push({
+          deploymentId: deploymentId,
+          status: runningContainers.some((c) => c.Id === containerId)
+            ? "RUNNING"
+            : "STOPPED",
+          useMemory: stats.memory_usage,
+          useCPU: stats.cpu_usage,
+          runningTime: stats.running_time,
+          diskRead: stats.blkio_read,
+          diskWrite: stats.blkio_write,
+        });
+      }
+    }
 
     const currentState = {
       userId: "2",
+      computerType: await window.electronAPI.getOsType(),
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
       usedCPU: usedCPU,
-      deployments: currentDeployments || [],
+      deployments: deployments,
     };
 
     client?.publish({
-      destination: "/pub/compute/ping",
+      destination: "/pub/compute/2/ping/",
       body: JSON.stringify(currentState),
     });
     console.log("Current state sent:", currentState);
@@ -406,7 +472,7 @@ const startSendingCurrentState = () => {
   intervalId = setInterval(() => {
     console.log("Sending current state...");
     sendCurrentState();
-  }, 60000); // 60초마다 전송
+  }, 10000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
 };
 
 // 주기적으로 현재 상태 전송을 중지하는 함수
@@ -457,7 +523,7 @@ async function checkAndUpdateContainerMonitoring() {
   monitoredRunningContainers.forEach((container) => {
     if (!currentContainers.has(container.Id)) {
       window.electronAPI
-        .startContainerStats(container.Id)
+        .startContainerStats([container.Id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to start container stats:", error)
@@ -469,7 +535,7 @@ async function checkAndUpdateContainerMonitoring() {
   dockerStore.dockerContainers.forEach((container) => {
     if (!allRunningContainerIds.has(container.Id)) {
       window.electronAPI
-        .stopContainerStats(container.Id)
+        .stopContainerStats([container.Id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to stop container stats:", error)
@@ -491,7 +557,7 @@ function stopContainerStatsMonitoring() {
   window.electronAPI.removeContainerStatsListeners();
   useDockerStore.getState().dockerContainers.forEach((container) => {
     window.electronAPI
-      .stopContainerStats(container.Id)
+      .stopContainerStats([container.Id])
       .then((result) => console.log(result.message))
       .catch((error) =>
         console.error("Failed to stop container stats:", error)
@@ -501,23 +567,12 @@ function stopContainerStatsMonitoring() {
 
 // 컨테이너 상태 업데이트를 처리하는 함수
 function handleContainerStats(stats: ContainerStats) {
-  sendStatsToWebSocket(stats);
+  globalStats.set(stats.container_id, stats);
 }
 
 // 컨테이너 상태 오류를 처리하는 함수
 function handleContainerStatsError(error: ContainerStatsError) {
   console.error("Container stats error:", error);
-}
-
-// 컨테이너 상태를 WebSocket으로 전송하는 함수
-function sendStatsToWebSocket(stats: ContainerStats) {
-  if (client && client.connected) {
-    client.publish({
-      destination: `/pub/compute/${stats.container_id}/stats`,
-      headers: { "X-USER-ID": "2" },
-      body: JSON.stringify(stats),
-    });
-  }
 }
 
 // STOMP 클라이언트를 반환하는 함수

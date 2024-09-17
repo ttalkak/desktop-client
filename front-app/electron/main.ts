@@ -2,25 +2,25 @@ import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import * as os from "os";
-import { githubDownLoadAndUnzip } from "./githubManager";
+import { githubDownLoadAndUnzip } from "./managers/githubManager";
+import { handleDatabaseSetup } from "./managers/dockerDBManager";
+import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
 import {
   handlecheckDockerStatus,
   getDockerPath,
   handleStartDocker,
   handleGetDockerEvent,
-  handleFetchDockerImageList,
+  handleGetDockerImageList,
   handleFetchDockerImages,
-  handleFetchDockerContainerList,
+  handleGetDockerContainerList,
   handleFetchDockerContainer,
-  handleFetchContainerLogs,
   handleBuildDockerImage,
-  // createAndStartContainer,
   registerContainerIpcHandlers,
   handleFindDockerFile,
-  // handleMonitorContainersCpuUsage,
   handleGetContainerMemoryUsage,
   handleGetContainerStatsPeriodic,
-} from "./dockerManager";
+} from "./managers/dockerManager";
+// import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,20 +44,20 @@ function registerIpcHandlers() {
   handlecheckDockerStatus(); // Docker 상태 체크 핸들러 초기화
   getDockerPath(); // Docker 경로 핸들러 초기화
   handleStartDocker(); // Docker 데스크탑 시작 핸들러 초기화
+
+  handleDatabaseSetup(); //db용이미지pull 및 실행
   handleGetDockerEvent(); // Docker 이벤트 핸들러 초기화
-  handleFetchDockerImageList(); // Docker 이미지 목록 핸들러 초기화
+  handleGetDockerImageList(); // Docker 이미지 목록 핸들러 초기화
   handleFetchDockerImages(); // Docker 단일 이미지 핸들러 초기화
-  handleFetchDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
+  handleGetDockerContainerList(); // Docker 컨테이너 목록 핸들러 초기화
   handleFetchDockerContainer(); // Docker 단일 컨테이너 핸들러 초기화
   handleFetchContainerLogs(); // Docker 컨테이너 로그 핸들러 초기화
   handleBuildDockerImage(); // Docker 이미지 빌드 핸들러 초기화
   handleFindDockerFile(); //도커 파일 위치 경로 찾기
-  // 컨테이너 생성 및 실행 핸들러 (필요할 경우 호출)
-  githubDownLoadAndUnzip();
-  handleGetContainerMemoryUsage();
-  //컨테이너 생성, 실행, 정지, 삭제
-  registerContainerIpcHandlers();
-  handleGetContainerStatsPeriodic();
+  githubDownLoadAndUnzip(); //깃허브 파일 다운 및 압축해제
+  handleGetContainerMemoryUsage(); //컨테이너별 메모리 사용량
+  registerContainerIpcHandlers(); //컨테이너 생성, 실행, 정지, 삭제
+  handleGetContainerStatsPeriodic(); //컨테이너별 stats 주기적 체크
   // pgrok 관련 IPC 핸들러 등록
   registerPgrokIpcHandlers();
 
@@ -195,11 +195,18 @@ function createTray() {
   });
 }
 
+// powerSaveBlocker 시작 함수
+// function startPowerSaveBlocker() {
+//   const id = powerSaveBlocker.start("prevent-app-suspension");
+//   console.log(`PowerSaveBlocker started with id: ${id}`);
+// }
+
 app
   .whenReady()
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
+  // .then(startPowerSaveBlocker)
   .catch((error) => {
     console.error("Failed to start application:", error);
   });

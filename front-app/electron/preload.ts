@@ -9,7 +9,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-os-type");
   },
 
-  // ------------------------------ 도커 실행 -----------------------------
+  //----DB용 image 다운로드 및 빌드
+  setupDatabase: async (dbInfo: any) => {
+    return ipcRenderer.invoke("setup-database", dbInfo);
+  },
+
+  // ------------------------------ 도커 실행
   checkDockerStatus: async () => {
     try {
       const status = await ipcRenderer.invoke("check-docker-status");
@@ -26,7 +31,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("open-docker-desktop", dockerPath);
   },
 
-  //컨테이너, 이미지 로드
+  //컨테이너, 이미지 정보 로드
   fetchDockerImage: (imageId: string) =>
     ipcRenderer.invoke("fetch-docker-image", imageId),
   fetchDockerContainer: (containerId: string) =>
@@ -167,26 +172,28 @@ contextBridge.exposeInMainWorld("electronAPI", {
       throw error;
     }
   },
+
   //컨테이너별 memory 가져오는 함수-웹소켓 healthcheck용
   async getContainerMemoryUsage(containerId: string) {
     return ipcRenderer.invoke("get-container-memory-usage", containerId);
   },
 
-  //컨테이너 stats
+  //컨테이너 stats 전송함수
   startContainerStats: (containerId: string) =>
     ipcRenderer.invoke("start-container-stats", containerId),
   stopContainerStats: (containerId: string) =>
     ipcRenderer.invoke("stop-container-stats", containerId),
-  onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) =>
+  onContainerStatsUpdate: (callback: (stats: any) => void) =>
     ipcRenderer.on("container-stats-update", (_event, stats) =>
       callback(stats)
     ),
-  onContainerStatsError: (callback: (error: ContainerStatsError) => void) =>
+  onContainerStatsError: (callback: (error: any) => void) =>
     ipcRenderer.on("container-stats-error", (_event, error) => callback(error)),
   removeContainerStatsListeners: () => {
     ipcRenderer.removeAllListeners("container-stats-update");
     ipcRenderer.removeAllListeners("container-stats-error");
   },
+
   //도커 로그렌더링
   startLogStream: (containerId: string) => {
     ipcRenderer.send("start-container-log-stream", containerId);

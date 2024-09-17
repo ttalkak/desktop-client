@@ -10,9 +10,9 @@ declare global {
   }
 
   interface ContainerStats {
-    container_id: string;
     cpu_usage: number;
     memory_usage: number;
+    container_id: string;
     running_time: number;
     blkio_read: number;
     blkio_write: number;
@@ -86,8 +86,8 @@ declare global {
   }
 
   // 도커 이미지, 컨테이너 타입
-  type DockerImage = Dockerode.ImageInspectInfo;
-  type DockerContainer = Dockerode.ContainerInspectInfo;
+  type DockerImage = Dockerode.ImageInfo;
+  type DockerContainer = Dockerode.ContainerInfo;
   type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
   type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
 
@@ -109,11 +109,19 @@ declare global {
 
     //OS확인용
     getOsType: () => Promise<string>;
+
+    // DB 이미지 빌드위한 db 타입 전달
+    setupDatabase: (
+      dbInfo: any
+    ) => Promise<{ success: boolean; containerId?: string; message?: string }>;
+
     // Docker 관련 메서드들
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
 
-    fetchDockerImage: (imageId: string) => Promise<DockerImage>;
-    fetchDockerContainer: (containerId: string) => Promise<DockerContainer>;
+    fetchDockerImage: (imageId: string) => Promise<Dockerode.ImageInspectInfo>;
+    fetchDockerContainer: (
+      containerId: string
+    ) => Promise<Dockerode.ContainerInspectInfo>;
     getDockerImages: () => Promise<DockerImage[]>;
     getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
 
@@ -147,8 +155,15 @@ declare global {
     ): Promise<{ success: boolean; memoryUsage?: number; error?: string }>;
 
     // 주기적으로 개별 컨테이너 stats 가져오기
-    startContainerStats: (containerId: string) => Promise<StatsResult>;
-    stopContainerStats: (containerId: string) => Promise<StatsResult>;
+    startContainerStats: (
+      containerIds: string[]
+    ) => Promise<{ success: boolean; message: string }>;
+    stopContainerStats: (containerIds: string[]) => Promise<{
+      success: boolean;
+      stoppedContainers: string[];
+      notMonitoredContainers: string[];
+      message: string;
+    }>;
     onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
     onContainerStatsError: (
       callback: (error: ContainerStatsError) => void

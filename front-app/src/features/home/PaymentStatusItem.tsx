@@ -1,5 +1,3 @@
-import React from "react";
-
 const PaymentStatusItem = () => {
   return (
     <div className="card w-1/2">
