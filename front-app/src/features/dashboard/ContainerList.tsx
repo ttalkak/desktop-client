@@ -58,7 +58,7 @@ const ContainerList: React.FC = () => {
   return (
     <div>
       <table className="min-w-full bg-white border border-gray-300 mt-2">
-        <thead>
+        <thead className="sticky z-10 top-0 text-sm bg-white-gradient">
           <tr>
             <th className="py-2 px-4 border-b">Name</th>
             <th className="py-2 px-4 border-b">Image</th>
