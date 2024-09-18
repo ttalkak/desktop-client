@@ -46,7 +46,6 @@ function registerIpcHandlers() {
   handlecheckDockerStatus(); // Docker 상태 체크 핸들러 초기화
   getDockerPath(); // Docker 경로 핸들러 초기화
   handleStartDocker(); // Docker 데스크탑 시작 핸들러 초기화
-
   handleDatabaseSetup(); //db용이미지pull 및 실행
   handleGetDockerEvent(); // Docker 이벤트 핸들러 초기화
   handleGetDockerImageList(); // Docker 이미지 목록 핸들러 초기화

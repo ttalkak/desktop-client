@@ -80,7 +80,9 @@ const SideNavBar = () => {
       // Cleanup 함수가 필요하면 여기에 추가
     };
   }, [accessToken]);
-  const isLoggedIn = Boolean(accessToken);
+
+  // const isLoggedIn = Boolean(accessToken);
+  const isLoggedIn = true;
 
   return (
     <div className={navContainer}>
