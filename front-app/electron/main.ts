@@ -6,10 +6,14 @@ import { githubDownLoadAndUnzip } from "./managers/githubManager";
 import { handleDatabaseSetup } from "./managers/dockerDBManager";
 import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
 import {
+  handleGetDockerEvent,
+  handleGetContainerMemoryUsage,
+  handleGetContainerStatsPeriodic,
+} from "./managers/dockerEventManager";
+import {
   handlecheckDockerStatus,
   getDockerPath,
   handleStartDocker,
-  handleGetDockerEvent,
   handleGetDockerImageList,
   handleFetchDockerImages,
   handleGetDockerContainerList,
@@ -17,8 +21,6 @@ import {
   handleBuildDockerImage,
   registerContainerIpcHandlers,
   handleFindDockerFile,
-  handleGetContainerMemoryUsage,
-  handleGetContainerStatsPeriodic,
 } from "./managers/dockerManager";
 // import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";

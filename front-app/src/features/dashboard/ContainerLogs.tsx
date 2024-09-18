@@ -4,33 +4,62 @@ interface ContainerLogsProps {
   containerId: string;
 }
 
+interface ParsedLog {
+  timestamp?: string;
+  message: string;
+}
+
+const parseLog = (log: string): ParsedLog => {
+  const logPattern = /^(\d+-\d+-\d+T\d+:\d+:\d+\.\d+Z)?\s*(.*)$/;
+  const match = log.match(logPattern);
+  if (match) {
+    return {
+      timestamp: match[1] || "",
+      message: match[2] || log,
+    };
+  }
+  return { message: log };
+};
+
+const shortenContainerId = (id: string, length: number = 8): string => {
+  if (id.length <= length) return id;
+  return `${id.slice(0, length)}...`;
+};
+
 const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
-  const [logs, setLogs] = useState<string>("");
+  const [logs, setLogs] = useState<ParsedLog[]>([]);
 
   useEffect(() => {
-    const {
-      startLogStream,
-      onLogStream,
-      onLogError,
-      onLogEnd,
-      stopLogStream,
-      clearLogListeners,
-    } = window.electronAPI;
+    const { onLogStream, onLogError, onLogEnd } = window.electronAPI;
 
-    // 로그 스트리밍 시작
-    startLogStream(containerId);
+    console.log("Setting up log listeners for container:", containerId); // 리스너 설정 확인
 
     // 로그 스트림 수신 처리
-    const handleLog = (log: string) => {
-      setLogs((prevLogs) => prevLogs + log);
+    const handleLog = (data: { containerId: string; log: string }) => {
+      console.log("Received log data:", data); // 로그 데이터 수신 확인
+      if (data.containerId === containerId) {
+        const parsedLog = parseLog(data.log);
+        setLogs((prevLogs) => [...prevLogs, parsedLog]);
+      }
     };
 
-    const handleError = (error: string) => {
-      console.error("Error fetching logs:", error);
+    const handleError = (data: { containerId: string; error: string }) => {
+      console.log("Received error data:", data); // 에러 데이터 수신 확인
+      if (data.containerId === containerId) {
+        console.error("Error fetching logs:", data.error);
+        setLogs((prevLogs) => [
+          ...prevLogs,
+          { message: `Error: ${data.error}` },
+        ]);
+      }
     };
 
-    const handleEnd = () => {
-      console.log("Log stream ended");
+    const handleEnd = (data: { containerId: string }) => {
+      console.log("Received end signal for container:", data.containerId); // 로그 스트림 종료 확인
+      if (data.containerId === containerId) {
+        console.log("Log stream ended for container:", data.containerId);
+        setLogs((prevLogs) => [...prevLogs, { message: "Log stream ended." }]);
+      }
     };
 
     // IPC 이벤트 리스너 설정
@@ -38,19 +67,18 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
     onLogError(handleError);
     onLogEnd(handleEnd);
 
-    // 컴포넌트 언마운트 시 로그 스트리밍 중지
+    // 컴포넌트 언마운트 시 리스너 제거
     return () => {
-      stopLogStream(containerId);
-      clearLogListeners();
+      console.log("Clearing log listeners for container:", containerId); // 리스너 제거 확인
     };
   }, [containerId]);
 
   return (
     <div className="mt-1 w-full">
       <h2 className="text-sm font-semibold">
-        Logs for Container: {containerId}
+        Logs for Container: {shortenContainerId(containerId)}
       </h2>
-      <pre
+      <div
         className="text-xs bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words mt-3"
         style={{
           maxWidth: "100%",
@@ -58,8 +86,24 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
           whiteSpace: "pre-wrap",
         }}
       >
-        {logs}
-      </pre>
+        {logs.map((log, index) => (
+          <div
+            key={index}
+            className={`mb-2 ${
+              log.message.toLowerCase().includes("error")
+                ? "text-red-600"
+                : log.message.toLowerCase().includes("warn")
+                ? "text-yellow-600"
+                : "text-black"
+            }`}
+          >
+            {log.timestamp && (
+              <span className="text-gray-500 mr-2">{log.timestamp}</span>
+            )}
+            <span>{log.message}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

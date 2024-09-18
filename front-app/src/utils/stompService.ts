@@ -4,7 +4,7 @@ import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
 
-// 세션 데이터와 관련된 인터페이스 정의
+// 세션 데이터와 관련된 인터페이스 정의 : 빌드 위한 주석처리 추후 userId 반영되면 해제
 // interface SessionData {
 //   userId: number;
 //   maxCompute: number;
@@ -58,7 +58,7 @@ let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크
 // 전역 상태 저장소 추가
 const globalStats = new Map<string, ContainerStats>();
 
-// 세션 데이터를 세션 스토리지에서 가져오는 함수
+// 세션 데이터를 세션 스토리지에서 가져오는 함수 : 빌드 위한 주석처리 추후 userId 반영되면 해제
 // function getSessionData(): SessionData | null {
 //   const data = sessionStorage.getItem("userSettings");
 //   if (!data) return null;
@@ -77,10 +77,12 @@ function createStompClient(userId: string): Client {
     connectHeaders: {
       "X-USER-ID": "2", //수정하기
     },
+    heartbeatIncoming: 30000, // 기본 10초 차후 논의후 수정
+    heartbeatOutgoing: 30000,
   });
 }
 
-// 세션 데이터가 로드될 때까지 기다리는 함수
+// 세션 데이터가 로드될 때까지 기다리는 함수 : 빌드 위한 주석처리 추후 userId 반영되면 해제
 // async function waitForSessionData(
 //   maxAttempts: number = 10,
 //   interval: number = 1000
@@ -98,11 +100,11 @@ function createStompClient(userId: string): Client {
 // STOMP 클라이언트를 초기화하는 함수
 export async function initializeStompClient(): Promise<Client> {
   try {
-    // const sessionData = await waitForSessionData();
+    // const sessionData = await waitForSessionData(); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
     if (!client) {
-      // client = createStompClient(sessionData.userId.toString());
+      // client = createStompClient(sessionData.userId.toString());  //: 빌드 위한 주석처리 추후 userId 반영되면 해제
       client = createStompClient("2");
-      // setupClientHandlers(sessionData.userId.toString());
+      // setupClientHandlers(sessionData.userId.toString()); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
       setupClientHandlers("2");
     }
     return client;
@@ -127,8 +129,6 @@ function setupClientHandlers(_userId: string): void {
       const computes = JSON.parse(message.body);
       console.log(computes);
       computes.forEach(async (compute: DeploymentCommand) => {
-        registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
-
         //db있는 경우 먼저 설치 및 실행
         if (compute.databases && compute.databases.length > 0) {
           for (const dbInfo of compute.databases) {
@@ -165,16 +165,11 @@ function setupClientHandlers(_userId: string): void {
             console.log(`도커 파일 위치임 ${dockerfilePath}`);
             if (!image) {
               console.log(`이미지 생성 실패`);
-              // sendDeploymentStatus("image_creation_failed", compute);
             } else {
               addDockerImage(image);
-              // sendDeploymentStatus("image_created", compute, {
-              //   imageId: image.Id,
-              // });
+
               const containerId = await createAndStartContainer(
                 image,
-                // 80,
-                // 8080
                 compute.inboundPort ?? 80,
                 compute.outboundPort ?? 8080
               );
@@ -207,6 +202,10 @@ function setupClientHandlers(_userId: string): void {
 
               //현재 배포 상태 PING 시작
               startSendingCurrentState();
+              console.log("ping 시작");
+              window.electronAPI.sendDockerEventRequest();
+              console.log("도커 이벤트 감지 시작");
+              registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
 
               // pgrok 시작
               console.log(compute);
@@ -454,7 +453,7 @@ const sendCurrentState = async () => {
     };
 
     client?.publish({
-      destination: "/pub/compute/2/ping/",
+      destination: "/pub/compute/ping/",
       body: JSON.stringify(currentState),
     });
     console.log("Current state sent:", currentState);
@@ -472,7 +471,7 @@ const startSendingCurrentState = () => {
   intervalId = setInterval(() => {
     console.log("Sending current state...");
     sendCurrentState();
-  }, 10000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
+  }, 60000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
 };
 
 // 주기적으로 현재 상태 전송을 중지하는 함수

@@ -23,21 +23,27 @@ export const handleFetchContainerLogs = (): void => {
         logStreams[containerId] = logStream;
 
         logStream.on("data", (chunk: Buffer) => {
-          event.sender.send("container-logs-stream", chunk.toString());
+          event.sender.send("container-logs-stream", {
+            containerId,
+            log: chunk.toString(),
+          });
         });
 
         logStream.on("error", (err: Error) => {
-          event.sender.send("container-logs-error", err.message);
+          event.sender.send("container-logs-error", {
+            containerId,
+            error: err.message,
+          });
         });
 
         logStream.on("end", () => {
-          event.sender.send("container-logs-end");
+          event.sender.send("container-logs-end", { containerId });
         });
       } catch (err) {
-        event.sender.send(
-          "container-logs-error",
-          (err as Error).message || "Unknown error"
-        );
+        event.sender.send("container-logs-error", {
+          containerId,
+          error: (err as Error).message || "Unknown error",
+        });
       }
     }
   );
@@ -48,14 +54,14 @@ ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
   if (logStream) {
     logStream.destroy();
     delete logStreams[containerId];
-    event.sender.send(
-      "container-logs-end",
-      `Log stream for container ${containerId} has been stopped.`
-    );
+    event.sender.send("container-logs-end", {
+      containerId,
+      message: `Log stream for container ${containerId} has been stopped.`,
+    });
   } else {
-    event.sender.send(
-      "container-logs-error",
-      `No active log stream for container ${containerId}.`
-    );
+    event.sender.send("container-logs-error", {
+      containerId,
+      error: `No active log stream for container ${containerId}.`,
+    });
   }
 });

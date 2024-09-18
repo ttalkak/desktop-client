@@ -47,11 +47,6 @@ declare global {
     error: string;
   }
 
-  // 콜백 타입 정의
-  type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
-  type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
-  type EndCallback = () => void; // 스트림 종료 콜백 타입
-
   interface CpuUsageData {
     containerId: string;
     cpuUsagePercent: number;
@@ -75,8 +70,9 @@ declare global {
     timeNano: number; // 이벤트 발생 시간 (나노초 단위)
   }
 
-  // 이벤트 콜백 타입 정의
   type EventCallback = (event: DockerEvent) => void;
+  // type EventErrorCallback = (error: string) => void;
+  // type EventEndCallback = () => void;
 
   interface DockerPort {
     IP: string;
@@ -100,6 +96,11 @@ declare global {
     image?: DockerImage;
     message?: string;
   }
+
+  // Docker 로그 스트리밍 관련 콜백 타입들
+  type LogCallback = (data: { containerId: string; log: string }) => void;
+  type ErrorCallback = (data: { containerId: string; error: string }) => void;
+  type EndCallback = (data: { containerId: string }) => void;
 
   // Electron API의 타입 지정
   interface ElectronAPI {
@@ -143,11 +144,15 @@ declare global {
 
     // Docker 로그 스트리밍 관련 메서드들
     startLogStream: (containerId: string) => void;
-    onLogStream: (callback: LogCallback) => void;
-    onLogError: (callback: ErrorCallback) => void;
-    onLogEnd: (callback: EndCallback) => void;
     stopLogStream: (containerId: string) => void;
-    clearLogListeners: () => void;
+    onLogStream: (
+      callback: (data: { containerId: string; log: string }) => void
+    ) => void;
+    onLogError: (
+      callback: (data: { containerId: string; error: string }) => void
+    ) => void;
+    onLogEnd: (callback: (data: { containerId: string }) => void) => void;
+    removeAllLogListeners: () => void;
 
     //1회성 컨테이너 메모리 가져오기
     getContainerMemoryUsage(
