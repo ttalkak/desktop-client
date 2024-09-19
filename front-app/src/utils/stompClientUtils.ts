@@ -55,7 +55,6 @@ export async function initializeStompClient(): Promise<Client> {
       console.log(sessionData);
       // client = createStompClient(sessionData.userId.toString());  //: 빌드 위한 주석처리 추후 userId 반영되면 해제
       client = createStompClient("2");
-      // setupClientHandlers(sessionData.userId.toString()); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
     }
     return client;
   } catch (error) {

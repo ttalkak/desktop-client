@@ -1,7 +1,6 @@
 import { useAppStore } from "../stores/appStatusStore";
 import { checkDockerStatus, startDocker } from "./dockerUtils";
 import { connectWebSocket } from "./stompService";
-import { initializeStompClient } from "./stompClientUtils";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -22,8 +21,6 @@ export const startService = async () => {
     setDockerStatus("running");
     console.log("4. ServiceUtil: Docker is running");
 
-    // client 초기화
-    initializeStompClient();
     // 3. WebSocket 연결
     connectWebSocket();
     console.log("5. ServiceUtil: WebSocket connected");
