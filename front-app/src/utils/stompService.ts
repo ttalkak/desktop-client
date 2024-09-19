@@ -1,16 +1,11 @@
-import { Client, Message } from "@stomp/stompjs";
+import { Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
-
-// 세션 데이터와 관련된 인터페이스 정의
-// interface SessionData {
-//   userId: number;
-//   maxCompute: number;
-//   availablePortStart: number;
-//   availablePortEnd: number;
-// }
+import { client, initializeStompClient } from "./stompClientUtils";
+import { sendPaymentInfo } from "./paymentUtils";
+import { sendInstanceUpdate } from "./sendUpdateUtils";
 
 interface Deployment {
   deploymentId: number;
@@ -47,8 +42,6 @@ interface ContainerStatsError {
   error: string;
 }
 
-export let client: Client; // STOMP 클라이언트를 저장하는 변수
-
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
@@ -58,183 +51,129 @@ let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크
 // 전역 상태 저장소 추가
 const globalStats = new Map<string, ContainerStats>();
 
-// 세션 데이터를 세션 스토리지에서 가져오는 함수
-// function getSessionData(): SessionData | null {
-//   const data = sessionStorage.getItem("userSettings");
-//   if (!data) return null;
-//   try {
-//     return JSON.parse(data) as SessionData;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// STOMP 클라이언트를 생성하는 함수
-function createStompClient(userId: string): Client {
-  console.log("세션 userID", userId);
-  return new Client({
-    brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
-    connectHeaders: {
-      "X-USER-ID": "2", //수정하기
-    },
-  });
-}
-
-// 세션 데이터가 로드될 때까지 기다리는 함수
-// async function waitForSessionData(
-//   maxAttempts: number = 10,
-//   interval: number = 1000
-// ): Promise<SessionData> {
-//   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-//     const sessionData = getSessionData();
-//     if (sessionData && sessionData.userId) {
-//       return sessionData;
-//     }
-//     await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
-//   }
-//   throw new Error("Failed to get session data after maximum attempts");
-// }
-
-// STOMP 클라이언트를 초기화하는 함수
-export async function initializeStompClient(): Promise<Client> {
-  try {
-    // const sessionData = await waitForSessionData();
-    if (!client) {
-      // client = createStompClient(sessionData.userId.toString());
-      client = createStompClient("2");
-      // setupClientHandlers(sessionData.userId.toString());
-      setupClientHandlers("2");
-    }
-    return client;
-  } catch (error) {
-    console.error("Failed to initialize STOMP client:", error);
-    throw error;
-  }
-}
-
 // STOMP 클라이언트 실행 내역
-function setupClientHandlers(_userId: string): void {
-  if (!client) return;
-
+function setupClientHandlers(userId: string): void {
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
+
     setWebsocketStatus("connected");
-    // 1. pub/compute/connect 웹소켓최초 연결시 메시지 전송
+    // 1. pub/compute/connect 웹소켓 최초 연결시 전송=>userId로 변경하기
     sendComputeConnectMessage("2");
+    // 2. 결제 정보 전송 시작=>userId로 변경하기
+    sendPaymentInfo("2");
+    //도커 이벤트 감지 시작
+    window.electronAPI.sendDockerEventRequest();
 
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
-    client.subscribe(`/sub/compute-create/2`, async (message: Message) => {
-      const computes = JSON.parse(message.body);
-      console.log(computes);
-      computes.forEach(async (compute: DeploymentCommand) => {
-        registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
-
-        //db있는 경우 먼저 설치 및 실행
-        if (compute.databases && compute.databases.length > 0) {
-          for (const dbInfo of compute.databases) {
-            const dbSetupResult = await window.electronAPI.setupDatabase(
-              dbInfo
-            );
-
-            if (dbSetupResult.success) {
-              console.log(
-                `Database container started with ID: ${dbSetupResult.containerId}`
+    client.subscribe(
+      `/sub/compute-create/${userId}`,
+      async (message: Message) => {
+        const computes = JSON.parse(message.body);
+        console.log(computes);
+        computes.forEach(async (compute: DeploymentCommand) => {
+          //db있는 경우 먼저 설치 및 실행
+          if (compute.databases && compute.databases.length > 0) {
+            for (const dbInfo of compute.databases) {
+              const dbSetupResult = await window.electronAPI.setupDatabase(
+                dbInfo
               );
-            } else {
-              console.error(
-                `Failed to setup database: ${dbSetupResult.message}`
-              );
+
+              if (dbSetupResult.success) {
+                console.log(
+                  `Database container started with ID: ${dbSetupResult.containerId}`
+                );
+              } else {
+                console.error(
+                  `Failed to setup database: ${dbSetupResult.message}`
+                );
+              }
             }
           }
-        }
 
-        if (compute.hasDockerImage) {
-          // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
-        } else {
-          const { success, dockerfilePath, contextPath } =
-            await window.electronAPI.downloadAndUnzip(
-              compute.sourceCodeLink,
-              compute.dockerRootDirectory
-            );
-          if (success) {
-            const { image } = await handleBuildImage(
-              contextPath,
-              dockerfilePath.toLowerCase(),
-              compute.subdomainName
-            );
-            console.log(`도커 파일 위치임 ${dockerfilePath}`);
-            if (!image) {
-              console.log(`이미지 생성 실패`);
-              // sendDeploymentStatus("image_creation_failed", compute);
-            } else {
-              addDockerImage(image);
-              // sendDeploymentStatus("image_created", compute, {
-              //   imageId: image.Id,
-              // });
-              const containerId = await createAndStartContainer(
-                image,
-                // 80,
-                // 8080
-                compute.inboundPort ?? 80,
-                compute.outboundPort ?? 8080
+          if (compute.hasDockerImage) {
+            // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
+          } else {
+            const { success, dockerfilePath, contextPath } =
+              await window.electronAPI.downloadAndUnzip(
+                compute.sourceCodeLink,
+                compute.dockerRootDirectory
               );
-              window.electronAPI.startContainerStats([containerId]);
-              useDeploymentStore
-                .getState()
-                .addDeployment(compute.deploymentId, containerId);
+            if (success) {
+              const { image } = await handleBuildImage(
+                contextPath,
+                dockerfilePath.toLowerCase(),
+                compute.subdomainName
+              );
+              console.log(`도커 파일 위치임 ${dockerfilePath}`);
+              if (!image) {
+                console.log(`이미지 생성 실패`);
+              } else {
+                addDockerImage(image);
 
-              startContainerStatsMonitoring();
+                const containerId = await createAndStartContainer(
+                  image,
+                  compute.inboundPort || 80,
+                  compute.outboundPort || 8080
+                );
+                sendInstanceUpdate(userId, compute.deploymentId, "RUNNING");
+                //deployment와 containerId 저장
+                useDeploymentStore
+                  .getState()
+                  .addDeployment(compute.deploymentId, containerId);
+                //컨테이너 stats 감지 시작
+                window.electronAPI.startContainerStats([containerId]);
+                //
+                startContainerStatsMonitoring();
+                // Docker 이벤트 핸들러 등록
+                registerDockerEventHandlers("2", compute.deploymentId);
+                // sub/compute-update/{userId} 업데이트요청 구독
+                client?.subscribe(
+                  `/sub/compute-update/${userId}`,
+                  async (message) => {
+                    // 수신한 메시지 처리 로직 작성
+                    try {
+                      const { deploymentId, command } = JSON.parse(
+                        message.body
+                      );
+                      console.log("Received updateCommand:", {
+                        deploymentId,
+                        command,
+                      });
+                      // handleContainerCommand 함수를 호출하여 명령을 처리
+                      handleContainerCommand(deploymentId, command);
+                    } catch (error) {
+                      console.error(
+                        "Error processing compute update message:",
+                        error
+                      );
+                    }
+                  }
+                );
 
-              // sub/compute-update/{userId} 업데이트요청 구독
-              client?.subscribe(`/sub/compute-update/2`, async (message) => {
-                try {
-                  // 수신한 메시지 처리 로직 작성
-                  const { deploymentId, command } = JSON.parse(message.body);
-                  console.log("Received updateCommand:", {
-                    deploymentId,
-                    command,
+                console.log(compute);
+
+                window.electronAPI // pgrok 시작
+                  .runPgrok(
+                    "pgrok.ttalkak.com:2222",
+                    `http://localhost:8080`, //나중에 바꿀거임
+                    compute.subdomainKey,
+                    compute.deploymentId,
+                    compute.subdomainName
+                  )
+                  .then((message) => {
+                    console.log(`pgrok started: ${message}`);
+                  })
+                  .catch((error) => {
+                    alert(`Failed to start pgrok: ${error}`);
                   });
 
-                  // handleContainerCommand 함수를 호출하여 명령을 처리
-                  handleContainerCommand(deploymentId, command);
-                } catch (error) {
-                  console.error(
-                    "Error processing compute update message:",
-                    error
-                  );
-                }
-              });
-
-              //현재 배포 상태 PING 시작
-              startSendingCurrentState();
-
-              // pgrok 시작
-              console.log(compute);
-              window.electronAPI
-                .runPgrok(
-                  "pgrok.ttalkak.com:2222",
-                  `http://localhost:8080`, //나중에 바꿀거임
-                  compute.subdomainKey,
-                  compute.deploymentId,
-                  compute.subdomainName
-                )
-                .then((message) => {
-                  console.log(`pgrok started: ${message}`);
-                  sendDeploymentStatus("pgrok_started", compute, {
-                    pgrokMessage: message,
-                  });
-                })
-                .catch((error) => {
-                  alert(`Failed to start pgrok: ${error}`);
-                  sendDeploymentStatus("pgrok_failed", compute, {
-                    error: error.toString(),
-                  });
-                });
+                startSendingCurrentState(); //현재 배포 상태 PING 시작
+              }
             }
           }
-        }
-      });
-    });
+        });
+      }
+    );
   };
 
   client.onStompError = (frame) => {
@@ -254,10 +193,17 @@ function setupClientHandlers(_userId: string): void {
 // WebSocket 연결 함수/클라이언트 초기화
 export const connectWebSocket = async (): Promise<void> => {
   try {
-    await initializeStompClient();
-    client?.activate();
-    console.log("웹소켓 연결 시도 중");
-    setWebsocketStatus("connecting");
+    if (!client) {
+      await initializeStompClient();
+    }
+    if (client) {
+      client.activate();
+      console.log("웹소켓 연결 시도 중");
+      setWebsocketStatus("connecting");
+      setupClientHandlers("2");
+    } else {
+      throw new Error("STOMP client initialization failed");
+    }
   } catch (error) {
     console.error("Failed to connect WebSocket:", error);
     setWebsocketStatus("disconnected");
@@ -276,7 +222,7 @@ export const disconnectWebSocket = (): void => {
 };
 
 //1. pub/compute/connect 웹소켓 최초 연결시
-const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
+const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
@@ -307,7 +253,7 @@ const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
     }
 
     const createComputeRequest: ComputeConnectRequest = {
-      userId: "2",
+      userId: userId,
       computerType: platform,
       usedCompute: usedCompute || 0,
       usedMemory: totalUsedMemory || 0,
@@ -323,23 +269,6 @@ const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
   } catch (error) {
     console.error("Error sending compute connect message:", error);
   }
-};
-
-// 배포 상태 메시지를 전송하는 함수
-const sendDeploymentStatus = (
-  status: string,
-  compute: DeploymentCommand,
-  details?: any
-): void => {
-  client?.publish({
-    destination: "/pub/compute/deployment-status",
-    body: JSON.stringify({
-      status,
-      compute,
-      details,
-      timestamp: new Date().toISOString(),
-    }),
-  });
 };
 
 // compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
@@ -365,6 +294,7 @@ function handleContainerCommand(deploymentId: number, command: string) {
       break;
     case "STOP":
       window.electronAPI.stopContainer(containerId);
+      window.electronAPI.stopPgrok(deploymentId); //정지시 pgrok 로그도 정지
       break;
     default:
       console.log(`Unknown command: ${command}`);
@@ -454,7 +384,7 @@ const sendCurrentState = async () => {
     };
 
     client?.publish({
-      destination: "/pub/compute/2/ping/",
+      destination: "/pub/compute/ping",
       body: JSON.stringify(currentState),
     });
     console.log("Current state sent:", currentState);
@@ -472,7 +402,7 @@ const startSendingCurrentState = () => {
   intervalId = setInterval(() => {
     console.log("Sending current state...");
     sendCurrentState();
-  }, 10000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
+  }, 60000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
 };
 
 // 주기적으로 현재 상태 전송을 중지하는 함수
@@ -573,11 +503,6 @@ function handleContainerStats(stats: ContainerStats) {
 // 컨테이너 상태 오류를 처리하는 함수
 function handleContainerStatsError(error: ContainerStatsError) {
   console.error("Container stats error:", error);
-}
-
-// STOMP 클라이언트를 반환하는 함수
-export function getStompClient(): Client | null {
-  return client;
 }
 
 // 클린업 함수: 컨테이너 모니터링과 상태 전송을 중지

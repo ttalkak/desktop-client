@@ -43,7 +43,9 @@ const DashBoard: React.FC = () => {
   // 로그인 여부에 따라 내용 렌더링
   if (!accessToken) {
     return (
-      <p className="font-sans text-gray-600 text-sm">로그인이 필요합니다.</p>
+      <div className="card min-h-full flex items-center justify-center">
+        <p className="font-sans text-gray-600 text-sm">로그인이 필요합니다.</p>
+      </div>
     );
   }
 

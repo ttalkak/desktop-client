@@ -4,6 +4,13 @@ export {};
 declare global {
   // 기존 형식
 
+  // 도커 이미지, 컨테이너 타입
+  type DockerImage = Dockerode.ImageInfo;
+  type DockerContainer = Dockerode.ContainerInfo;
+  type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
+  type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
+
+  //container stat 관련
   interface ContainerStatsError {
     containerId: string;
     error: string;
@@ -18,6 +25,7 @@ declare global {
     blkio_write: number;
   }
 
+  //websocket deployments
   interface databasesDTO {
     databaseId: string;
     databaseType: string;
@@ -47,11 +55,6 @@ declare global {
     error: string;
   }
 
-  // 콜백 타입 정의
-  type LogCallback = (log: string) => void; // 로그 데이터 수신 콜백 타입
-  type ErrorCallback = (error: string) => void; // 에러 데이터 수신 콜백 타입
-  type EndCallback = () => void; // 스트림 종료 콜백 타입
-
   interface CpuUsageData {
     containerId: string;
     cpuUsagePercent: number;
@@ -75,8 +78,9 @@ declare global {
     timeNano: number; // 이벤트 발생 시간 (나노초 단위)
   }
 
-  // 이벤트 콜백 타입 정의
   type EventCallback = (event: DockerEvent) => void;
+  // type EventErrorCallback = (error: string) => void;
+  // type EventEndCallback = () => void;
 
   interface DockerPort {
     IP: string;
@@ -84,12 +88,6 @@ declare global {
     PublicPort?: number;
     Type: string;
   }
-
-  // 도커 이미지, 컨테이너 타입
-  type DockerImage = Dockerode.ImageInfo;
-  type DockerContainer = Dockerode.ContainerInfo;
-  type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
-  type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
 
   // CPU 사용률 콜백 타입 정의
   type CpuUsageCallback = (cpuUsage: number) => void;
@@ -100,6 +98,14 @@ declare global {
     image?: DockerImage;
     message?: string;
   }
+
+  // Docker 로그 스트리밍 관련 콜백 타입들
+  type ErrorCallback = (data: { containerId: string; error: string }) => void;
+  type EndCallback = (data: { containerId: string }) => void;
+
+  //pgrok 로그 콜백 타입
+
+  type LogCallback = (log: string) => void;
 
   // Electron API의 타입 지정
   interface ElectronAPI {
@@ -142,12 +148,16 @@ declare global {
     removeAllDockerEventListeners: () => void;
 
     // Docker 로그 스트리밍 관련 메서드들
-    startLogStream: (containerId: string) => void;
-    onLogStream: (callback: LogCallback) => void;
-    onLogError: (callback: ErrorCallback) => void;
-    onLogEnd: (callback: EndCallback) => void;
+    startLogStream: (containerId: string, deploymentId: number) => void;
     stopLogStream: (containerId: string) => void;
-    clearLogListeners: () => void;
+    onLogStream: (
+      callback: (data: { containerId: string; log: string }) => void
+    ) => void;
+    onLogError: (
+      callback: (data: { containerId: string; error: string }) => void
+    ) => void;
+    onLogEnd: (callback: (data: { containerId: string }) => void) => void;
+    removeAllLogListeners: () => void;
 
     //1회성 컨테이너 메모리 가져오기
     getContainerMemoryUsage(
@@ -189,12 +199,12 @@ declare global {
       subdomainName: string
     ) => Promise<string>; // pgrok 실행 메서드
     onPgrokLog: (callback: LogCallback) => void; // pgrok 로그 수신 메서드
+    stopPgrok: (deploymentId: number) => Promise<string>; //pgrok 종료
 
     // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       sourceCodeLink: string,
-      // branch: string,
       dockerRootDirectory: string
     ) => Promise<{
       success: boolean;

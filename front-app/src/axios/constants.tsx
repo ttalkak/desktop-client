@@ -2,7 +2,8 @@ import axios from "axios";
 import { useAuthStore } from "../stores/authStore"; // zustand에서 토큰 상태 관리
 
 // 기본 axios 인스턴스 설정
-export const baseUrl: string = "https://ttalkak.com/v1";
+// export const baseUrl: string = "https://ttalkak.com/v1";
+export const baseUrl: string = "http://j11c108.p.ssafy.io:8000/v1";
 
 const axiosInstance = axios.create({
   baseURL: baseUrl,

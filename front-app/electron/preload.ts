@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDockerContainers: (all: boolean) =>
     ipcRenderer.invoke("get-all-docker-containers", all),
 
-  //도커 이벤트 감지
+  // Docker 이벤트 감지 및 렌더러 연결
   sendDockerEventRequest: () => ipcRenderer.send("get-docker-event"),
 
   onDockerEventResponse: (callback: (event: DockerEvent) => void) =>
@@ -195,23 +195,32 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   //도커 로그렌더링
-  startLogStream: (containerId: string) => {
-    ipcRenderer.send("start-container-log-stream", containerId);
-  },
-  onLogStream: (callback: LogCallback) => {
-    ipcRenderer.on("container-logs-stream", (_event, log) => callback(log));
-  },
-  onLogError: (callback: ErrorCallback) => {
-    ipcRenderer.on("container-logs-error", (_event, error) => callback(error));
-  },
-  onLogEnd: (callback: EndCallback) => {
-    ipcRenderer.on("container-logs-end", () => callback());
+  startLogStream: (containerId: string, deploymentId: number) => {
+    ipcRenderer.send("start-container-log-stream", containerId, deploymentId);
   },
   stopLogStream: (containerId: string) => {
     ipcRenderer.send("stop-container-log-stream", containerId);
   },
-
-  clearLogListeners: () => {
+  onLogStream: (
+    callback: (data: { containerId: string; log: string }) => void
+  ) => {
+    ipcRenderer.on("container-logs-stream", (_event, data) => {
+      callback(data);
+    });
+  },
+  onLogError: (
+    callback: (data: { containerId: string; error: string }) => void
+  ) => {
+    ipcRenderer.on("container-logs-error", (_event, data) => {
+      callback(data);
+    });
+  },
+  onLogEnd: (callback: (data: { containerId: string }) => void) => {
+    ipcRenderer.on("container-logs-end", (_event, data) => {
+      callback(data);
+    });
+  },
+  removeAllLogListeners: () => {
     ipcRenderer.removeAllListeners("container-logs-stream");
     ipcRenderer.removeAllListeners("container-logs-error");
     ipcRenderer.removeAllListeners("container-logs-end");
@@ -227,7 +236,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("close-window");
   },
 
-  //---------------------- 포트 인바운드 관련 ----------------------
+  //---------------------- 포트 인바운드 관련
   getInboundRules: () => {
     console.log("3. getInboundRules called");
     return ipcRenderer.invoke("get-inbound-rules");
@@ -262,6 +271,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onPgrokLog: (callback: (log: string) => void) => {
     ipcRenderer.on("pgrok-log", (_event, log) => callback(log));
   },
+
+  stopPgrok: (deploymentId: number) =>
+    ipcRenderer.invoke("stop-pgrok", deploymentId),
 });
 
 // --------- Expose some API to the Renderer process ---------
