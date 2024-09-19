@@ -3,14 +3,11 @@ import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
-
-// 세션 데이터와 관련된 인터페이스 정의 : 빌드 위한 주석처리 추후 userId 반영되면 해제
-// interface SessionData {
-//   userId: number;
-//   maxCompute: number;
-//   availablePortStart: number;
-//   availablePortEnd: number;
-// }
+import {
+  client,
+  createStompClient,
+  waitForSessionData,
+} from "./stompClientUtils";
 
 interface Deployment {
   deploymentId: number;
@@ -47,8 +44,6 @@ interface ContainerStatsError {
   error: string;
 }
 
-export let client: Client; // STOMP 클라이언트를 저장하는 변수
-
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
@@ -58,51 +53,12 @@ let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크
 // 전역 상태 저장소 추가
 const globalStats = new Map<string, ContainerStats>();
 
-// 세션 데이터를 세션 스토리지에서 가져오는 함수 : 빌드 위한 주석처리 추후 userId 반영되면 해제
-// function getSessionData(): SessionData | null {
-//   const data = sessionStorage.getItem("userSettings");
-//   if (!data) return null;
-//   try {
-//     return JSON.parse(data) as SessionData;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// STOMP 클라이언트를 생성하는 함수
-function createStompClient(userId: string): Client {
-  console.log("세션 userID", userId);
-  return new Client({
-    brokerURL: "ws://j11c108.p.ssafy.io:8000/ws", // WebSocket URL
-    // brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
-    connectHeaders: {
-      "X-USER-ID": "2", //수정하기
-    },
-    heartbeatIncoming: 30000, // 기본 10초 차후 논의후 수정
-    heartbeatOutgoing: 30000,
-  });
-}
-
-// 세션 데이터가 로드될 때까지 기다리는 함수 : 빌드 위한 주석처리 추후 userId 반영되면 해제
-// async function waitForSessionData(
-//   maxAttempts: number = 10,
-//   interval: number = 1000
-// ): Promise<SessionData> {
-//   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-//     const sessionData = getSessionData();
-//     if (sessionData && sessionData.userId) {
-//       return sessionData;
-//     }
-//     await new Promise((resolve) => setTimeout(resolve, interval)); // 대기
-//   }
-//   throw new Error("Failed to get session data after maximum attempts");
-// }
-
 // STOMP 클라이언트를 초기화하는 함수
 export async function initializeStompClient(): Promise<Client> {
   try {
-    // const sessionData = await waitForSessionData(); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
+    const sessionData = await waitForSessionData();
     if (!client) {
+      console.log(sessionData);
       // client = createStompClient(sessionData.userId.toString());  //: 빌드 위한 주석처리 추후 userId 반영되면 해제
       client = createStompClient("2");
       // setupClientHandlers(sessionData.userId.toString()); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
@@ -201,7 +157,6 @@ function setupClientHandlers(_userId: string): void {
               });
 
               registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
-              sendInstanceUpdate(compute.deploymentId, "RUNNING");
               startSendingCurrentState(); //현재 배포 상태 PING 시작
 
               console.log(compute);
@@ -272,7 +227,7 @@ export const disconnectWebSocket = (): void => {
 };
 
 //1. pub/compute/connect 웹소켓 최초 연결시
-const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
+const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
@@ -320,23 +275,6 @@ const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
     console.error("Error sending compute connect message:", error);
   }
 };
-
-// 배포 상태 메시지를 전송하는 함수
-// const sendDeploymentStatus = (
-//   status: string,
-//   compute: DeploymentCommand,
-//   details?: any
-// ): void => {
-//   client?.publish({
-//     destination: "/pub/compute/deployment-status",
-//     body: JSON.stringify({
-//       status,
-//       compute,
-//       details,
-//       timestamp: new Date().toISOString(),
-//     }),
-//   });
-// };
 
 // compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
 function handleContainerCommand(deploymentId: number, command: string) {
@@ -569,11 +507,6 @@ function handleContainerStats(stats: ContainerStats) {
 // 컨테이너 상태 오류를 처리하는 함수
 function handleContainerStatsError(error: ContainerStatsError) {
   console.error("Container stats error:", error);
-}
-
-// STOMP 클라이언트를 반환하는 함수
-export function getStompClient(): Client | null {
-  return client;
 }
 
 // 클린업 함수: 컨테이너 모니터링과 상태 전송을 중지

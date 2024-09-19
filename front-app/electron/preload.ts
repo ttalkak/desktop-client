@@ -195,8 +195,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   //도커 로그렌더링
-  startLogStream: (containerId: string) => {
-    ipcRenderer.send("start-container-log-stream", containerId);
+  startLogStream: (containerId: string, deploymentId: number) => {
+    ipcRenderer.send("start-container-log-stream", containerId, deploymentId);
   },
   stopLogStream: (containerId: string) => {
     ipcRenderer.send("stop-container-log-stream", containerId);

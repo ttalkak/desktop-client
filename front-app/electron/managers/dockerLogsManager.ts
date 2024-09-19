@@ -6,13 +6,14 @@ import { Client } from "@elastic/elasticsearch";
 export const logStreams: Record<string, Readable> = {};
 
 // Elasticsearch 클라이언트 설정
-const esClient = new Client({ node: "http://localhost:9200" }); // Elasticsearch 서버 주소를 적절히 변경하세요
+// const esClient = new Client({ node: "http://localhost:9200" }); // Elasticsearch 서버 주소
+const esClient = new Client({ node: "http://34.64.227.45:9200" }); // Elasticsearch 서버 주소
 
 // Docker 컨테이너 로그 스트리밍 및 Elasticsearch로 전송
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
-    async (event, containerId: string) => {
+    async (event, containerId: string, deploymentId: number) => {
       try {
         const container = docker.getContainer(containerId);
         const logStream = (await container.logs({
@@ -37,11 +38,12 @@ export const handleFetchContainerLogs = (): void => {
             await esClient.index({
               index: "docker-logs",
               body: {
-                containerId,
+                deploymentId,
                 timestamp: new Date(),
                 log,
               },
             });
+            console.log(`els 전송중 ${deploymentId}`);
           } catch (esError) {
             console.error("Error sending log to Elasticsearch:", esError);
           }
@@ -66,23 +68,6 @@ export const handleFetchContainerLogs = (): void => {
     }
   );
 };
-
-ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
-  const logStream = logStreams[containerId];
-  if (logStream) {
-    logStream.destroy();
-    delete logStreams[containerId];
-    event.sender.send("container-logs-end", {
-      containerId,
-      message: `Log stream for container ${containerId} has been stopped.`,
-    });
-  } else {
-    event.sender.send("container-logs-error", {
-      containerId,
-      error: `No active log stream for container ${containerId}.`,
-    });
-  }
-});
 
 ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
   const logStream = logStreams[containerId];

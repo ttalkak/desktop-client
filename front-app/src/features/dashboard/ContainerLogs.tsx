@@ -66,11 +66,6 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
     onLogStream(handleLog);
     onLogError(handleError);
     onLogEnd(handleEnd);
-
-    // 컴포넌트 언마운트 시 리스너 제거
-    return () => {
-      console.log("Clearing log listeners for container:", containerId); // 리스너 제거 확인
-    };
   }, [containerId]);
 
   return (

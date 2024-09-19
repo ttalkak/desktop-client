@@ -90,7 +90,7 @@ export const registerDockerEventHandlers = (
               console.log(`Container with ID ${container.Id} added.`);
             }
 
-            window.electronAPI.startLogStream(container.Id); // 로그 스트림 시작
+            window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작+els 전송 시작
             sendInstanceUpdate(deploymentId, "RUNNING");
           } else {
             console.error(

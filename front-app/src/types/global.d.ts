@@ -143,7 +143,7 @@ declare global {
     removeAllDockerEventListeners: () => void;
 
     // Docker 로그 스트리밍 관련 메서드들
-    startLogStream: (containerId: string) => void;
+    startLogStream: (containerId: string, deploymentId: number) => void;
     stopLogStream: (containerId: string) => void;
     onLogStream: (
       callback: (data: { containerId: string; log: string }) => void
