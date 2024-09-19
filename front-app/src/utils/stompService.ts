@@ -4,6 +4,8 @@ import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
 import { client, initializeStompClient } from "./stompClientUtils";
+import { sendPaymentInfo } from "./paymentUtils";
+import { sendInstanceUpdate } from "./sendUpdateUtils";
 
 interface Deployment {
   deploymentId: number;
@@ -55,9 +57,10 @@ function setupClientHandlers(userId: string): void {
     console.log("Connected: " + frame);
 
     setWebsocketStatus("connected");
-    // 1. pub/compute/connect 웹소켓최초 연결시 메시지 전송
+    // 1. pub/compute/connect 웹소켓 최초 연결시 전송=>userId로 변경하기
     sendComputeConnectMessage("2");
-
+    // 2. 결제 정보 전송 시작=>userId로 변경하기
+    sendPaymentInfo("2");
     //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
 
@@ -109,9 +112,10 @@ function setupClientHandlers(userId: string): void {
 
                 const containerId = await createAndStartContainer(
                   image,
-                  compute.inboundPort ?? 80,
-                  compute.outboundPort ?? 8080
+                  compute.inboundPort || 80,
+                  compute.outboundPort || 8080
                 );
+                sendInstanceUpdate(userId, compute.deploymentId, "RUNNING");
                 //deployment와 containerId 저장
                 useDeploymentStore
                   .getState()
@@ -121,7 +125,7 @@ function setupClientHandlers(userId: string): void {
                 //
                 startContainerStatsMonitoring();
                 // Docker 이벤트 핸들러 등록
-                registerDockerEventHandlers(client, "2", compute.deploymentId);
+                registerDockerEventHandlers("2", compute.deploymentId);
                 // sub/compute-update/{userId} 업데이트요청 구독
                 client?.subscribe(
                   `/sub/compute-update/${userId}`,
@@ -290,6 +294,7 @@ function handleContainerCommand(deploymentId: number, command: string) {
       break;
     case "STOP":
       window.electronAPI.stopContainer(containerId);
+      window.electronAPI.stopPgrok(deploymentId); //정지시 pgrok 로그도 정지
       break;
     default:
       console.log(`Unknown command: ${command}`);

@@ -22,8 +22,9 @@ import {
   registerContainerIpcHandlers,
   handleFindDockerFile,
 } from "./managers/dockerManager";
-// import { powerSaveBlocker } from "electron";
+import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
+import { stopAllPgrokProcesses } from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -126,6 +127,7 @@ async function createWindow() {
       nodeIntegration: true,
       webSecurity: true,
       nodeIntegrationInWorker: true,
+      backgroundThrottling: false, // 백그라운드에서 앱이 멈추지 않도록 설정
     },
     autoHideMenuBar: true,
   });
@@ -168,6 +170,19 @@ async function createWindow() {
   });
 }
 
+// 애플리케이션 종료 전 실행할 함수들
+app.on("before-quit", async (event) => {
+  event.preventDefault();
+
+  try {
+    await stopAllPgrokProcesses(); // 실행 중인 모든 pgrok 프로세스 종료
+    app.quit(); // 모든 프로세스가 종료된 후 애플리케이션 종료
+  } catch (error) {
+    console.error("Failed to stop pgrok processes:", error);
+    app.quit(); // 에러가 발생해도 애플리케이션 종료
+  }
+});
+
 // Create the system tray icon and menu
 function createTray() {
   tray = new Tray(path.join(process.env.VITE_PUBLIC, "favicon.png"));
@@ -197,17 +212,17 @@ function createTray() {
 }
 
 // powerSaveBlocker 시작 함수
-// function startPowerSaveBlocker() {
-//   const id = powerSaveBlocker.start("prevent-app-suspension");
-//   console.log(`PowerSaveBlocker started with id: ${id}`);
-// }
+function startPowerSaveBlocker() {
+  const id = powerSaveBlocker.start("prevent-app-suspension");
+  console.log(`PowerSaveBlocker started with id: ${id}`);
+}
 
 app
   .whenReady()
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
-  // .then(startPowerSaveBlocker)
+  .then(startPowerSaveBlocker)
   .catch((error) => {
     console.error("Failed to start application:", error);
   });

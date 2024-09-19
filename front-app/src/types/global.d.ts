@@ -4,6 +4,13 @@ export {};
 declare global {
   // 기존 형식
 
+  // 도커 이미지, 컨테이너 타입
+  type DockerImage = Dockerode.ImageInfo;
+  type DockerContainer = Dockerode.ContainerInfo;
+  type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
+  type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
+
+  //container stat 관련
   interface ContainerStatsError {
     containerId: string;
     error: string;
@@ -18,6 +25,7 @@ declare global {
     blkio_write: number;
   }
 
+  //websocket deployments
   interface databasesDTO {
     databaseId: string;
     databaseType: string;
@@ -81,12 +89,6 @@ declare global {
     Type: string;
   }
 
-  // 도커 이미지, 컨테이너 타입
-  type DockerImage = Dockerode.ImageInfo;
-  type DockerContainer = Dockerode.ContainerInfo;
-  type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
-  type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
-
   // CPU 사용률 콜백 타입 정의
   type CpuUsageCallback = (cpuUsage: number) => void;
 
@@ -98,9 +100,12 @@ declare global {
   }
 
   // Docker 로그 스트리밍 관련 콜백 타입들
-  type LogCallback = (data: { containerId: string; log: string }) => void;
   type ErrorCallback = (data: { containerId: string; error: string }) => void;
   type EndCallback = (data: { containerId: string }) => void;
+
+  //pgrok 로그 콜백 타입
+
+  type LogCallback = (log: string) => void;
 
   // Electron API의 타입 지정
   interface ElectronAPI {
@@ -194,12 +199,12 @@ declare global {
       subdomainName: string
     ) => Promise<string>; // pgrok 실행 메서드
     onPgrokLog: (callback: LogCallback) => void; // pgrok 로그 수신 메서드
+    stopPgrok: (deploymentId: number) => Promise<string>; //pgrok 종료
 
     // 저장할 경로 지정 + 다운로드 하고 바로 unzip
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       sourceCodeLink: string,
-      // branch: string,
       dockerRootDirectory: string
     ) => Promise<{
       success: boolean;

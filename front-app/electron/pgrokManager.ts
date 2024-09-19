@@ -57,7 +57,7 @@ async function runPgrok(
   });
 }
 
-//pgrok 종료 함수
+//pgrok 종료 함수-개별
 function stopPgrok(deploymentId: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const processToStop = pgrokProcesses[deploymentId];
@@ -86,6 +86,59 @@ function stopPgrok(deploymentId: number): Promise<void> {
         new Error(`No pgrok process running with deploymentId ${deploymentId}`)
       );
     }
+  });
+}
+
+//pgrok 전체 종료 함수
+export function stopAllPgrokProcesses(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const processIds = Object.keys(pgrokProcesses);
+
+    if (processIds.length === 0) {
+      win?.webContents.send("pgrok-log", "No running pgrok processes to stop");
+      resolve(); // 실행 중인 프로세스가 없을 때 즉시 resolve
+      return;
+    }
+
+    let completedProcesses = 0;
+    let hasError = false;
+
+    processIds.forEach((deploymentId) => {
+      const processToStop = pgrokProcesses[deploymentId];
+
+      if (processToStop) {
+        processToStop.kill(); // 각 프로세스를 종료
+        win?.webContents.send(
+          "pgrok-log",
+          `pgrok process with deploymentId ${deploymentId} killed`
+        );
+
+        // 프로세스 종료 이벤트 처리
+        processToStop.on("close", (code) => {
+          delete pgrokProcesses[deploymentId]; // 종료된 프로세스 삭제
+          if (code !== 0) {
+            hasError = true;
+            win?.webContents.send(
+              "pgrok-log",
+              `pgrok process with deploymentId ${deploymentId} exited with code ${code}`
+            );
+          }
+
+          completedProcesses++;
+          if (completedProcesses === processIds.length) {
+            if (hasError) {
+              reject(new Error("Some pgrok processes failed to stop"));
+            } else {
+              win?.webContents.send(
+                "pgrok-log",
+                "All pgrok processes stopped successfully"
+              );
+              resolve(); // 모든 프로세스가 정상적으로 종료된 경우 resolve
+            }
+          }
+        });
+      }
+    });
   });
 }
 
@@ -177,13 +230,23 @@ export function registerPgrokIpcHandlers() {
       }
     }
   );
-
+  //개별 pgrok 종료함수
   ipcMain.handle("stop-pgrok", async (_, deploymentId: number) => {
     try {
       await stopPgrok(deploymentId);
       return "pgrok stopped successfully";
     } catch (error) {
       return `pgrok failed to stop : ${error}`;
+    }
+  });
+
+  //전체 pgrok 종료함수
+  ipcMain.handle("stop-all-pgrok", async () => {
+    try {
+      await stopAllPgrokProcesses();
+      return "All pgrok processes stopped successfully";
+    } catch (error) {
+      return `Failed to stop all pgrok processes: ${error}`;
     }
   });
 }

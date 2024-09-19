@@ -271,6 +271,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onPgrokLog: (callback: (log: string) => void) => {
     ipcRenderer.on("pgrok-log", (_event, log) => callback(log));
   },
+
+  stopPgrok: (deploymentId: number) =>
+    ipcRenderer.invoke("stop-pgrok", deploymentId),
 });
 
 // --------- Expose some API to the Renderer process ---------

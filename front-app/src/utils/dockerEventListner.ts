@@ -1,5 +1,5 @@
 import { useDockerStore } from "../stores/appStatusStore";
-import { Client } from "@stomp/stompjs";
+import { sendInstanceUpdate } from "./sendUpdateUtils";
 
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
@@ -9,33 +9,9 @@ const updateDockerImage = useDockerStore.getState().updateDockerImage;
 const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
 export const registerDockerEventHandlers = (
-  client: Client,
   userId: string,
   deploymentId: number
 ): (() => void) => {
-  function sendInstanceUpdate(
-    deploymentId: number,
-    status: string,
-    details?: string
-  ) {
-    const message = {
-      status: status,
-      message: details || "",
-    };
-
-    const headers = {
-      "X-USER-ID": userId,
-    };
-
-    client?.publish({
-      destination: `/pub/compute/${deploymentId}/status`,
-      headers: headers,
-      body: JSON.stringify(message),
-    });
-
-    console.log(`Message sent for deploymentId ${deploymentId}:`, message);
-  }
-
   const handleImageEvent = (event: DockerEvent) => {
     console.log("이미지 이벤트 :", event.Action);
     switch (event.Action) {
@@ -91,12 +67,13 @@ export const registerDockerEventHandlers = (
             }
 
             window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작+els 전송 시작
-            sendInstanceUpdate(deploymentId, "RUNNING");
+            sendInstanceUpdate(userId, deploymentId, "RUNNING");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during start.`
             );
             sendInstanceUpdate(
+              userId,
               deploymentId,
               "PENDING",
               "Container start failed"
@@ -124,12 +101,13 @@ export const registerDockerEventHandlers = (
 
             window.electronAPI.startContainerStats([container.Id]);
             window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작
-            sendInstanceUpdate(deploymentId, "RUNNING");
+            sendInstanceUpdate(userId, deploymentId, "RUNNING");
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during restart.`
             );
             sendInstanceUpdate(
+              userId,
               deploymentId,
               "PENDING",
               "Container restart failed"
@@ -186,13 +164,14 @@ export const registerDockerEventHandlers = (
 
               updateDockerContainer(updatedContainer);
               window.electronAPI.stopLogStream(updatedContainer.Id); // 로그 스트림 중지
-              sendInstanceUpdate(deploymentId, "STOPPED");
+              sendInstanceUpdate(userId, deploymentId, "STOPPED");
               console.log("Container state forcibly updated to 'stopped'.");
             } else {
               console.warn(
                 `Container with ID ${container.Id} is still running after multiple checks.`
               );
               sendInstanceUpdate(
+                userId,
                 deploymentId,
                 "RUNNING",
                 "Container was not stopped successfully."
@@ -203,6 +182,7 @@ export const registerDockerEventHandlers = (
               `Container with ID ${event.Actor.ID} not found during stop.`
             );
             sendInstanceUpdate(
+              userId,
               deploymentId,
               "PENDING",
               "Container stop failed"
@@ -211,6 +191,7 @@ export const registerDockerEventHandlers = (
         } catch (error) {
           console.error(`Error handling stop event: ${error}`);
           sendInstanceUpdate(
+            userId,
             deploymentId,
             "PENDING",
             `Error handling stop event: ${error}`
@@ -228,7 +209,7 @@ export const registerDockerEventHandlers = (
               result.message
             );
             removeDockerContainer(event.Actor.ID);
-            sendInstanceUpdate(deploymentId, "DELETED");
+            sendInstanceUpdate(userId, deploymentId, "DELETED");
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
           })
           .catch((error) => {
@@ -237,7 +218,7 @@ export const registerDockerEventHandlers = (
               error
             );
             removeDockerContainer(event.Actor.ID);
-            sendInstanceUpdate(deploymentId, "DELETED");
+            sendInstanceUpdate(userId, deploymentId, "DELETED");
           });
         break;
 
@@ -263,7 +244,12 @@ export const registerDockerEventHandlers = (
 
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
-    sendInstanceUpdate(deploymentId, "ERROR", `Docker Event Error: ${error}`);
+    sendInstanceUpdate(
+      userId,
+      deploymentId,
+      "ERROR",
+      `Docker Event Error: ${error}`
+    );
   });
 
   return () => {

@@ -9,7 +9,7 @@ interface SessionData {
 
 export let client: Client; // STOMP 클라이언트를 저장하는 변수
 
-function getSessionData(): SessionData | null {
+export function getSessionData(): SessionData | null {
   const data = sessionStorage.getItem("userSettings");
   if (!data) return null;
   try {
