@@ -1,11 +1,14 @@
 import { ipcMain } from "electron";
 import { Readable } from "stream";
 import { docker } from "./dockerManager";
+import { Client } from "@elastic/elasticsearch";
 
 export const logStreams: Record<string, Readable> = {};
 
-// Docker 컨테이너 로그 스트리밍
+// Elasticsearch 클라이언트 설정
+const esClient = new Client({ node: "http://localhost:9200" }); // Elasticsearch 서버 주소를 적절히 변경하세요
 
+// Docker 컨테이너 로그 스트리밍 및 Elasticsearch로 전송
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
@@ -22,11 +25,26 @@ export const handleFetchContainerLogs = (): void => {
 
         logStreams[containerId] = logStream;
 
-        logStream.on("data", (chunk: Buffer) => {
+        logStream.on("data", async (chunk: Buffer) => {
+          const log = chunk.toString();
           event.sender.send("container-logs-stream", {
             containerId,
-            log: chunk.toString(),
+            log,
           });
+
+          // Elasticsearch로 로그 전송
+          try {
+            await esClient.index({
+              index: "docker-logs",
+              body: {
+                containerId,
+                timestamp: new Date(),
+                log,
+              },
+            });
+          } catch (esError) {
+            console.error("Error sending log to Elasticsearch:", esError);
+          }
         });
 
         logStream.on("error", (err: Error) => {
@@ -48,6 +66,23 @@ export const handleFetchContainerLogs = (): void => {
     }
   );
 };
+
+ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
+  const logStream = logStreams[containerId];
+  if (logStream) {
+    logStream.destroy();
+    delete logStreams[containerId];
+    event.sender.send("container-logs-end", {
+      containerId,
+      message: `Log stream for container ${containerId} has been stopped.`,
+    });
+  } else {
+    event.sender.send("container-logs-error", {
+      containerId,
+      error: `No active log stream for container ${containerId}.`,
+    });
+  }
+});
 
 ipcMain.on("stop-container-log-stream", (event, containerId: string) => {
   const logStream = logStreams[containerId];

@@ -73,7 +73,8 @@ const globalStats = new Map<string, ContainerStats>();
 function createStompClient(userId: string): Client {
   console.log("세션 userID", userId);
   return new Client({
-    brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
+    brokerURL: "ws://j11c108.p.ssafy.io:8000/ws", // WebSocket URL
+    // brokerURL: "wss://ttalkak.com/ws", // WebSocket URL
     connectHeaders: {
       "X-USER-ID": "2", //수정하기
     },
@@ -116,14 +117,13 @@ export async function initializeStompClient(): Promise<Client> {
 
 // STOMP 클라이언트 실행 내역
 function setupClientHandlers(_userId: string): void {
-  if (!client) return;
-
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
     // 1. pub/compute/connect 웹소켓최초 연결시 메시지 전송
     sendComputeConnectMessage("2");
-
+    //도커 이벤트 감지 시작
+    window.electronAPI.sendDockerEventRequest();
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(`/sub/compute-create/2`, async (message: Message) => {
       const computes = JSON.parse(message.body);
@@ -200,16 +200,13 @@ function setupClientHandlers(_userId: string): void {
                 }
               });
 
-              //현재 배포 상태 PING 시작
-              startSendingCurrentState();
-              console.log("ping 시작");
-              window.electronAPI.sendDockerEventRequest();
-              console.log("도커 이벤트 감지 시작");
               registerDockerEventHandlers(client, "2", compute.deploymentId); // Docker 이벤트 핸들러
+              sendInstanceUpdate(compute.deploymentId, "RUNNING");
+              startSendingCurrentState(); //현재 배포 상태 PING 시작
 
-              // pgrok 시작
               console.log(compute);
-              window.electronAPI
+
+              window.electronAPI // pgrok 시작
                 .runPgrok(
                   "pgrok.ttalkak.com:2222",
                   `http://localhost:8080`, //나중에 바꿀거임
@@ -219,15 +216,15 @@ function setupClientHandlers(_userId: string): void {
                 )
                 .then((message) => {
                   console.log(`pgrok started: ${message}`);
-                  sendDeploymentStatus("pgrok_started", compute, {
-                    pgrokMessage: message,
-                  });
+                  // sendDeploymentStatus("pgrok_started", compute, {
+                  //   pgrokMessage: message,
+                  // });
                 })
                 .catch((error) => {
                   alert(`Failed to start pgrok: ${error}`);
-                  sendDeploymentStatus("pgrok_failed", compute, {
-                    error: error.toString(),
-                  });
+                  // sendDeploymentStatus("pgrok_failed", compute, {
+                  //   error: error.toString(),
+                  // });
                 });
             }
           }
@@ -325,21 +322,21 @@ const sendComputeConnectMessage = async (_userId: string): Promise<void> => {
 };
 
 // 배포 상태 메시지를 전송하는 함수
-const sendDeploymentStatus = (
-  status: string,
-  compute: DeploymentCommand,
-  details?: any
-): void => {
-  client?.publish({
-    destination: "/pub/compute/deployment-status",
-    body: JSON.stringify({
-      status,
-      compute,
-      details,
-      timestamp: new Date().toISOString(),
-    }),
-  });
-};
+// const sendDeploymentStatus = (
+//   status: string,
+//   compute: DeploymentCommand,
+//   details?: any
+// ): void => {
+//   client?.publish({
+//     destination: "/pub/compute/deployment-status",
+//     body: JSON.stringify({
+//       status,
+//       compute,
+//       details,
+//       timestamp: new Date().toISOString(),
+//     }),
+//   });
+// };
 
 // compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
 function handleContainerCommand(deploymentId: number, command: string) {
@@ -453,7 +450,7 @@ const sendCurrentState = async () => {
     };
 
     client?.publish({
-      destination: "/pub/compute/ping/",
+      destination: "/pub/compute/ping",
       body: JSON.stringify(currentState),
     });
     console.log("Current state sent:", currentState);

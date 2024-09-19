@@ -10,13 +10,13 @@ const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
 export const registerDockerEventHandlers = (
   client: Client,
-  _userId: string = "2",
+  userId: string = "2",
   deploymentId: number
 ): (() => void) => {
   function sendInstanceUpdate(
     deploymentId: number,
     status: string,
-    _details?: string
+    details?: string
   ) {
     const message = {
       status: status,
@@ -140,12 +140,47 @@ export const registerDockerEventHandlers = (
 
       case "kill":
         console.log("kill, 강제종료");
-        sendInstanceUpdate(
-          deploymentId,
-          "PENDING",
-          "Container was forcefully stopped (killed)."
-        );
-        window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
+        // sendInstanceUpdate(
+        //   deploymentId,
+        //   "PENDING",
+        //   "Container was forcefully stopped (killed)."
+        // );
+        // window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
+        break;
+
+      case "die":
+        console.log("컨테이너 die");
+        // try {
+        //   const containers = await window.electronAPI.getDockerContainers(
+        //     false
+        //   );
+        //   const container = containers.find((c) => c.Id === event.Actor.ID);
+
+        //   console.log("Container from getDockerContainers:", container);
+
+        //   if (container) {
+        //     sendInstanceUpdate(
+        //       deploymentId,
+        //       "STOPPED",
+        //       "Container died successfully."
+        //     );
+        //     window.electronAPI.stopLogStream(container.Id); // 로그 스트림 중지
+        //   } else {
+        //     console.error(`Container with ID ${event.Actor.ID} not found.`);
+        //     sendInstanceUpdate(
+        //       deploymentId,
+        //       "STOPPED",
+        //       "Container die event failed"
+        //     );
+        //   }
+        // } catch (error) {
+        //   console.error(`Error handling die event: ${error}`);
+        //   sendInstanceUpdate(
+        //     deploymentId,
+        //     "PENDING",
+        //     `Error handling die event: ${error}`
+        //   );
+        // }
         break;
 
       case "stop":
@@ -154,7 +189,7 @@ export const registerDockerEventHandlers = (
           const containers = await window.electronAPI.getDockerContainers(
             false
           );
-          let container = containers.find((c) => c.Id === event.Actor.ID);
+          const container = containers.find((c) => c.Id === event.Actor.ID);
 
           console.log("Container from getDockerContainers:", container);
 
@@ -216,41 +251,6 @@ export const registerDockerEventHandlers = (
             deploymentId,
             "PENDING",
             `Error handling stop event: ${error}`
-          );
-        }
-        break;
-
-      case "die":
-        console.log("컨테이너 die");
-        try {
-          const containers = await window.electronAPI.getDockerContainers(
-            false
-          );
-          const container = containers.find((c) => c.Id === event.Actor.ID);
-
-          console.log("Container from getDockerContainers:", container);
-
-          if (container) {
-            sendInstanceUpdate(
-              deploymentId,
-              "STOPPED",
-              "Container died successfully."
-            );
-            window.electronAPI.stopLogStream(container.Id); // 로그 스트림 중지
-          } else {
-            console.error(`Container with ID ${event.Actor.ID} not found.`);
-            sendInstanceUpdate(
-              deploymentId,
-              "STOPPED",
-              "Container die event failed"
-            );
-          }
-        } catch (error) {
-          console.error(`Error handling die event: ${error}`);
-          sendInstanceUpdate(
-            deploymentId,
-            "PENDING",
-            `Error handling die event: ${error}`
           );
         }
         break;

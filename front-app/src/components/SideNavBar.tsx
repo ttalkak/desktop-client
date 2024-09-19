@@ -66,7 +66,7 @@ const SideNavBar = () => {
   useEffect(() => {
     const initializeState = async () => {
       if (accessToken) {
-        // 로그인 상태가 확인되면만 처리
+        // 로그인 상태가 확인되면 처리
         await dockerCheckHandler();
         setDockerImages([]);
         setDockerContainers([]);
@@ -81,8 +81,8 @@ const SideNavBar = () => {
     };
   }, [accessToken]);
 
-  // const isLoggedIn = Boolean(accessToken);
-  const isLoggedIn = true;
+  const isLoggedIn = Boolean(accessToken);
+  // const isLoggedIn = true;
 
   return (
     <div className={navContainer}>
@@ -94,7 +94,7 @@ const SideNavBar = () => {
         <button
           onClick={startService}
           className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13 ${
-            !isLoggedIn ? "opacity-50 cursor-not-allowed" : ""
+            !isLoggedIn ? "opacity-50 cursor-none" : ""
           }`}
           disabled={!isLoggedIn}
         >

@@ -4,12 +4,15 @@ import * as fs from "fs";
 import iconv from "iconv-lite";
 import { ipcMain, BrowserWindow } from "electron";
 import { getTtalkakDirectory, downloadFile } from "./utils";
+import { ChildProcess } from "child_process";
 
 let win: BrowserWindow | null = null;
 
 export function setMainWindow(mainWindow: BrowserWindow) {
   win = mainWindow;
 }
+
+const pgrokProcesses: { [key: string]: ChildProcess } = {};
 
 // pgrok 실행 함수
 async function runPgrok(
@@ -35,7 +38,7 @@ async function runPgrok(
     { cwd: path.dirname(pgrokExePath) } // 명령어 실행 경로 설정
   );
 
-  console.log("실행 명령어", command);
+  pgrokProcesses[deploymentId] = child;
 
   // 로그 스트림 수신
   child.stdout?.on("data", (data) => {
@@ -51,6 +54,38 @@ async function runPgrok(
   child.on("close", (code) => {
     console.log(`Process exited with code ${code}`);
     win?.webContents.send("pgrok-log", `Process exited with code ${code}`); // 종료 로그 전송
+  });
+}
+
+//pgrok 종료 함수
+function stopPgrok(deploymentId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const processToStop = pgrokProcesses[deploymentId];
+    if (processToStop) {
+      processToStop.kill(); // 프로세스 종료 시도
+      win?.webContents.send(
+        "pgrok-log",
+        `pgrok process with deploymentId ${deploymentId} killed`
+      );
+
+      // 프로세스 종료 이벤트 처리
+      processToStop.on("close", (code) => {
+        delete pgrokProcesses[deploymentId]; // 종료된 프로세스 삭제
+        if (code === 0) {
+          resolve(); // 정상 종료 시 resolve
+        } else {
+          reject(new Error(`Process exited with code ${code}`)); // 비정상 종료 시 reject
+        }
+      });
+    } else {
+      win?.webContents.send(
+        "pgrok-log",
+        `No pgrok process running with deploymentId ${deploymentId}`
+      );
+      reject(
+        new Error(`No pgrok process running with deploymentId ${deploymentId}`)
+      );
+    }
   });
 }
 
@@ -142,4 +177,13 @@ export function registerPgrokIpcHandlers() {
       }
     }
   );
+
+  ipcMain.handle("stop-pgrok", async (_, deploymentId: number) => {
+    try {
+      await stopPgrok(deploymentId);
+      return "pgrok stopped successfully";
+    } catch (error) {
+      return `pgrok failed to stop : ${error}`;
+    }
+  });
 }
