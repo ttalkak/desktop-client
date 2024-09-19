@@ -25,6 +25,7 @@ import {
 import { powerSaveBlocker } from "electron";
 import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
 import { stopAllPgrokProcesses } from "./pgrokManager";
+import { electron } from "node:process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +40,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
+let loadingWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
@@ -112,6 +114,26 @@ function calculateCpuUsage() {
   return parseFloat(cpuUsage.toFixed(2));
 }
 
+// //
+// // 로딩 창 생성
+// function createLoadingWindow() {
+//   loadingWindow = new BrowserWindow({
+//     width: 300,
+//     height: 300,
+//     frame: false, // 창 프레임 제거
+//     transparent: true, // 투명 배경 설정
+//     alwaysOnTop: true,
+//     resizable: false,
+//     show: false, // ready-to-show에서 표시되도록 설정
+//   });
+
+//   loadingWindow.loadFile(path.join(__dirname, "loading.html"));
+
+//   loadingWindow.once("ready-to-show", () => {
+//     loadingWindow?.show();
+//   });
+// }
+
 // 새로운 Electron 창 오픈
 async function createWindow() {
   win = new BrowserWindow({
@@ -137,6 +159,15 @@ async function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+
+  // 메인 창이 준비되면 로딩창 닫기
+  // win.once("ready-to-show", () => {
+  //   if (loadingWindow) {
+  //     loadingWindow.close(); // 메인 창이 준비되면 로딩창 닫기
+  //     loadingWindow = null;
+  //   }
+  //   win?.show(); // 메인 창 표시
+  // });
 
   setMainWindow(win); // pgrokManager에 메인 윈도우 설정
 
@@ -219,6 +250,7 @@ function startPowerSaveBlocker() {
 
 app
   .whenReady()
+  // .then(createLoadingWindow)
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
