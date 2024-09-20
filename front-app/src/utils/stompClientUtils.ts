@@ -36,8 +36,8 @@ export async function waitForSessionData(
 export function createStompClient(userId: string): Client {
   console.log("세션 userID", userId);
   return new Client({
-    brokerURL: "ws://j11c108.p.ssafy.io:8000/ws", // WebSocket URL
-    // brokerURL: "wss://ttalkak.com/ws", // WebSocket URL (주석 처리된 대체 URL)
+    // brokerURL: "ws://j11c108.p.ssafy.io:8000/ws", // WebSocket URL
+    brokerURL: "wss://api.ttalkak.com/ws", // WebSocket URL (주석 처리된 대체 URL)
     connectHeaders: {
       // "X-USER-ID": userId,
       "X-USER-ID": "2",

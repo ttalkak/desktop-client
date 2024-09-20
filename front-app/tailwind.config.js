@@ -4,6 +4,9 @@ export default {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      minHeight: {
+        108: "26rem",
+      },
       fontFamily: {
         sans: ["Noto Sans", "Noto Sans KR", "sans-serif"],
       },

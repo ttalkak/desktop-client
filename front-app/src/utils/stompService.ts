@@ -155,7 +155,7 @@ function setupClientHandlers(userId: string): void {
                 window.electronAPI // pgrok 시작
                   .runPgrok(
                     "pgrok.ttalkak.com:2222",
-                    `http://localhost:8080`, //나중에 바꿀거임
+                    `http://localhost:${8080}`, //바꿀예정
                     compute.subdomainKey,
                     compute.deploymentId,
                     compute.subdomainName
