@@ -21,7 +21,7 @@ const CpuStatusItem = () => {
   }, []);
 
   return (
-    <div className="card w-1/2">
+    <div className="card w-1/2 mr-1">
       <p className="font-sans font-bold text-xl">Container CPU Usage</p>
       <p className="font-sans text-color-10">System-wide CPU utilization</p>
       <div className="flex items-center">

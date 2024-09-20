@@ -93,9 +93,7 @@ const SideNavBar = () => {
 
         <button
           onClick={startService}
-          className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13 ${
-            !isLoggedIn ? "opacity-50 cursor-none" : ""
-          }`}
+          className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13`}
           disabled={!isLoggedIn}
         >
           start
@@ -126,11 +124,7 @@ const SideNavBar = () => {
             }`}
           />
         </div>
-        {!isLoggedIn && (
-          <div className="text-red-500 text-center mt-2 text-sm">
-            Please log in to start the service.
-          </div>
-        )}
+
         <div className="flex flex-col mt-6">
           <Link to="/" className={`${navText} ${isActive("/")}`}>
             <div className="ml-1">Home</div>

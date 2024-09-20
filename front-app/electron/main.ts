@@ -39,7 +39,6 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
-// let loadingWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
@@ -113,26 +112,6 @@ function calculateCpuUsage() {
   return parseFloat(cpuUsage.toFixed(2));
 }
 
-// //
-// // 로딩 창 생성
-// function createLoadingWindow() {
-//   loadingWindow = new BrowserWindow({
-//     width: 300,
-//     height: 300,
-//     frame: false, // 창 프레임 제거
-//     transparent: true, // 투명 배경 설정
-//     alwaysOnTop: true,
-//     resizable: false,
-//     show: false, // ready-to-show에서 표시되도록 설정
-//   });
-
-//   loadingWindow.loadFile(path.join(__dirname, "loading.html"));
-
-//   loadingWindow.once("ready-to-show", () => {
-//     loadingWindow?.show();
-//   });
-// }
-
 // 새로운 Electron 창 오픈
 async function createWindow() {
   win = new BrowserWindow({
@@ -200,9 +179,16 @@ async function createWindow() {
   });
 }
 
+let isQuitting = false;
+
 // 애플리케이션 종료 전 실행할 함수들
 app.on("before-quit", async (event) => {
-  event.preventDefault();
+  if (isQuitting) {
+    return; // 이미 종료 중이면 아무 작업도 하지 않음
+  }
+
+  isQuitting = true; // 종료 중임을 표시
+  event.preventDefault(); // 기본 종료 동작 방지
 
   try {
     await stopAllPgrokProcesses(); // 실행 중인 모든 pgrok 프로세스 종료
@@ -249,7 +235,6 @@ function startPowerSaveBlocker() {
 
 app
   .whenReady()
-  // .then(createLoadingWindow)
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성
