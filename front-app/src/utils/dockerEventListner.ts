@@ -184,7 +184,7 @@ export const registerDockerEventHandlers = (
             sendInstanceUpdate(
               userId,
               deploymentId,
-              "PENDING",
+              "STOPPED",
               "Container stop failed"
             );
           }
