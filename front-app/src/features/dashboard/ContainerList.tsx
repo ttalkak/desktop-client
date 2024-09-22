@@ -43,12 +43,12 @@ const ContainerList: React.FC = () => {
   if (dockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
-        <p className="text-center text-xl text-gray-500">
+        <p className="text-center text-gray-500 font-bold">
           현재 실행 중인 Docker 컨테이너가 없습니다.
         </p>
         <div className="mt-4">
-          <span className="text-gray-400">
-            Docker 컨테이너를 실행한 후 새로 고침해주세요.
+          <span className="text-gray-400 text-sm">
+            Docker 컨테이너를 실행해주세요.
           </span>
         </div>
       </div>

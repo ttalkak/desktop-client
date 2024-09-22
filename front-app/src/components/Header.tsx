@@ -25,7 +25,7 @@ const Header = () => {
   const clearTokens = useAuthStore((state) => state.clearTokens);
   const clearImages = useDockerStore((state) => state.clearDockerImages);
   const clearContainer = useDockerStore((state) => state.clearDockerContainers);
-  const setServiceStatus = useAppStore.getState().setServiceStatus;
+  const setServiceStatus = useAppStore((state) => state.setServiceStatus);
 
   const handleMinimize = () => {
     window.electronAPI.minimizeWindow();
