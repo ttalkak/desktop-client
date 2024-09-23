@@ -4,10 +4,12 @@ export function sendInstanceUpdate(
   userId: string,
   deploymentId: number,
   status: string,
-  details?: string
+  details?: string,
+  port?: number
 ) {
   const message = {
     status: status,
+    port: port,
     message: details || "",
   };
 

@@ -8,7 +8,7 @@ const Footer = () => {
   return (
     <div className="bg-white fixed bottom-0 left-0 w-full h-6 border-t border-color-2 text-xs flex items-center justify-between px-2.5 pb-0.5">
       <a
-        href="https://www.naver.com"
+        href="https://ttalkak.com/"
         target="_blank"
         rel="noopener noreferrer"
         className={content}

@@ -57,7 +57,6 @@ async function downloadAndUnzip(
 
     let dockerfilePath: string | null = null;
     const dockerDir = path.resolve(extractDir, `${repoName}-${branch}`);
-    console.log(`도커파일 탐색 시작할 위치 :${dockerDir} `);
 
     // 사용자가 제공한 dockerRootDirectory가 있는 경우
     if (dockerRootDirectory) {
@@ -86,6 +85,7 @@ async function downloadAndUnzip(
     }
 
     // 성공 시 Dockerfile 경로와 함께 반환
+    console.log(`02. dockerfilePath 확인`, dockerfilePath);
     return { success: true, dockerfilePath, contextPath };
   } catch (error) {
     console.error("Error during download and unzip:", error);

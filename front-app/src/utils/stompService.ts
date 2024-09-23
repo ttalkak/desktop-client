@@ -3,7 +3,11 @@ import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
 import { useDeploymentStore } from "../stores/deploymentStore";
-import { client, initializeStompClient } from "./stompClientUtils";
+import {
+  client,
+  initializeStompClient,
+  waitForSessionData,
+} from "./stompClientUtils";
 import { sendPaymentInfo } from "./paymentUtils";
 import { sendInstanceUpdate } from "./sendUpdateUtils";
 
@@ -45,7 +49,7 @@ interface ContainerStatsError {
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
-
+const setServiceStatus = useAppStore.getState().setServiceStatus;
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
 
 // 전역 상태 저장소 추가
@@ -58,12 +62,12 @@ function setupClientHandlers(userId: string): void {
 
     setWebsocketStatus("connected");
     // 1. pub/compute/connect 웹소켓 최초 연결시 전송=>userId로 변경하기
-    sendComputeConnectMessage("2");
+    sendComputeConnectMessage(userId);
     // 2. 결제 정보 전송 시작=>userId로 변경하기
-    sendPaymentInfo("2");
+    sendPaymentInfo(userId);
     //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
-
+    setServiceStatus("running");
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
       `/sub/compute-create/${userId}`,
@@ -101,7 +105,7 @@ function setupClientHandlers(userId: string): void {
             if (success) {
               const { image } = await handleBuildImage(
                 contextPath,
-                dockerfilePath.toLowerCase(),
+                dockerfilePath,
                 compute.subdomainName
               );
               console.log(`도커 파일 위치임 ${dockerfilePath}`);
@@ -115,7 +119,13 @@ function setupClientHandlers(userId: string): void {
                   compute.inboundPort || 80,
                   compute.outboundPort || 8080
                 );
-                sendInstanceUpdate(userId, compute.deploymentId, "RUNNING");
+                sendInstanceUpdate(
+                  userId,
+                  compute.deploymentId,
+                  "RUNNING",
+                  "",
+                  compute.outboundPort
+                );
                 //deployment와 containerId 저장
                 useDeploymentStore
                   .getState()
@@ -125,7 +135,7 @@ function setupClientHandlers(userId: string): void {
                 //
                 startContainerStatsMonitoring();
                 // Docker 이벤트 핸들러 등록
-                registerDockerEventHandlers("2", compute.deploymentId);
+                registerDockerEventHandlers(userId, compute.deploymentId);
                 // sub/compute-update/{userId} 업데이트요청 구독
                 client?.subscribe(
                   `/sub/compute-update/${userId}`,
@@ -155,7 +165,7 @@ function setupClientHandlers(userId: string): void {
                 window.electronAPI // pgrok 시작
                   .runPgrok(
                     "pgrok.ttalkak.com:2222",
-                    `http://localhost:${8080}`, //바꿀예정
+                    `http://localhost:${compute.outboundPort}`, //바꿀예정
                     compute.subdomainKey,
                     compute.deploymentId,
                     compute.subdomainName
@@ -167,7 +177,7 @@ function setupClientHandlers(userId: string): void {
                     alert(`Failed to start pgrok: ${error}`);
                   });
 
-                startSendingCurrentState(); //현재 배포 상태 PING 시작
+                startSendingCurrentState(userId); //현재 배포 상태 PING 시작
               }
             }
           }
@@ -192,15 +202,17 @@ function setupClientHandlers(userId: string): void {
 
 // WebSocket 연결 함수/클라이언트 초기화
 export const connectWebSocket = async (): Promise<void> => {
+  const sessionData = await waitForSessionData();
+  const userId = sessionData.userId.toString();
   try {
     if (!client) {
       await initializeStompClient();
     }
-    if (client) {
+    if (client && userId) {
       client.activate();
       console.log("웹소켓 연결 시도 중");
       setWebsocketStatus("connecting");
-      setupClientHandlers("2");
+      setupClientHandlers(userId);
     } else {
       throw new Error("STOMP client initialization failed");
     }
@@ -345,7 +357,7 @@ async function getTotalMemoryUsage(
 }
 
 // PING : "/pub/compute/ping"  현재 상태를 WebSocket을 통해 전송
-const sendCurrentState = async () => {
+const sendCurrentState = async (userId: string) => {
   try {
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
@@ -375,7 +387,7 @@ const sendCurrentState = async () => {
     }
 
     const currentState = {
-      userId: "2",
+      userId: userId,
       computerType: await window.electronAPI.getOsType(),
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
@@ -396,12 +408,12 @@ const sendCurrentState = async () => {
 let intervalId: NodeJS.Timeout | null = null; // 상태 전송 주기를 관리하는 변수
 
 // 주기적으로 현재 상태를 전송하기 시작하는 함수
-const startSendingCurrentState = () => {
+const startSendingCurrentState = (userId: string) => {
   console.log("Starting to send current state periodically...");
-  sendCurrentState();
+  sendCurrentState(userId);
   intervalId = setInterval(() => {
     console.log("Sending current state...");
-    sendCurrentState();
+    sendCurrentState(userId);
   }, 60000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
 };
 
@@ -482,7 +494,7 @@ function startContainerStatsMonitoring() {
 }
 
 // 컨테이너 상태 모니터링을 중지하는 함수
-function stopContainerStatsMonitoring() {
+export function stopContainerStatsMonitoring() {
   stopPeriodicContainerCheck();
   window.electronAPI.removeContainerStatsListeners();
   useDockerStore.getState().dockerContainers.forEach((container) => {

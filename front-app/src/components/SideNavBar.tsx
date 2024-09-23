@@ -2,9 +2,10 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaCircle } from "react-icons/fa";
 import { startService } from "../utils/serviceUtils";
+
 import { useAppStore } from "../stores/appStatusStore";
 import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
-import { useAuthStore } from "../stores/authStore"; // useAuthStore 임포트
+import { useAuthStore } from "../stores/authStore";
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
@@ -91,13 +92,23 @@ const SideNavBar = () => {
           Click to run Ttalkak
         </div>
 
-        <button
-          onClick={startService}
-          className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13`}
-          disabled={!isLoggedIn}
-        >
-          start
-        </button>
+        {serviceStatus === "running" ? (
+          <button
+            onClick={() => {}}
+            className={`bg-color-5 rounded text-white py-1 mt-4 mb-2 hover:bg-color-4`}
+            disabled={!isLoggedIn}
+          >
+            Running...
+          </button>
+        ) : (
+          <button
+            onClick={startService}
+            className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13`}
+            disabled={!isLoggedIn}
+          >
+            start
+          </button>
+        )}
 
         <div className="flex justify-end">
           <FaCircle

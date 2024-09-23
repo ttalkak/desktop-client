@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from "../stores/authStore";
 
 const DashBoard: React.FC = () => {
-  const userSettings = useAuthStore((state) => state.userSettings);
+  const userSettings = useAuthStore.getState().userSettings;
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
   const containerCount = dockerContainers.length;
