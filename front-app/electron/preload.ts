@@ -77,7 +77,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return await ipcRenderer.invoke(
       "download-and-unzip",
       repositoryUrl,
-      // branch,
       rootDirectory
     );
   },

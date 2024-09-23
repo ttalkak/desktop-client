@@ -230,15 +230,12 @@ export async function buildDockerImage(
     console.log(`Rebuilding Docker image ${fullTag}`);
   }
 
-  const dockerfileRelativePath = path.basename(dockerfilePath);
-
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-    console.log(contextPath);
-    //src 에 대한 경로 다시 확인할것
+    const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
     docker.buildImage(
       { context: contextPath, src: ["."] },
-      { t: fullTag, nocache: true },
+      { t: fullTag, dockerfile: relativeDockerfilePath, nocache: true },
 
       (err, stream) => {
         if (err) {
@@ -362,9 +359,6 @@ export function handleBuildDockerImage() {
       imageName: string = "my-docker-image",
       tag: string = "latest"
     ) => {
-      console.log(
-        `Received request to build Docker image from path: ${contextPath}`
-      );
       try {
         // 이미지 빌드 및 결과 반환
         const buildResult = await processAndBuildImage(
