@@ -20,9 +20,10 @@ export function getProjectSourceDirectory(): string {
   return projectSourceDirectory; // 경로 반환
 }
 
+//압축해제하면서 context와 dockerfile 경로 반환
 async function downloadAndUnzip(
-  repoUrl: string,
-  dockerRootDirectory?: string
+  repositoryUrl: string,
+  rootDirectory?: string
 ): Promise<{
   success: boolean;
   message?: string;
@@ -30,12 +31,17 @@ async function downloadAndUnzip(
   contextPath?: string;
 }> {
   try {
+    let dockerfilePath: string | null = null;
+
     const downloadDir = getProjectSourceDirectory();
     const extractDir = getProjectSourceDirectory();
 
     // URL을 파싱하여 경로 부분을 추출
-    const urlParts = repoUrl.split("/");
-    const branch = urlParts[urlParts.length - 1].split(".")[0];
+    const urlParts = repositoryUrl.split("/");
+    const branch = repositoryUrl.substring(
+      repositoryUrl.indexOf("heads/") + 6, // "heads/" 이후의 부분
+      repositoryUrl.lastIndexOf(".zip") // ".zip" 직전까지
+    );
     const repoName = urlParts[urlParts.length - 5];
 
     console.log("reponame", `${repoName}-${branch}`);
@@ -44,23 +50,21 @@ async function downloadAndUnzip(
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
     const contextPath = `${extractDir}\\${repoName}-${branch}`;
 
-    console.log("Downloading from:", repoUrl);
+    console.log("Downloading from:", repositoryUrl);
     console.log("Saving to:", zipFilePath);
 
     console.log("Downloading ZIP file...");
-    await downloadFile(repoUrl, zipFilePath);
+    await downloadFile(repositoryUrl, zipFilePath);
     console.log("Download completed:", zipFilePath);
 
     console.log("Unzipping file...");
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
 
-    let dockerfilePath: string | null = null;
     const dockerDir = path.resolve(extractDir, `${repoName}-${branch}`);
 
     // 사용자가 제공한 dockerRootDirectory가 있는 경우
-    if (dockerRootDirectory) {
-      console.log(dockerDir);
+    if (rootDirectory) {
       if (fs.existsSync(dockerDir)) {
         dockerfilePath = await findDockerfile(dockerDir);
       } else {
@@ -102,8 +106,8 @@ ipcMain.handle("get-project-source-directory", async () => {
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(
     "download-and-unzip",
-    async (_, repoUrl: string, dockerRootDirectory: string) => {
-      return await downloadAndUnzip(repoUrl, dockerRootDirectory);
+    async (_, repositoryUrl: string, rootDirectory: string) => {
+      return await downloadAndUnzip(repositoryUrl, rootDirectory);
     }
   );
 };

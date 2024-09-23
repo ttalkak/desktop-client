@@ -61,12 +61,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("docker-event-end");
   },
 
-  //----------------- zip 다운 하고 바로 unzip
+  //ttalkak source directory 위치 가져오기
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
+
+  //----------------- zip 다운 하고 바로 unzip
   downloadAndUnzip: async (
     repositoryUrl: string,
-    // branch: string,
     rootDirectory: string
   ): Promise<{
     success: boolean;

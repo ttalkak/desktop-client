@@ -201,13 +201,18 @@ export function handleFindDockerFile() {
 
 export async function buildDockerImage(
   contextPath: string,
-  dockerfilePath: string,
+  dockerfilePath: string | null,
   imageName: string,
   tag: string
 ): Promise<{
   status: "success" | "exists" | "failed";
   image?: DockerImage;
 }> {
+  if (!dockerfilePath) {
+    console.error("Dockerfile not found.");
+    return { status: "failed" };
+  }
+
   const fullTag = `${imageName}:${tag}`;
 
   // 이미지 목록을 가져옵니다.
@@ -230,13 +235,14 @@ export async function buildDockerImage(
     console.log(`Rebuilding Docker image ${fullTag}`);
   }
 
+  // Dockerfile 경로를 컨텍스트에 상대적으로 만듭니다.
+  const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
+
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-    const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
     docker.buildImage(
       { context: contextPath, src: ["."] },
       { t: fullTag, dockerfile: relativeDockerfilePath, nocache: true },
-
       (err, stream) => {
         if (err) {
           reject(err);
@@ -278,36 +284,6 @@ export async function buildDockerImage(
       reject({ status: "failed" });
     });
   });
-}
-
-// 파일 경로 기반으로 이미지 빌드
-export async function processAndBuildImage(
-  contextPath: string,
-  dockerfilePath: string,
-  imageName: string,
-  tag: string
-): Promise<{
-  status: "success" | "exists" | "failed";
-  image?: DockerImage;
-}> {
-  if (dockerfilePath) {
-    try {
-      const buildStatus = await buildDockerImage(
-        contextPath,
-        dockerfilePath,
-        imageName,
-        tag
-      );
-      console.log(`Docker image build status: ${buildStatus.status}`);
-      return buildStatus;
-    } catch (error) {
-      console.error("Failed to build Docker image:", error);
-      return { status: "failed" };
-    }
-  } else {
-    console.error("Dockerfile not found.");
-    return { status: "failed" };
-  }
 }
 
 // 이미지 삭제 함수
@@ -361,7 +337,7 @@ export function handleBuildDockerImage() {
     ) => {
       try {
         // 이미지 빌드 및 결과 반환
-        const buildResult = await processAndBuildImage(
+        const buildResult = await buildDockerImage(
           contextPath,
           dockerfilePath,
           imageName,
