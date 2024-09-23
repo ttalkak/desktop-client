@@ -1,5 +1,5 @@
 import "./App.css";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import DashBoard from "./pages/DashBoard";
 import Port from "./pages/Port";
@@ -12,6 +12,8 @@ import { useAuthStore } from "./stores/authStore";
 
 function App() {
   const isLoggedIn = useAuthStore((state) => state.accessToken);
+  const location = useLocation();
+  const isSignupPage = location.pathname === "/signup";
 
   return (
     <div className="bg-color-1 h-screen flex flex-col">
@@ -22,7 +24,7 @@ function App() {
           className="flex-grow overflow-auto custom-scrollbar ml-64 px-6 py-6  relative"
           style={{ height: "calc(100vh - 40.8px - 24px)" }}
         >
-          {!isLoggedIn && <OverlayPanel />}
+          {!isLoggedIn && !isSignupPage && <OverlayPanel />}
 
           <Routes>
             <Route path="/" element={<Home />} />

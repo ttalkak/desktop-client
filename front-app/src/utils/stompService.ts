@@ -49,7 +49,7 @@ interface ContainerStatsError {
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
-
+const setServiceStatus = useAppStore.getState().setServiceStatus;
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
 
 // 전역 상태 저장소 추가
@@ -67,7 +67,7 @@ function setupClientHandlers(userId: string): void {
     sendPaymentInfo(userId);
     //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
-
+    setServiceStatus("running");
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
       `/sub/compute-create/${userId}`,
