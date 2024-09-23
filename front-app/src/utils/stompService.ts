@@ -112,10 +112,16 @@ function setupClientHandlers(userId: string): void {
 
                 const containerId = await createAndStartContainer(
                   image,
-                  compute.inboundPort || 80,
-                  compute.outboundPort || 8080
+                  compute.inboundPort || 8080,
+                  compute.outboundPort || 80
                 );
-                sendInstanceUpdate(userId, compute.deploymentId, "RUNNING");
+                sendInstanceUpdate(
+                  userId,
+                  compute.deploymentId,
+                  "RUNNING",
+                  "",
+                  compute.inboundPort
+                );
                 //deployment와 containerId 저장
                 useDeploymentStore
                   .getState()
@@ -155,7 +161,7 @@ function setupClientHandlers(userId: string): void {
                 window.electronAPI // pgrok 시작
                   .runPgrok(
                     "pgrok.ttalkak.com:2222",
-                    `http://localhost:${8080}`, //바꿀예정
+                    `http://localhost:${compute.inboundPort}`, //바꿀예정
                     compute.subdomainKey,
                     compute.deploymentId,
                     compute.subdomainName

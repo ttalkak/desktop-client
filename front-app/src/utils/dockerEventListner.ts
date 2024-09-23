@@ -100,7 +100,8 @@ export const registerDockerEventHandlers = (
             }
 
             window.electronAPI.startContainerStats([container.Id]);
-            window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작
+            // 로그 스트림 시작
+            window.electronAPI.startLogStream(container.Id, deploymentId);
             sendInstanceUpdate(userId, deploymentId, "RUNNING");
           } else {
             console.error(
