@@ -116,6 +116,15 @@ declare global {
     //OS확인용
     getOsType: () => Promise<string>;
 
+    //서비스 전체 종료
+    terminateTasks: () => void; // 작업 종료 명령
+    onTerminated: (
+      callback: (event: Electron.IpcRendererEvent) => void
+    ) => void; // 종료 완료 알림
+    onTerminateError: (
+      callback: (event: Electron.IpcRendererEvent, error: string) => void
+    ) => void; // 에러 발생 시 알림
+
     // DB 이미지 빌드위한 db 타입 전달
     setupDatabase: (
       dbInfo: any

@@ -274,6 +274,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   stopPgrok: (deploymentId: number) =>
     ipcRenderer.invoke("stop-pgrok", deploymentId),
+
+  //전체 종료
 });
 
 // --------- Expose some API to the Renderer process ---------
