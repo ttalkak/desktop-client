@@ -90,8 +90,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("find-dockerfile", directory),
 
   buildDockerImage: (
-    dockerfilePath: string,
     contextPath: string,
+    dockerfilePath: string,
     imageName: string = "my-docker-image",
     tag: string = "latest"
   ): Promise<{
@@ -101,8 +101,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }> =>
     ipcRenderer.invoke(
       "build-docker-image",
-      dockerfilePath,
       contextPath,
+      dockerfilePath,
       imageName,
       tag
     ),

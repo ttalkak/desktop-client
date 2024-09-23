@@ -39,6 +39,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
+// let loadingWindow: windo | null = null;
+
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
@@ -112,7 +114,24 @@ function calculateCpuUsage() {
   return parseFloat(cpuUsage.toFixed(2));
 }
 
-// 새로운 Electron 창 오픈
+// 로딩창 설정
+// function createLoadingWindow() {
+//   loadingWindow = new BrowserWindow({
+//     width: 300,
+//     height: 300,
+//     frame: false, // 타이틀바 없애기
+//     transparent: true, // 배경을 투명하게
+//     alwaysOnTop: true, // 최상위 창으로 유지
+//     webPreferences: {
+//       nodeIntegration: true,
+//       contextIsolation: false,
+//     },
+//   });
+
+//   loadingWindow.loadFile(path.join(__dirname, "loading.html")); // 로딩 화면
+// }
+
+// 새로운 Electron 창 오픈 - main 창
 async function createWindow() {
   win = new BrowserWindow({
     frame: false,
@@ -125,6 +144,7 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: true,
+      // nodeIntegration: false,
       webSecurity: true,
       nodeIntegrationInWorker: true,
       backgroundThrottling: false, // 백그라운드에서 앱이 멈추지 않도록 설정
@@ -235,6 +255,7 @@ function startPowerSaveBlocker() {
 
 app
   .whenReady()
+  // .then(createLoadingWindow)
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성

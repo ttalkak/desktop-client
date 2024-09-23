@@ -234,9 +234,12 @@ export async function buildDockerImage(
 
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
+    console.log(contextPath);
+    //src 에 대한 경로 다시 확인할것
     docker.buildImage(
-      { context: contextPath, src: [dockerfileRelativePath] },
-      { t: fullTag },
+      { context: contextPath, src: ["."] },
+      { t: fullTag, nocache: true },
+
       (err, stream) => {
         if (err) {
           reject(err);
@@ -291,7 +294,6 @@ export async function processAndBuildImage(
   image?: DockerImage;
 }> {
   if (dockerfilePath) {
-    console.log(`Dockerfile found at: ${dockerfilePath}`);
     try {
       const buildStatus = await buildDockerImage(
         contextPath,
