@@ -10,7 +10,8 @@ const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
 export const registerDockerEventHandlers = (
   userId: string,
-  deploymentId: number
+  deploymentId: number,
+  port: number
 ): (() => void) => {
   const handleImageEvent = (event: DockerEvent) => {
     console.log("이미지 이벤트 :", event.Action);
@@ -67,7 +68,7 @@ export const registerDockerEventHandlers = (
             }
 
             window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작+els 전송 시작
-            sendInstanceUpdate(userId, deploymentId, "RUNNING");
+            sendInstanceUpdate(userId, deploymentId, "RUNNING", port);
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during start.`
@@ -76,6 +77,7 @@ export const registerDockerEventHandlers = (
               userId,
               deploymentId,
               "PENDING",
+              port,
               "Container start failed"
             );
           }
@@ -102,7 +104,7 @@ export const registerDockerEventHandlers = (
             window.electronAPI.startContainerStats([container.Id]);
             // 로그 스트림 시작
             window.electronAPI.startLogStream(container.Id, deploymentId);
-            sendInstanceUpdate(userId, deploymentId, "RUNNING");
+            sendInstanceUpdate(userId, deploymentId, "RUNNING", port);
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during restart.`
@@ -111,6 +113,7 @@ export const registerDockerEventHandlers = (
               userId,
               deploymentId,
               "PENDING",
+              port,
               "Container restart failed"
             );
           }
@@ -165,7 +168,7 @@ export const registerDockerEventHandlers = (
 
               updateDockerContainer(updatedContainer);
               window.electronAPI.stopLogStream(updatedContainer.Id); // 로그 스트림 중지
-              sendInstanceUpdate(userId, deploymentId, "STOPPED");
+              sendInstanceUpdate(userId, deploymentId, "STOPPED", port);
               console.log("Container state forcibly updated to 'stopped'.");
             } else {
               console.warn(
@@ -175,6 +178,7 @@ export const registerDockerEventHandlers = (
                 userId,
                 deploymentId,
                 "RUNNING",
+                port,
                 "Container was not stopped successfully."
               );
             }
@@ -186,6 +190,7 @@ export const registerDockerEventHandlers = (
               userId,
               deploymentId,
               "STOPPED",
+              port,
               "Container stop failed"
             );
           }
@@ -195,11 +200,12 @@ export const registerDockerEventHandlers = (
             userId,
             deploymentId,
             "PENDING",
+            port,
             `Error handling stop event: ${error}`
           );
         }
         break;
-
+      //컨테이너 삭제
       case "destroy":
         console.log("컨테이너 삭제됨");
         window.electronAPI
@@ -209,17 +215,17 @@ export const registerDockerEventHandlers = (
               `Stats monitoring stopped for container ${event.Actor.ID}:`,
               result.message
             );
-            removeDockerContainer(event.Actor.ID);
-            sendInstanceUpdate(userId, deploymentId, "DELETED");
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
+            sendInstanceUpdate(userId, deploymentId, "DELETED", port);
+            removeDockerContainer(event.Actor.ID);
           })
           .catch((error) => {
             console.error(
               `Failed to stop stats monitoring for container ${event.Actor.ID}:`,
               error
             );
+            sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
-            sendInstanceUpdate(userId, deploymentId, "DELETED");
           });
         break;
 
@@ -249,6 +255,7 @@ export const registerDockerEventHandlers = (
       userId,
       deploymentId,
       "ERROR",
+      port,
       `Docker Event Error: ${error}`
     );
   });

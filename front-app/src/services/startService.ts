@@ -1,5 +1,5 @@
 import { useAppStore } from "../stores/appStatusStore";
-import { checkDockerStatus, startDocker } from "./dockerUtils";
+import { checkDockerStatus, startDocker } from "../utils/dockerUtils";
 import { connectWebSocket } from "./stompService";
 
 export const startService = async () => {

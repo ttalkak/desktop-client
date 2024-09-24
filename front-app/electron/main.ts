@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import * as os from "os";
+import { powerSaveBlocker } from "electron";
 import { githubDownLoadAndUnzip } from "./managers/githubManager";
 import { handleDatabaseSetup } from "./managers/dockerDBManager";
 import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
@@ -22,9 +23,11 @@ import {
   registerContainerIpcHandlers,
   handleFindDockerFile,
 } from "./managers/dockerManager";
-import { powerSaveBlocker } from "electron";
-import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
-import { stopAllPgrokProcesses } from "./pgrokManager";
+import {
+  setMainWindow,
+  registerPgrokIpcHandlers,
+  stopAllPgrokProcesses,
+} from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +42,6 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
-// let loadingWindow: windo | null = null;
 
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
@@ -114,23 +116,6 @@ function calculateCpuUsage() {
   return parseFloat(cpuUsage.toFixed(2));
 }
 
-// 로딩창 설정
-// function createLoadingWindow() {
-//   loadingWindow = new BrowserWindow({
-//     width: 300,
-//     height: 300,
-//     frame: false, // 타이틀바 없애기
-//     transparent: true, // 배경을 투명하게
-//     alwaysOnTop: true, // 최상위 창으로 유지
-//     webPreferences: {
-//       nodeIntegration: true,
-//       contextIsolation: false,
-//     },
-//   });
-
-//   loadingWindow.loadFile(path.join(__dirname, "loading.html")); // 로딩 화면
-// }
-
 // 새로운 Electron 창 오픈 - main 창
 async function createWindow() {
   win = new BrowserWindow({
@@ -157,15 +142,6 @@ async function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
-
-  // 메인 창이 준비되면 로딩창 닫기
-  // win.once("ready-to-show", () => {
-  //   if (loadingWindow) {
-  //     loadingWindow.close(); // 메인 창이 준비되면 로딩창 닫기
-  //     loadingWindow = null;
-  //   }
-  //   win?.show(); // 메인 창 표시
-  // });
 
   setMainWindow(win); // pgrokManager에 메인 윈도우 설정
 
@@ -199,27 +175,43 @@ async function createWindow() {
   });
 }
 
+// 애플리케이션 종료 전 실행
 let isQuitting = false;
 
-// 애플리케이션 종료 전 실행할 함수들
 app.on("before-quit", async (event) => {
-  if (isQuitting) {
-    return; // 이미 종료 중이면 아무 작업도 하지 않음
-  }
+  if (isQuitting) return;
 
-  isQuitting = true; // 종료 중임을 표시
-  event.preventDefault(); // 기본 종료 동작 방지
+  isQuitting = true;
+  event.preventDefault(); // 기본 종료 방지
 
-  try {
-    await stopAllPgrokProcesses(); // 실행 중인 모든 pgrok 프로세스 종료
-    app.quit(); // 모든 프로세스가 종료된 후 애플리케이션 종료
-  } catch (error) {
-    console.error("Failed to stop pgrok processes:", error);
-    app.quit(); // 에러가 발생해도 애플리케이션 종료
-  }
+  // 렌더러에 종료 명령 전송
+  win?.webContents.send("terminate");
+
+  // 렌더러가 종료 작업을 완료한 경우
+  ipcMain.once("terminated", async () => {
+    try {
+      await stopAllPgrokProcesses();
+      app.quit(); // pgrok 종료 후 앱 종료
+    } catch (error) {
+      console.error("Failed to stop pgrok:", error);
+      app.quit();
+    }
+  });
+
+  // 렌더러에서 에러가 발생한 경우
+  ipcMain.once("terminate-error", (_event, errorMessage) => {
+    console.error("Renderer failed:", errorMessage);
+    app.quit();
+  });
 });
 
-// Create the system tray icon and menu
+// powerSaveBlocker 시작 함수
+function startPowerSaveBlocker() {
+  const id = powerSaveBlocker.start("prevent-app-suspension");
+  console.log(`PowerSaveBlocker started with id: ${id}`);
+}
+
+// 트레이 설정
 function createTray() {
   tray = new Tray(path.join(process.env.VITE_PUBLIC, "favicon.png"));
 
@@ -247,15 +239,8 @@ function createTray() {
   });
 }
 
-// powerSaveBlocker 시작 함수
-function startPowerSaveBlocker() {
-  const id = powerSaveBlocker.start("prevent-app-suspension");
-  console.log(`PowerSaveBlocker started with id: ${id}`);
-}
-
 app
   .whenReady()
-  // .then(createLoadingWindow)
   .then(registerIpcHandlers) // IPC 핸들러 등록
   .then(createWindow) // 윈도우 생성
   .then(createTray) // 트레이 생성

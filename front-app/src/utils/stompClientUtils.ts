@@ -1,13 +1,12 @@
 import { Client } from "@stomp/stompjs";
 
+export let client: Client;
 interface SessionData {
   userId: number;
   maxCompute: number;
   availablePortStart: number;
   availablePortEnd: number;
 }
-
-export let client: Client; // STOMP 클라이언트를 저장하는 변수
 
 export function getSessionData(): SessionData | null {
   const data = sessionStorage.getItem("userSettings");
@@ -34,15 +33,13 @@ export async function waitForSessionData(
 }
 
 export function createStompClient(userId: string): Client {
-  console.log("세션 userID", userId);
   return new Client({
-    // brokerURL: "ws://j11c108.p.ssafy.io:8000/ws", // WebSocket URL
-    brokerURL: "wss://api.ttalkak.com/ws", // WebSocket URL (주석 처리된 대체 URL)
+    brokerURL: "wss://api.ttalkak.com/ws",
     connectHeaders: {
       "X-USER-ID": userId,
     },
-    heartbeatIncoming: 30000,
-    heartbeatOutgoing: 30000,
+    heartbeatIncoming: 0,
+    heartbeatOutgoing: 0,
   });
 }
 
@@ -51,8 +48,7 @@ export async function initializeStompClient(): Promise<Client> {
   try {
     const sessionData = await waitForSessionData();
     if (!client) {
-      console.log(sessionData);
-      client = createStompClient(sessionData.userId.toString()); //: 빌드 위한 주석처리 추후 userId 반영되면 해제
+      client = createStompClient(sessionData.userId.toString());
     }
     return client;
   } catch (error) {

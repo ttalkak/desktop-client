@@ -12,8 +12,7 @@ import {
 } from "../features/port/parseInboundRule";
 import { getUserSettings } from "../axios/auth";
 import logoImg from "./../assets/images/logo.png";
-import { disconnectWebSocket } from "../utils/stompService";
-import { useDockerStore, useAppStore } from "../stores/appStatusStore";
+import { stopAllTasks } from "../utils/stopAllFunctionUtils";
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -23,9 +22,6 @@ const Header = () => {
   const accessToken = useAuthStore((state) => state.accessToken);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const clearTokens = useAuthStore((state) => state.clearTokens);
-  const clearImages = useDockerStore((state) => state.clearDockerImages);
-  const clearContainer = useDockerStore((state) => state.clearDockerContainers);
-  const setServiceStatus = useAppStore((state) => state.setServiceStatus);
 
   const handleMinimize = () => {
     window.electronAPI.minimizeWindow();
@@ -41,10 +37,7 @@ const Header = () => {
 
   const handleLogout = () => {
     clearTokens();
-    disconnectWebSocket();
-    clearImages(); // dockerImages 초기화
-    clearContainer(); // dockerContainers 초기화
-    setServiceStatus("stopped");
+    stopAllTasks();
   };
 
   const handleDownloadPgrok = () => {

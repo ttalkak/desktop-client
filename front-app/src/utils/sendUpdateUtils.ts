@@ -4,8 +4,8 @@ export function sendInstanceUpdate(
   userId: string,
   deploymentId: number,
   status: string,
-  details?: string,
-  port?: number
+  port?: number,
+  details?: string
 ) {
   const message = {
     status: status,

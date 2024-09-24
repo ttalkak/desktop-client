@@ -61,12 +61,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("docker-event-end");
   },
 
-  //----------------- zip 다운 하고 바로 unzip
+  //ttalkak source directory 위치 가져오기
   getProjectSourceDirectory: (): Promise<string> =>
     ipcRenderer.invoke("get-project-source-directory"),
+
+  //----------------- zip 다운 하고 바로 unzip
   downloadAndUnzip: async (
     repositoryUrl: string,
-    // branch: string,
     rootDirectory: string
   ): Promise<{
     success: boolean;
@@ -273,6 +274,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   stopPgrok: (deploymentId: number) =>
     ipcRenderer.invoke("stop-pgrok", deploymentId),
+
+  //전체 종료
 });
 
 // --------- Expose some API to the Renderer process ---------
@@ -295,6 +298,4 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
     const [channel, ...omit] = args;
     return ipcRenderer.invoke(channel, ...omit);
   },
-  // You can expose other APTs you need here.
-  // ...
 });

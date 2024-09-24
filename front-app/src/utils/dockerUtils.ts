@@ -80,7 +80,7 @@ export const handleBuildImage = async (
 
 // 컨테이너 생성 및 시작
 export const createAndStartContainer = async (
-  dockerImage: DockerImage, // 하나의 이미지만 받음
+  dockerImage: DockerImage,
   inboundPort: number,
   outboundPort: number
 ): Promise<string> => {
@@ -114,7 +114,6 @@ export const createAndStartContainer = async (
       );
       if (result.success) {
         console.log("Successfully created and started container");
-        // 성공 시 containerId 기반으로 listContainers 사용
         const containers = await window.electronAPI.getDockerContainers(true);
         const createdContainer = containers.find(
           (c) => c.Id === result.containerId
