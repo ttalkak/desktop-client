@@ -1,5 +1,8 @@
 import { useDockerStore } from "../stores/appStatusStore";
 import { sendInstanceUpdate } from "./sendUpdateUtils";
+import { useAuthStore } from "../stores/authStore";
+import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
+import { useDeploymentStore } from "../stores/deploymentStore";
 
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
@@ -8,11 +11,17 @@ const removeDockerContainer = useDockerStore.getState().removeDockerContainer;
 const updateDockerImage = useDockerStore.getState().updateDockerImage;
 const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
-export const registerDockerEventHandlers = (
-  userId: string,
-  deploymentId: number,
-  port: number
-): (() => void) => {
+export const registerDockerEventHandlers = (): (() => void) => {
+  const userId = useAuthStore.getState().userSettings?.userId; // userSettings에서 userId 가져옴
+  const getDeploymentByContainer =
+    useDeploymentStore.getState().getDeploymentByContainer; // deploymentId 가져옴
+  const getDeploymentDetails =
+    useDeploymentDetailsStore.getState().getDeploymentDetails;
+
+  if (!userId) {
+    throw new Error("User ID not found. Please ensure user is logged in.");
+  }
+
   const handleImageEvent = (event: DockerEvent) => {
     console.log("이미지 이벤트 :", event.Action);
     switch (event.Action) {
@@ -45,11 +54,21 @@ export const registerDockerEventHandlers = (
   };
 
   const handleContainerEvent = async (event: DockerEvent) => {
-    switch (event.Action) {
-      case "create":
-        console.log("컨테이너 생성됨");
-        break;
+    const deploymentId = getDeploymentByContainer(event.Actor.ID); // 컨테이너 ID로 deploymentId 조회
+    if (!deploymentId) {
+      console.error(`No deployment found for container ID: ${event.Actor.ID}`);
+      return;
+    }
 
+    const deploymentDetails = getDeploymentDetails(deploymentId);
+    if (!deploymentDetails) {
+      console.error(`No details found for deployment ID: ${deploymentId}`);
+      return;
+    }
+
+    const port = deploymentDetails.details?.outboundPort;
+
+    switch (event.Action) {
       case "start":
         console.log("컨테이너 시작함");
         window.electronAPI.getDockerContainers(true).then((containers) => {
@@ -84,50 +103,6 @@ export const registerDockerEventHandlers = (
         });
         break;
 
-      case "restart":
-        console.log("컨테이너 재시작함");
-        window.electronAPI.getDockerContainers(true).then((containers) => {
-          const container = containers.find((c) => c.Id === event.Actor.ID);
-          if (container) {
-            const existingContainer = useDockerStore
-              .getState()
-              .dockerContainers.find((c) => c.Id === container.Id);
-
-            if (existingContainer) {
-              updateDockerContainer(container);
-              console.log(`Container with ID ${container.Id} updated.`);
-            } else {
-              addDockerContainer(container);
-              console.log(`Container with ID ${container.Id} added.`);
-            }
-
-            window.electronAPI.startContainerStats([container.Id]);
-            // 로그 스트림 시작
-            window.electronAPI.startLogStream(container.Id, deploymentId);
-            sendInstanceUpdate(userId, deploymentId, "RUNNING", port);
-          } else {
-            console.error(
-              `Container with ID ${event.Actor.ID} not found during restart.`
-            );
-            sendInstanceUpdate(
-              userId,
-              deploymentId,
-              "PENDING",
-              port,
-              "Container restart failed"
-            );
-          }
-        });
-        break;
-
-      case "kill":
-        console.log("kill, 강제종료");
-        break;
-
-      case "die":
-        console.log("컨테이너 die");
-        break;
-
       case "stop":
         console.log("컨테이너 정지함");
         try {
@@ -135,8 +110,6 @@ export const registerDockerEventHandlers = (
             false
           );
           const container = containers.find((c) => c.Id === event.Actor.ID);
-
-          console.log("Container from getDockerContainers:", container);
 
           if (container) {
             let inspectedContainer;
@@ -146,11 +119,6 @@ export const registerDockerEventHandlers = (
             while (attempt < maxAttempts) {
               inspectedContainer =
                 await window.electronAPI.fetchDockerContainer(container.Id);
-              console.log(
-                `Attempt ${attempt + 1}: Inspect result - Running: ${
-                  inspectedContainer.State.Running
-                }`
-              );
 
               if (inspectedContainer.State.Running === false) {
                 break;
@@ -205,16 +173,12 @@ export const registerDockerEventHandlers = (
           );
         }
         break;
-      //컨테이너 삭제
+
       case "destroy":
         console.log("컨테이너 삭제됨");
         window.electronAPI
           .stopContainerStats([event.Actor.ID])
           .then((result) => {
-            console.log(
-              `Stats monitoring stopped for container ${event.Actor.ID}:`,
-              result.message
-            );
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
             sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
@@ -237,27 +201,18 @@ export const registerDockerEventHandlers = (
   window.electronAPI.onDockerEventResponse((event: DockerEvent) => {
     switch (event.Type) {
       case "container":
-        console.log(`컨테이너 이벤트:${event.Action}`);
         handleContainerEvent(event);
         break;
       case "image":
-        console.log(`이미지 이벤트:${event.Action}`);
         handleImageEvent(event);
         break;
       default:
-        console.log(`알수 없는 이벤트 ${event.Type} , ${event.Action}`);
+        console.log(`Unknown event type: ${event.Type}`);
     }
   });
 
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
-    sendInstanceUpdate(
-      userId,
-      deploymentId,
-      "ERROR",
-      port,
-      `Docker Event Error: ${error}`
-    );
   });
 
   return () => {

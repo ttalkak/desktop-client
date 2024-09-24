@@ -8,11 +8,11 @@ import * as fs from "fs";
 const execAsync = promisify(exec);
 
 // Dockerode 인스턴스 생성
-// export const docker = new Docker();
-export const docker = new Docker({
-  host: "127.0.0.1",
-  port: 2375, // 또는 2376 (TLS 사용 시)
-});
+export const docker = new Docker();
+// export const docker = new Docker({
+//   host: "127.0.0.1",
+//   port: 2375, // 또는 2376 (TLS 사용 시)
+// });
 
 // 로그 스트림 객체
 
@@ -158,14 +158,19 @@ export const handleGetDockerContainerList = (all: boolean = false): void => {
 //------------------- Docker 이미지 생성
 
 //도커파일 찾기
+
 export function findDockerfile(directory: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const files = fs.readdirSync(directory);
+    const absoluteDirectory = path.resolve(directory); // 경로를 절대 경로로 변환
+    console.log(`탐색 중인 절대 경로: ${absoluteDirectory}`);
 
-    // 파일들 먼저 탐색 (루트 디렉토리에서 Dockerfile을 먼저 찾음)
+    const files = fs.readdirSync(absoluteDirectory);
+
+    // 파일 먼저 탐색 (루트 디렉토리에서 Dockerfile을 먼저 찾음)
     for (const file of files) {
-      const fullPath = path.join(directory, file);
+      const fullPath = path.join(absoluteDirectory, file);
       const stat = fs.statSync(fullPath);
+      console.log(`도커파일 탐색중.. 전달받은 rootDirectory 기준 ${fullPath}`);
 
       if (!stat.isDirectory() && file === "Dockerfile") {
         console.log(`Dockerfile found at: ${fullPath}`);
@@ -176,7 +181,7 @@ export function findDockerfile(directory: string): Promise<string> {
 
     // 디렉토리 탐색 (루트에서 찾지 못했을 경우에만 하위 디렉토리를 탐색)
     for (const file of files) {
-      const fullPath = path.join(directory, file);
+      const fullPath = path.join(absoluteDirectory, file);
       const stat = fs.statSync(fullPath);
 
       if (stat.isDirectory()) {
@@ -186,7 +191,7 @@ export function findDockerfile(directory: string): Promise<string> {
     }
 
     // Dockerfile을 찾지 못한 경우
-    console.log(`No Dockerfile found in directory: ${directory}`);
+    console.log(`No Dockerfile found in directory: ${absoluteDirectory}`);
     reject(new Error("Dockerfile not found in the specified directory."));
   });
 }
@@ -244,6 +249,7 @@ export async function buildDockerImage(
     .relative(contextPath, dockerfilePath)
     .replace(/\\/g, "/");
   console.log("docker relativePath:", relativeDockerfilePath);
+  console.log("docker contextPath", contextPath);
 
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
@@ -347,8 +353,8 @@ export function handleBuildDockerImage() {
         const buildResult = await buildDockerImage(
           contextPath,
           dockerfilePath,
-          imageName,
-          tag
+          imageName.toLowerCase(),
+          tag.toLowerCase()
         );
         console.log(buildResult.status);
         return { success: true, image: buildResult.image };

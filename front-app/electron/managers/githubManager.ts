@@ -33,8 +33,8 @@ async function downloadAndUnzip(
   try {
     let dockerfilePath: string | null = null;
 
-    const downloadDir = getProjectSourceDirectory();
-    const extractDir = getProjectSourceDirectory();
+    const downloadDir = getProjectSourceDirectory(); // 다운로드 위치
+    const extractDir = getProjectSourceDirectory(); // 압축 해제할 위치
 
     // URL을 파싱하여 경로 부분을 추출
     const urlParts = repositoryUrl.split("/");
@@ -44,13 +44,13 @@ async function downloadAndUnzip(
     );
 
     const safeBranchName = branch.replace(/\//g, "-");
-    const repoName = urlParts[4];
+    const repoName = urlParts[4].toLowerCase();
 
     console.log("reponame", `${repoName}-${safeBranchName}`);
 
     const zipFileName = `${repoName}-${safeBranchName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`;
+    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로
 
     console.log("Downloading from:", repositoryUrl);
     console.log("Saving to:", zipFilePath);
@@ -65,24 +65,31 @@ async function downloadAndUnzip(
 
     console.log("download&Unzip시 contextPath", contextPath);
 
-    const dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
+    let dockerDir: string;
 
-    // 사용자가 제공한 dockerRootDirectory가 있는 경우
+    // 사용자가 제공한 rootDirectory가 있는 경우 이를 포함한 경로로 설정
     if (rootDirectory) {
-      if (fs.existsSync(dockerDir)) {
-        dockerfilePath = await findDockerfile(dockerDir);
-      } else {
-        console.error(
-          `Provided dockerRootDirectory not found at: ${dockerDir}`
-        );
-        return {
-          success: false,
-          message: `Provided dockerRootDirectory not found at: ${dockerDir}`,
-        };
-      }
+      dockerDir = path.resolve(
+        extractDir,
+        `${repoName}-${safeBranchName}`,
+        rootDirectory
+      );
+      console.log(`Provided rootDirectory로 설정된 dockerDir: ${dockerDir}`);
     } else {
-      // Dockerfile을 찾기 위해 디렉토리 내 탐색
+      // rootDirectory가 없을 경우 기본 경로 설정
+      dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
+      console.log(`기본 설정 dockerDir: ${dockerDir}`);
+    }
+
+    // Dockerfile 경로 탐색
+    if (fs.existsSync(dockerDir)) {
       dockerfilePath = await findDockerfile(dockerDir);
+    } else {
+      console.error(`Directory not found at: ${dockerDir}`);
+      return {
+        success: false,
+        message: `Directory not found at: ${dockerDir}`,
+      };
     }
 
     if (!dockerfilePath) {
