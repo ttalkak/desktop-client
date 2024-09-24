@@ -56,6 +56,8 @@ const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
 const setRepository = useDeploymentDetailsStore.getState().setRepoUrl;
+const setDeploymentDetails =
+  useDeploymentDetailsStore.getState().setDeploymentDetails;
 
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
 
@@ -74,6 +76,8 @@ function setupClientHandlers(userId: string): void {
     sendPaymentInfo(userId);
     //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
+    // Docker 이벤트 핸들러 등록
+    registerDockerEventHandlers();
     setServiceStatus("running");
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
@@ -139,17 +143,12 @@ function setupClientHandlers(userId: string): void {
                   .addDeployment(compute.deploymentId, containerId);
 
                 //deploymentId 기준 깃허브 링크 저장
-                setRepository(compute.deploymentId, compute.sourceCodeLink);
+                // setRepository(compute.deploymentId, compute.sourceCodeLink);
+                setDeploymentDetails(compute.deploymentId, compute);
                 //컨테이너 stats 감지 시작
                 window.electronAPI.startContainerStats([containerId]);
                 //
                 startContainerStatsMonitoring();
-                // Docker 이벤트 핸들러 등록
-                registerDockerEventHandlers(
-                  userId,
-                  compute.deploymentId,
-                  compute.outboundPort
-                );
 
                 // sub/compute-update/{userId} 업데이트요청 구독
                 client?.subscribe(
@@ -165,7 +164,7 @@ function setupClientHandlers(userId: string): void {
                         command,
                       });
                       // handleContainerCommand 함수를 호출하여 명령을 처리
-                      handleContainerCommand(deploymentId, command);
+                      handleContainerCommand(deploymentId, command, userId);
                     } catch (error) {
                       console.error(
                         "Error processing compute update message:",

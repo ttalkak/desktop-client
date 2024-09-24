@@ -1,12 +1,22 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+// DeploymentDetails 인터페이스 (상태 관리할 상세 정보)
+interface DeploymentDetails {
+  url?: string;
+  domain?: string;
+  repoUrl?: string;
+  details?: DeploymentCommand;
+}
+
+// Zustand 스토어 인터페이스
 interface DeploymentDetailsState {
   deploymentDetails: {
-    [deploymentId: number]: { url?: string; domain?: string; repoUrl?: string };
+    [deploymentId: number]: DeploymentDetails;
   };
   setDeploymentDetails: (
     deploymentId: number,
+    details: DeploymentCommand,
     url?: string,
     domain?: string,
     repoUrl?: string
@@ -14,24 +24,28 @@ interface DeploymentDetailsState {
   setUrl: (deploymentId: number, url: string) => void;
   setDomain: (deploymentId: number, domain: string) => void;
   setRepoUrl: (deploymentId: number, repoUrl: string) => void;
-  getDeploymentDetails: (
-    deploymentId: number
-  ) => { url?: string; domain?: string; repoUrl?: string } | undefined;
+  getDeploymentDetails: (deploymentId: number) => DeploymentDetails | undefined;
   removeDeploymentDetails: (deploymentId: number) => void;
   clearAllDeploymentDetails: () => void;
 }
 
+// Zustand 스토어 생성
 export const useDeploymentDetailsStore = create<DeploymentDetailsState>()(
   persist(
     (set, get) => ({
       deploymentDetails: {},
 
-      // 기존 setDeploymentDetails (모든 값을 한 번에 설정)
-      setDeploymentDetails: (deploymentId, url, domain, repoUrl) =>
+      // deployment 세부사항과 URL, Domain, Repo URL 설정
+      setDeploymentDetails: (deploymentId, details, url, domain, repoUrl) =>
         set((state) => ({
           deploymentDetails: {
             ...state.deploymentDetails,
-            [deploymentId]: { url, domain, repoUrl },
+            [deploymentId]: {
+              url,
+              domain,
+              repoUrl,
+              details,
+            },
           },
         })),
 
@@ -71,7 +85,7 @@ export const useDeploymentDetailsStore = create<DeploymentDetailsState>()(
           },
         })),
 
-      // 특정 deploymentId의 모든 값 가져오기
+      // deployment 세부사항 가져오기
       getDeploymentDetails: (deploymentId) =>
         get().deploymentDetails[deploymentId],
 

@@ -32,7 +32,7 @@ const Home = () => {
               {Object.entries(deploymentDetails).map(
                 ([deploymentId, details], index) => (
                   <tr key={index} className="border-b">
-                    <td className="min-w-32 py-2 px-1.5 text-center">
+                    <td className="min-w-32 py-2 px-1.5 text-left">
                       {deploymentId}
                     </td>
                     <td className="min-w-32 text-left">{details.domain}</td>

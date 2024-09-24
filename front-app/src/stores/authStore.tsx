@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 export interface SettingState {
-  userId: number;
+  userId: string;
   maxCompute: number;
   availablePortStart: number;
   availablePortEnd: number;

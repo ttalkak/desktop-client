@@ -16,7 +16,12 @@ const DashBoard: React.FC = () => {
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
   const containerCount = dockerContainers.length;
 
-  useEffect(() => {}, [serviceStatus, userSettings, containerCount]);
+  useEffect(() => {}, [
+    serviceStatus,
+    userSettings,
+    containerCount,
+    dockerContainers,
+  ]);
 
   return (
     <div className="card h-full items-center">
