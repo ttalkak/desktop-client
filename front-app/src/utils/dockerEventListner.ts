@@ -178,7 +178,7 @@ export const registerDockerEventHandlers = (): (() => void) => {
         console.log("컨테이너 삭제됨");
         window.electronAPI
           .stopContainerStats([event.Actor.ID])
-          .then((result) => {
+          .then((_result) => {
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
             sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
