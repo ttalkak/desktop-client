@@ -147,8 +147,8 @@ function setupClientHandlers(userId: string): void {
                 // Docker 이벤트 핸들러 등록
                 registerDockerEventHandlers(
                   userId,
-                  compute.outboundPort,
-                  compute.deploymentId
+                  compute.deploymentId,
+                  compute.outboundPort
                 );
 
                 // sub/compute-update/{userId} 업데이트요청 구독

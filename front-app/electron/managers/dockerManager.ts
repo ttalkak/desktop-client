@@ -240,13 +240,16 @@ export async function buildDockerImage(
   }
 
   // Dockerfile 경로를 컨텍스트에 상대적으로 만듭니다.
-  // const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
+  const relativeDockerfilePath = path
+    .relative(contextPath, dockerfilePath)
+    .replace(/\\/g, "/");
+  console.log("docker relativePath:", relativeDockerfilePath);
 
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: ["."] },
-      { t: fullTag, nocache: true },
+      { t: fullTag, dockerfile: relativeDockerfilePath, nocache: true },
       (err, stream) => {
         if (err) {
           reject(err);

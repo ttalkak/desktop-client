@@ -63,6 +63,8 @@ async function downloadAndUnzip(
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
 
+    console.log("download&Unzip시 contextPath", contextPath);
+
     const dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
 
     // 사용자가 제공한 dockerRootDirectory가 있는 경우
