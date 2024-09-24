@@ -1,10 +1,11 @@
-import { disconnectWebSocket } from "../utils/stompService";
+import { disconnectWebSocket } from "../services/stompService";
 import { useDockerStore, useAppStore } from "../stores/appStatusStore";
 import { terminateAndRemoveContainersAndImages } from "./deploymentRemoveUtils";
 import {
   stopSendingCurrentState,
   stopContainerStatsMonitoring,
-} from "../utils/stompService";
+  stopPeriodicContainerCheck,
+} from "../services/stompService";
 
 // 전체 종료 함수
 export const stopAllTasks = (): Promise<void> => {
@@ -16,8 +17,10 @@ export const stopAllTasks = (): Promise<void> => {
     try {
       console.log("Starting task termination...");
 
+      stopPeriodicContainerCheck();
       stopSendingCurrentState();
       stopContainerStatsMonitoring();
+
       console.log(
         "Stopped sending current state and container stats monitoring."
       );
@@ -25,8 +28,6 @@ export const stopAllTasks = (): Promise<void> => {
       // 컨테이너와 이미지 정지, 제거
       terminateAndRemoveContainersAndImages();
       console.log("Containers and images removed.");
-
-      // 웹소켓으로 보내는 내용 정지
 
       // 서비스 상태창 정리
       setServiceStatus("stopped");

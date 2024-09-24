@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaCircle } from "react-icons/fa";
-import { startService } from "../utils/serviceUtils";
-
+import { startService } from "../services/startService";
 import { useAppStore } from "../stores/appStatusStore";
 import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
 import { useAuthStore } from "../stores/authStore";

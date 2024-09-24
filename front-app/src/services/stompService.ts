@@ -2,16 +2,19 @@ import { Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
 import { useDeploymentStore } from "../stores/deploymentStore";
 import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
-import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
-import { registerDockerEventHandlers } from "./dockerEventListner";
+import {
+  createAndStartContainer,
+  handleBuildImage,
+} from "../utils/dockerUtils";
+import { registerDockerEventHandlers } from "../utils/dockerEventListner";
 import {
   client,
   initializeStompClient,
   waitForSessionData,
-} from "./stompClientUtils";
-import { sendPaymentInfo } from "./paymentUtils";
-import { sendInstanceUpdate } from "./sendUpdateUtils";
-import { handleContainerCommand } from "./containerCommandHandler";
+} from "../utils/stompClientUtils";
+import { sendPaymentInfo } from "../utils/paymentUtils";
+import { sendInstanceUpdate } from "../utils/sendUpdateUtils";
+import { handleContainerCommand } from "../utils/containerCommandHandler";
 
 interface Deployment {
   deploymentId: number;
@@ -418,7 +421,7 @@ function startPeriodicContainerCheck() {
 }
 
 // 주기적으로 컨테이너 상태 체크를 중지하는 함수
-function stopPeriodicContainerCheck() {
+export function stopPeriodicContainerCheck() {
   if (containerCheckInterval) {
     clearInterval(containerCheckInterval);
     containerCheckInterval = null;
@@ -497,10 +500,4 @@ function handleContainerStats(stats: ContainerStats) {
 // 컨테이너 상태 오류를 처리하는 함수
 function handleContainerStatsError(error: ContainerStatsError) {
   console.error("Container stats error:", error);
-}
-
-// 클린업 함수: 컨테이너 모니터링과 상태 전송을 중지
-export function cleanup() {
-  stopContainerStatsMonitoring();
-  stopSendingCurrentState();
 }

@@ -42,13 +42,15 @@ async function downloadAndUnzip(
       repositoryUrl.indexOf("heads/") + 6, // "heads/" 이후의 부분
       repositoryUrl.lastIndexOf(".zip") // ".zip" 직전까지
     );
-    const repoName = urlParts[urlParts.length - 5];
 
-    console.log("reponame", `${repoName}-${branch}`);
+    const safeBranchName = branch.replace(/\//g, "-");
+    const repoName = urlParts[4];
 
-    const zipFileName = `${repoName}-${branch}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
+    console.log("reponame", `${repoName}-${safeBranchName}`);
+
+    const zipFileName = `${repoName}-${safeBranchName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const contextPath = `${extractDir}\\${repoName}-${branch}`;
+    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`;
 
     console.log("Downloading from:", repositoryUrl);
     console.log("Saving to:", zipFilePath);
@@ -61,7 +63,7 @@ async function downloadAndUnzip(
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
 
-    const dockerDir = path.resolve(extractDir, `${repoName}-${branch}`);
+    const dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
 
     // 사용자가 제공한 dockerRootDirectory가 있는 경우
     if (rootDirectory) {
