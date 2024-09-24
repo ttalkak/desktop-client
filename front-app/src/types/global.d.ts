@@ -41,7 +41,7 @@ declare global {
     containerName: string;
     serviceType: string;
     inboundPort?: number;
-    outboundPort?: number;
+    outboundPort: number;
     subdomainName: string;
     subdomainKey: string;
     sourceCodeLink: string;
@@ -214,7 +214,7 @@ declare global {
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       sourceCodeLink: string,
-      dockerRootDirectory: string
+      dockerRootDirectory?: string
     ) => Promise<{
       success: boolean;
       message?: string;

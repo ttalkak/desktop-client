@@ -1,8 +1,9 @@
 import { Message } from "@stomp/stompjs";
 import { useAppStore, useDockerStore } from "../stores/appStatusStore";
+import { useDeploymentStore } from "../stores/deploymentStore";
+import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
 import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
 import { registerDockerEventHandlers } from "./dockerEventListner";
-import { useDeploymentStore } from "../stores/deploymentStore";
 import {
   client,
   initializeStompClient,
@@ -10,6 +11,7 @@ import {
 } from "./stompClientUtils";
 import { sendPaymentInfo } from "./paymentUtils";
 import { sendInstanceUpdate } from "./sendUpdateUtils";
+import { handleContainerCommand } from "./containerCommandHandler";
 
 interface Deployment {
   deploymentId: number;
@@ -50,6 +52,8 @@ interface ContainerStatsError {
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
+const setRepository = useDeploymentDetailsStore.getState().setRepoUrl;
+
 let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
 
 // 전역 상태 저장소 추가
@@ -123,19 +127,27 @@ function setupClientHandlers(userId: string): void {
                   userId,
                   compute.deploymentId,
                   "RUNNING",
-                  "",
-                  compute.outboundPort
+                  compute.outboundPort,
+                  ""
                 );
                 //deployment와 containerId 저장
                 useDeploymentStore
                   .getState()
                   .addDeployment(compute.deploymentId, containerId);
+
+                //deploymentId 기준 깃허브 링크 저장
+                setRepository(compute.deploymentId, compute.sourceCodeLink);
                 //컨테이너 stats 감지 시작
                 window.electronAPI.startContainerStats([containerId]);
                 //
                 startContainerStatsMonitoring();
                 // Docker 이벤트 핸들러 등록
-                registerDockerEventHandlers(userId, compute.deploymentId);
+                registerDockerEventHandlers(
+                  userId,
+                  compute.outboundPort,
+                  compute.deploymentId
+                );
+
                 // sub/compute-update/{userId} 업데이트요청 구독
                 client?.subscribe(
                   `/sub/compute-update/${userId}`,
@@ -283,36 +295,6 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   }
 };
 
-// compute-update 관련 handleCommand 함수: 주어진 command와 deploymentId를 처리
-function handleContainerCommand(deploymentId: number, command: string) {
-  const containerId = useDeploymentStore
-    .getState()
-    .getContainerByDeployment(deploymentId);
-
-  if (!containerId) {
-    console.error(`No container found for deploymentId: ${deploymentId}`);
-    return;
-  }
-
-  switch (command) {
-    case "START":
-      window.electronAPI.startContainer(containerId);
-      break;
-    case "RESTART":
-      window.electronAPI.startContainer(containerId);
-      break;
-    case "DELETE":
-      window.electronAPI.removeContainer(containerId);
-      break;
-    case "STOP":
-      window.electronAPI.stopContainer(containerId);
-      window.electronAPI.stopPgrok(deploymentId); //정지시 pgrok 로그도 정지
-      break;
-    default:
-      console.log(`Unknown command: ${command}`);
-  }
-}
-
 // 실행 중인 컨테이너 목록을 가져오는 함수
 const getRunningContainers = async () => {
   try {
@@ -444,7 +426,7 @@ function stopPeriodicContainerCheck() {
 }
 
 // 컨테이너 모니터링을 업데이트하는 함수
-async function checkAndUpdateContainerMonitoring() {
+export async function checkAndUpdateContainerMonitoring() {
   const dockerStore = useDockerStore.getState();
   const currentContainers = new Set(
     dockerStore.dockerContainers.map((c) => c.Id)

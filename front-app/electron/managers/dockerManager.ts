@@ -8,7 +8,11 @@ import * as fs from "fs";
 const execAsync = promisify(exec);
 
 // Dockerode 인스턴스 생성
-export const docker = new Docker();
+// export const docker = new Docker();
+export const docker = new Docker({
+  host: "127.0.0.1",
+  port: 2375, // 또는 2376 (TLS 사용 시)
+});
 
 // 로그 스트림 객체
 
@@ -236,13 +240,13 @@ export async function buildDockerImage(
   }
 
   // Dockerfile 경로를 컨텍스트에 상대적으로 만듭니다.
-  const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
+  // const relativeDockerfilePath = path.relative(contextPath, dockerfilePath);
 
   // 이미지 빌드를 시작합니다.
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
     docker.buildImage(
       { context: contextPath, src: ["."] },
-      { t: fullTag, dockerfile: relativeDockerfilePath, nocache: true },
+      { t: fullTag, nocache: true },
       (err, stream) => {
         if (err) {
           reject(err);

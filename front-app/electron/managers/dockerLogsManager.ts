@@ -43,7 +43,7 @@ export const handleFetchContainerLogs = (): void => {
                 log,
               },
             });
-            console.log(`els 전송중 ${deploymentId}`);
+            // console.log(`els 전송중 ${deploymentId}`);
           } catch (esError) {
             console.error("Error sending log to Elasticsearch:", esError);
           }

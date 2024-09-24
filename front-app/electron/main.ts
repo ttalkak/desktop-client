@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, Tray, shell, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import * as os from "os";
+import { powerSaveBlocker } from "electron";
 import { githubDownLoadAndUnzip } from "./managers/githubManager";
 import { handleDatabaseSetup } from "./managers/dockerDBManager";
 import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
@@ -22,9 +23,11 @@ import {
   registerContainerIpcHandlers,
   handleFindDockerFile,
 } from "./managers/dockerManager";
-import { powerSaveBlocker } from "electron";
-import { setMainWindow, registerPgrokIpcHandlers } from "./pgrokManager";
-import { stopAllPgrokProcesses } from "./pgrokManager";
+import {
+  setMainWindow,
+  registerPgrokIpcHandlers,
+  stopAllPgrokProcesses,
+} from "./pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -201,12 +204,6 @@ app.on("before-quit", async (event) => {
     app.quit();
   });
 });
-
-// pgrok 프로세스 종료 함수
-async function stopPgrok() {
-  console.log("Stopping pgrok processes...");
-  // pgrok 종료 로직
-}
 
 // powerSaveBlocker 시작 함수
 function startPowerSaveBlocker() {
