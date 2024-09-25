@@ -180,6 +180,7 @@ export const registerDockerEventHandlers = (): (() => void) => {
           .stopContainerStats([event.Actor.ID])
           .then((_result) => {
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
+            // sendInstanceUpdate(userId, deploymentId, "STOPPED", port);
             sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
           })

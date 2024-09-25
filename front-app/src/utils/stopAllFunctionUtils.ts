@@ -5,59 +5,62 @@ import {
   stopSendingCurrentState,
   stopContainerStatsMonitoring,
   stopPeriodicContainerCheck,
-} from "../services/stompService";
+} from "../utils/healthCheckPingUtils";
+import { useDeploymentStore } from "../stores/deploymentStore";
+import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
 
 // 전체 종료 함수
-export const stopAllTasks = (): Promise<void> => {
+export const stopAllTasks = async (): Promise<void> => {
   const clearImages = useDockerStore.getState().clearDockerImages;
   const clearContainer = useDockerStore.getState().clearDockerContainers;
   const setServiceStatus = useAppStore.getState().setServiceStatus;
+  const clearDeployments = useDeploymentStore.getState().clearAllDeployments;
+  const clearAllDeploymentDetails =
+    useDeploymentDetailsStore.getState().clearAllDeploymentDetails;
 
-  return new Promise<void>((resolve, reject) => {
-    try {
-      console.log("Starting task termination...");
+  try {
+    console.log("1. Starting task termination...");
 
-      stopPeriodicContainerCheck();
-      stopSendingCurrentState();
-      stopContainerStatsMonitoring();
+    // 1. 모니터링 중지
+    stopPeriodicContainerCheck();
+    console.log("2. Stopped periodic container check.");
+    stopSendingCurrentState();
+    console.log("3. Stopped sending current state.");
 
-      console.log(
-        "Stopped sending current state and container stats monitoring."
-      );
+    stopContainerStatsMonitoring();
+    console.log("4. Stopped container stats monitoring.");
 
-      // 컨테이너와 이미지 정지, 제거
-      terminateAndRemoveContainersAndImages();
-      console.log("Containers and images removed.");
+    // 2. 컨테이너와 이미지 정지 및 제거
+    await terminateAndRemoveContainersAndImages(); // 비동기 작업을 기다림
+    console.log("5. Containers and images removed.");
 
-      // 서비스 상태창 정리
-      setServiceStatus("stopped");
-      console.log("Service status set to stopped.");
+    // 3. 서비스 상태 업데이트
+    setServiceStatus("stopped");
+    console.log("6. Service status set to stopped.");
 
-      // 최종 websocket 종료
-      disconnectWebSocket();
-      console.log("WebSocket disconnected.");
+    // // 4. WebSocket 종료
+    disconnectWebSocket();
+    console.log("7. WebSocket disconnected.");
 
-      window.electronAPI.removeAllDockerEventListeners();
+    // 5. Docker 이벤트 리스너 제거
+    window.electronAPI.removeAllDockerEventListeners();
+    console.log("8. Removed all Docker event listeners.");
 
-      // store 초기화
-      clearImages();
-      clearContainer();
-      console.log("Cleared Docker containers and images from store.");
+    // 6. store 초기화
+    clearDeployments();
+    clearAllDeploymentDetails();
+    clearImages();
+    clearContainer();
+    console.log("9. Cleared Docker images and containers from store.");
 
-      setTimeout(() => {
-        console.log("Task termination completed.");
-        resolve(); // 성공 시 void 반환
-      }, 1000);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error("Failed to stop tasks: " + error.message);
-        reject(new Error("Failed to stop tasks: " + error.message));
-      } else {
-        console.error("Unknown error occurred during task termination.");
-        reject(new Error("Unknown error occurred during task termination."));
-      }
-    }
-  });
+    console.log("10. Task termination completed.");
+  } catch (error) {
+    console.error("Failed to stop tasks:", error);
+    throw new Error(
+      "Failed to stop tasks: " +
+        (error instanceof Error ? error.message : "Unknown error")
+    );
+  }
 };
 
 // 메인 프로세스 종료 이벤트 인식 후 전체 task 종료
@@ -65,6 +68,7 @@ window.ipcRenderer.on("terminate", async () => {
   console.log("Received 'terminate' event from main process.");
   try {
     await stopAllTasks();
+    // disconnectWebSocket();
     window.ipcRenderer.send("terminated"); // 종료 완료 후 terminated main으로 전송
     console.log("Termination completed. Sent 'terminated' to main process.");
   } catch (err) {

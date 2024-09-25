@@ -129,7 +129,6 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: true,
-      // nodeIntegration: false,
       webSecurity: true,
       nodeIntegrationInWorker: true,
       backgroundThrottling: false, // 백그라운드에서 앱이 멈추지 않도록 설정

@@ -475,6 +475,12 @@ export const stopContainer = async (containerId: string): Promise<void> => {
     if (containerInfo.State.Running) {
       await container.stop();
       console.log(`Container ${containerId} stopped successfully.`);
+
+      // 컨테이너가 완전히 중지될 때까지 기다림
+      const stopResult = await container.wait();
+      console.log(
+        `Container ${containerId} stopped with status code ${stopResult.StatusCode}`
+      );
     } else if (containerInfo.State.Status === "exited") {
       console.log(`Container ${containerId} is already stopped.`);
     } else if (containerInfo.State.Status === "stopping") {
@@ -487,6 +493,7 @@ export const stopContainer = async (containerId: string): Promise<void> => {
   }
 };
 
+// 컨테이너 삭제
 export const removeContainer = async (
   containerId: string,
   options?: Docker.ContainerRemoveOptions
@@ -502,6 +509,12 @@ export const removeContainer = async (
       console.log(`Container ${containerId} is running. Stopping container...`);
       await container.stop();
       console.log(`Container ${containerId} stopped successfully.`);
+
+      // 컨테이너가 완전히 중지될 때까지 기다림
+      const stopResult = await container.wait();
+      console.log(
+        `Container ${containerId} stopped with status code ${stopResult.StatusCode}`
+      );
     }
 
     // 컨테이너 삭제

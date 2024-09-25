@@ -6,7 +6,6 @@ import {
   createAndStartContainer,
   handleBuildImage,
 } from "../utils/dockerUtils";
-import { registerDockerEventHandlers } from "../utils/dockerEventListner";
 import {
   client,
   initializeStompClient,
@@ -15,6 +14,17 @@ import {
 import { sendPaymentInfo } from "../utils/paymentUtils";
 import { sendInstanceUpdate } from "../utils/sendUpdateUtils";
 import { handleContainerCommand } from "../utils/containerCommandHandler";
+import {
+  startContainerStatsMonitoring,
+  startSendingCurrentState,
+  stopContainerStatsMonitoring,
+  stopSendingCurrentState,
+} from "../utils/healthCheckPingUtils";
+import { globalStats } from "../utils/healthCheckPingUtils";
+import {
+  getRunningContainers,
+  getTotalMemoryUsage,
+} from "../utils/healthCheckPingUtils";
 
 interface Deployment {
   deploymentId: number;
@@ -35,22 +45,6 @@ interface ComputeConnectRequest {
   deployments: Deployment[]; // 배열로 수정
 }
 
-// 컨테이너 상태와 관련된 인터페이스 정의
-interface ContainerStats {
-  cpu_usage: number;
-  memory_usage: number;
-  running_time: number;
-  container_id: string;
-  blkio_read: number;
-  blkio_write: number;
-}
-
-// 컨테이너 상태 오류와 관련된 인터페이스 정의
-interface ContainerStatsError {
-  containerId: string;
-  error: string;
-}
-
 // Zustand를 통해 관리하는 상태 가져오기
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const addDockerImage = useDockerStore.getState().addDockerImage;
@@ -58,11 +52,6 @@ const setServiceStatus = useAppStore.getState().setServiceStatus;
 const setRepository = useDeploymentDetailsStore.getState().setRepoUrl;
 const setDeploymentDetails =
   useDeploymentDetailsStore.getState().setDeploymentDetails;
-
-let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크 주기를 위한 변수
-
-// 전역 상태 저장소 추가
-const globalStats = new Map<string, ContainerStats>();
 
 // STOMP 클라이언트 실행 내역
 function setupClientHandlers(userId: string): void {
@@ -76,8 +65,6 @@ function setupClientHandlers(userId: string): void {
     sendPaymentInfo(userId);
     //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
-    // Docker 이벤트 핸들러 등록
-    registerDockerEventHandlers();
     setServiceStatus("running");
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
@@ -190,8 +177,6 @@ function setupClientHandlers(userId: string): void {
                   .catch((error) => {
                     alert(`Failed to start pgrok: ${error}`);
                   });
-
-                startSendingCurrentState(userId); //현재 배포 상태 PING 시작
               }
             }
           }
@@ -199,6 +184,8 @@ function setupClientHandlers(userId: string): void {
       }
     );
   };
+
+  startSendingCurrentState(userId); //현재 배포 상태 PING 시작
 
   client.onStompError = (frame) => {
     console.error("Broker reported error: " + frame.headers["message"]);
@@ -242,10 +229,20 @@ export const disconnectWebSocket = (): void => {
     client.deactivate();
     console.log("웹소켓 연결 종료");
     setWebsocketStatus("disconnected");
-    stopContainerStatsMonitoring();
-    stopSendingCurrentState();
   }
 };
+
+// WebSocket 연결 해제 함수
+// export const disconnectWebSocket = (): void => {
+//   if (client) {
+//     // WebSocket 종료를 5초 지연시키는 예시 (5000 밀리초)
+//     setTimeout(() => {
+//       client.deactivate();
+//       console.log("웹소켓 연결 종료");
+//       setWebsocketStatus("disconnected");
+//     }, 5000); // 5초 후에 WebSocket 종료
+//   }
+// };
 
 //1. pub/compute/connect 웹소켓 최초 연결시
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {
@@ -297,51 +294,8 @@ const sendComputeConnectMessage = async (userId: string): Promise<void> => {
   }
 };
 
-// 실행 중인 컨테이너 목록을 가져오는 함수
-const getRunningContainers = async () => {
-  try {
-    const allContainers = await window.electronAPI.getDockerContainers(true);
-    const dockerStore = useDockerStore.getState();
-    const storeContainerIds = new Set(
-      dockerStore.dockerContainers.map((container) => container.Id)
-    );
-    const runningContainers = allContainers.filter((container) =>
-      storeContainerIds.has(container.Id)
-    );
-    return runningContainers;
-  } catch (error) {
-    console.error("Error fetching running containers:", error);
-    throw error;
-  }
-};
-
-// 모든 실행 중인 컨테이너의 메모리 사용량을 합산하는 함수
-async function getTotalMemoryUsage(
-  runningContainers: DockerContainer[]
-): Promise<number> {
-  try {
-    const memoryUsages = await Promise.all(
-      runningContainers.map((container) =>
-        window.electronAPI.getContainerMemoryUsage(container.Id)
-      )
-    );
-    const totalMemoryUsage = memoryUsages.reduce((acc, usage) => {
-      if (usage.success && usage.memoryUsage !== undefined) {
-        return acc + usage.memoryUsage;
-      } else {
-        console.warn(`Failed to retrieve memory usage for container`);
-        return acc;
-      }
-    }, 0);
-    return totalMemoryUsage;
-  } catch (error) {
-    console.error("Error calculating total memory usage:", error);
-    throw error;
-  }
-}
-
-// PING : "/pub/compute/ping"  현재 상태를 WebSocket을 통해 전송
-const sendCurrentState = async (userId: string) => {
+//2. PING : "/pub/compute/ping"  현재 상태를 WebSocket을 통해 주기적으로 전송
+export const sendCurrentState = async (userId: string) => {
   try {
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
@@ -388,115 +342,3 @@ const sendCurrentState = async (userId: string) => {
     console.error("Error sending current state:", error);
   }
 };
-
-let intervalId: NodeJS.Timeout | null = null; // 상태 전송 주기를 관리하는 변수
-
-// 주기적으로 현재 상태를 전송하기 시작하는 함수
-const startSendingCurrentState = (userId: string) => {
-  console.log("Starting to send current state periodically...");
-  sendCurrentState(userId);
-  intervalId = setInterval(() => {
-    console.log("Sending current state...");
-    sendCurrentState(userId);
-  }, 60000); // 60초마다 전송으로 수정하기 60000 현재 10초 간격으로 전송
-};
-
-// 주기적으로 현재 상태 전송을 중지하는 함수
-export const stopSendingCurrentState = () => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    console.log("Stopped sending current state.");
-    intervalId = null;
-  }
-};
-
-// 주기적으로 컨테이너 상태를 체크하는 함수 시작
-function startPeriodicContainerCheck() {
-  checkAndUpdateContainerMonitoring();
-  containerCheckInterval = setInterval(
-    checkAndUpdateContainerMonitoring,
-    60000
-  );
-}
-
-// 주기적으로 컨테이너 상태 체크를 중지하는 함수
-export function stopPeriodicContainerCheck() {
-  if (containerCheckInterval) {
-    clearInterval(containerCheckInterval);
-    containerCheckInterval = null;
-  }
-}
-
-// 컨테이너 모니터링을 업데이트하는 함수
-export async function checkAndUpdateContainerMonitoring() {
-  const dockerStore = useDockerStore.getState();
-  const currentContainers = new Set(
-    dockerStore.dockerContainers.map((c) => c.Id)
-  );
-
-  // 실제 실행 중인 모든 컨테이너 가져오기
-  const allRunningContainers = await window.electronAPI.getDockerContainers(
-    true
-  );
-  const allRunningContainerIds = new Set(allRunningContainers.map((c) => c.Id));
-
-  // 현재 Store에 있는 컨테이너 중에서 실행 중인 컨테이너만 필터링
-  const monitoredRunningContainers = allRunningContainers.filter((container) =>
-    currentContainers.has(container.Id)
-  );
-
-  // 새로운 컨테이너 모니터링 시작
-  monitoredRunningContainers.forEach((container) => {
-    if (!currentContainers.has(container.Id)) {
-      window.electronAPI
-        .startContainerStats([container.Id])
-        .then((result) => console.log(result.message))
-        .catch((error) =>
-          console.error("Failed to start container stats:", error)
-        );
-    }
-  });
-
-  // 현재 Store에 있는 컨테이너 중 더 이상 실행 중이지 않은 컨테이너 모니터링 중지
-  dockerStore.dockerContainers.forEach((container) => {
-    if (!allRunningContainerIds.has(container.Id)) {
-      window.electronAPI
-        .stopContainerStats([container.Id])
-        .then((result) => console.log(result.message))
-        .catch((error) =>
-          console.error("Failed to stop container stats:", error)
-        );
-    }
-  });
-}
-
-// 컨테이너 상태 모니터링을 시작하는 함수
-function startContainerStatsMonitoring() {
-  window.electronAPI.onContainerStatsUpdate(handleContainerStats);
-  window.electronAPI.onContainerStatsError(handleContainerStatsError);
-  startPeriodicContainerCheck();
-}
-
-// 컨테이너 상태 모니터링을 중지하는 함수
-export function stopContainerStatsMonitoring() {
-  stopPeriodicContainerCheck();
-  window.electronAPI.removeContainerStatsListeners();
-  useDockerStore.getState().dockerContainers.forEach((container) => {
-    window.electronAPI
-      .stopContainerStats([container.Id])
-      .then((result) => console.log(result.message))
-      .catch((error) =>
-        console.error("Failed to stop container stats:", error)
-      );
-  });
-}
-
-// 컨테이너 상태 업데이트를 처리하는 함수
-function handleContainerStats(stats: ContainerStats) {
-  globalStats.set(stats.container_id, stats);
-}
-
-// 컨테이너 상태 오류를 처리하는 함수
-function handleContainerStatsError(error: ContainerStatsError) {
-  console.error("Container stats error:", error);
-}

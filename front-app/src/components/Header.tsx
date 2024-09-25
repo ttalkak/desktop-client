@@ -13,7 +13,6 @@ import {
 import { getUserSettings } from "../axios/auth";
 import logoImg from "./../assets/images/logo.png";
 import { stopAllTasks } from "../utils/stopAllFunctionUtils";
-
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);

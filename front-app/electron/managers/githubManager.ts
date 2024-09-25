@@ -92,6 +92,7 @@ async function downloadAndUnzip(
       };
     }
 
+    //도커 파일이 없는 경우 => directory 기준으로 dockerfile s3에서 다운로드 후 삽입
     if (!dockerfilePath) {
       return {
         success: false,
