@@ -1,16 +1,16 @@
-import path from "node:path";
-import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
-import { findDockerfile } from "../managers/dockerManager";
-import { ipcMain } from "electron";
 import fs from "fs";
+import path from "node:path";
+import { ipcMain } from "electron";
+// import { dockerFileMaker } from "./dockerFileManager";
+import { findDockerfile } from "../managers/dockerManager";
+import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
 
+export const projectSourceDirectory = path.join(
+  getTtalkakDirectory(), // 기본 Ttalkak 경로
+  "project",
+  "source"
+);
 export function getProjectSourceDirectory(): string {
-  const projectSourceDirectory = path.join(
-    getTtalkakDirectory(), // 기본 Ttalkak 경로
-    "project",
-    "source"
-  );
-
   // 디렉토리가 존재하지 않으면 생성
   if (!fs.existsSync(projectSourceDirectory)) {
     fs.mkdirSync(projectSourceDirectory, { recursive: true });
@@ -85,7 +85,7 @@ async function downloadAndUnzip(
     if (fs.existsSync(dockerDir)) {
       dockerfilePath = await findDockerfile(dockerDir);
     } else {
-      console.error(`Directory not found at: ${dockerDir}`);
+      // await dockerFileMaker(dataString, dockerDir); 웹소켓으로 전달되면 작성해주기
       return {
         success: false,
         message: `Directory not found at: ${dockerDir}`,

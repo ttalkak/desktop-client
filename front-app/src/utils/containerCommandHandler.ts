@@ -49,6 +49,7 @@ export async function handleContainerCommand(
       window.electronAPI.stopContainer(containerId);
       window.electronAPI.stopPgrok(deploymentId); // 정지 시 pgrok 로그도 정지
       break;
+
     case "REBUILD":
       // 컨테이너 정지 및 삭제
       window.electronAPI.stopContainer(containerId);
@@ -92,6 +93,21 @@ export async function handleContainerCommand(
                 compute.details?.outboundPort,
                 ""
               );
+
+              window.electronAPI // pgrok 시작
+                .runPgrok(
+                  "pgrok.ttalkak.com:2222",
+                  `http://localhost:${compute.details?.outboundPort}`, //바꿀예정
+                  compute.details.subdomainKey,
+                  compute.details.deploymentId,
+                  compute.details.subdomainName
+                )
+                .then((message) => {
+                  console.log(`pgrok started: ${message}`);
+                })
+                .catch((error) => {
+                  alert(`Failed to start pgrok: ${error}`);
+                });
             }
           }
         } else {

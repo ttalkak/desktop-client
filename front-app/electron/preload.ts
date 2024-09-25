@@ -195,7 +195,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   //도커 로그렌더링
-  startLogStream: (containerId: string, deploymentId: number) => {
+  startLogStream: (containerId: string, deploymentId?: number) => {
     ipcRenderer.send("start-container-log-stream", containerId, deploymentId);
   },
   stopLogStream: (containerId: string) => {
@@ -225,7 +225,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("container-logs-error");
     ipcRenderer.removeAllListeners("container-logs-end");
   },
-  //---------------------- 창 조절 관련 -----------------------
+  //---------------------- 창 조절 관련
   minimizeWindow: () => {
     ipcRenderer.send("minimize-window");
   },

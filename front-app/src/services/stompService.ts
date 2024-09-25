@@ -63,8 +63,7 @@ function setupClientHandlers(userId: string): void {
     sendComputeConnectMessage(userId);
     // 2. 결제 정보 전송 시작=>userId로 변경하기
     sendPaymentInfo(userId);
-    //도커 이벤트 감지 시작
-    window.electronAPI.sendDockerEventRequest();
+
     setServiceStatus("running");
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
@@ -134,8 +133,12 @@ function setupClientHandlers(userId: string): void {
                 setDeploymentDetails(compute.deploymentId, compute);
                 //컨테이너 stats 감지 시작
                 window.electronAPI.startContainerStats([containerId]);
-                //
+                //로그 모니터링 시작
                 startContainerStatsMonitoring();
+                window.electronAPI.startLogStream(
+                  containerId,
+                  compute.deploymentId
+                );
 
                 // sub/compute-update/{userId} 업데이트요청 구독
                 client?.subscribe(
@@ -231,18 +234,6 @@ export const disconnectWebSocket = (): void => {
     setWebsocketStatus("disconnected");
   }
 };
-
-// WebSocket 연결 해제 함수
-// export const disconnectWebSocket = (): void => {
-//   if (client) {
-//     // WebSocket 종료를 5초 지연시키는 예시 (5000 밀리초)
-//     setTimeout(() => {
-//       client.deactivate();
-//       console.log("웹소켓 연결 종료");
-//       setWebsocketStatus("disconnected");
-//     }, 5000); // 5초 후에 WebSocket 종료
-//   }
-// };
 
 //1. pub/compute/connect 웹소켓 최초 연결시
 const sendComputeConnectMessage = async (userId: string): Promise<void> => {

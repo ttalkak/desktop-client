@@ -13,7 +13,7 @@ const esClient = new Client({ node: "http://34.64.227.45:9200" }); // Elasticsea
 export const handleFetchContainerLogs = (): void => {
   ipcMain.on(
     "start-container-log-stream",
-    async (event, containerId: string, deploymentId: number) => {
+    async (event, containerId: string, deploymentId?: number) => {
       try {
         const container = docker.getContainer(containerId);
         const logStream = (await container.logs({

@@ -11,7 +11,10 @@ const removeDockerContainer = useDockerStore.getState().removeDockerContainer;
 const updateDockerImage = useDockerStore.getState().updateDockerImage;
 const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
-export const registerDockerEventHandlers = (): (() => void) => {
+export const registerDockerEventHandlers = () => {
+  //도커 이벤트 감지 시작
+  window.electronAPI.sendDockerEventRequest();
+
   const userId = useAuthStore.getState().userSettings?.userId; // userSettings에서 userId 가져옴
   const getDeploymentByContainer =
     useDeploymentStore.getState().getDeploymentByContainer; // deploymentId 가져옴
@@ -56,7 +59,10 @@ export const registerDockerEventHandlers = (): (() => void) => {
   const handleContainerEvent = async (event: DockerEvent) => {
     const deploymentId = getDeploymentByContainer(event.Actor.ID); // 컨테이너 ID로 deploymentId 조회
     if (!deploymentId) {
-      console.error(`No deployment found for container ID: ${event.Actor.ID}`);
+      console.error(
+        `No deployment found for container ID: ${event.Actor.ID}, ${deploymentId}`
+      );
+
       return;
     }
 
@@ -86,7 +92,7 @@ export const registerDockerEventHandlers = (): (() => void) => {
               console.log(`Container with ID ${container.Id} added.`);
             }
 
-            window.electronAPI.startLogStream(container.Id, deploymentId); // 로그 스트림 시작+els 전송 시작
+            window.electronAPI.startLogStream(container.Id); // 로그 스트림 시작+els 전송 시작
             sendInstanceUpdate(userId, deploymentId, "RUNNING", port);
           } else {
             console.error(
@@ -176,6 +182,8 @@ export const registerDockerEventHandlers = (): (() => void) => {
 
       case "destroy":
         console.log("컨테이너 삭제됨");
+        //컨테이너 삭제시 pgrok 종료
+        window.electronAPI.stopPgrok(deploymentId);
         window.electronAPI
           .stopContainerStats([event.Actor.ID])
           .then((_result) => {
@@ -215,8 +223,4 @@ export const registerDockerEventHandlers = (): (() => void) => {
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
   });
-
-  return () => {
-    window.electronAPI.removeAllDockerEventListeners();
-  };
 };

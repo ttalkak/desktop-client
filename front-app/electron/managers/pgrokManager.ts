@@ -3,7 +3,7 @@ import path from "node:path";
 import * as fs from "fs";
 import iconv from "iconv-lite";
 import { ipcMain, BrowserWindow } from "electron";
-import { getTtalkakDirectory, downloadFile } from "./utils";
+import { getTtalkakDirectory, downloadFile } from "../utils";
 import { ChildProcess } from "child_process";
 
 let win: BrowserWindow | null = null;

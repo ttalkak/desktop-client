@@ -30,8 +30,7 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
   const [logs, setLogs] = useState<ParsedLog[]>([]);
 
   useEffect(() => {
-    const { onLogStream, onLogError, onLogEnd, removeAllLogListeners } =
-      window.electronAPI;
+    const { onLogStream, onLogError, onLogEnd } = window.electronAPI;
 
     console.log("Setting up log listeners for container:", containerId); // 리스너 설정 확인
 
@@ -40,11 +39,7 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
       console.log("Received log data:", data); // 로그 데이터 수신 확인
       if (data.containerId === containerId) {
         const parsedLog = parseLog(data.log);
-        setLogs((prevLogs) => {
-          const newLogs = [...prevLogs, parsedLog];
-          console.log("Updated logs:", newLogs); // 상태 업데이트 확인
-          return newLogs;
-        });
+        setLogs((prevLogs) => [...prevLogs, parsedLog]);
       }
     };
 
@@ -71,12 +66,6 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
     onLogStream(handleLog);
     onLogError(handleError);
     onLogEnd(handleEnd);
-
-    // 컴포넌트가 unmount되면 리스너 해제
-    return () => {
-      console.log("Removing log listeners for container:", containerId);
-      removeAllLogListeners(); // 이벤트 리스너 해제
-    };
   }, [containerId]);
 
   return (

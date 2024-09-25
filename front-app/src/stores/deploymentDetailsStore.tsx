@@ -6,7 +6,7 @@ interface DeploymentDetails {
   url?: string;
   domain?: string;
   repoUrl?: string;
-  details?: DeploymentCommand;
+  details: DeploymentCommand;
 }
 
 // Zustand 스토어 인터페이스

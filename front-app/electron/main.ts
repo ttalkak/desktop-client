@@ -27,7 +27,7 @@ import {
   setMainWindow,
   registerPgrokIpcHandlers,
   stopAllPgrokProcesses,
-} from "./pgrokManager";
+} from "./managers/pgrokManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
