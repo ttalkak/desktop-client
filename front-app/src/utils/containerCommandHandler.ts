@@ -37,23 +37,103 @@ export async function handleContainerCommand(
 
   switch (command) {
     case "START":
-      window.electronAPI.startContainer(containerId);
+      {
+        const { success } = await window.electronAPI.startContainer(
+          containerId
+        );
+        if (success) {
+          window.electronAPI.startContainerStats([containerId]);
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "RUNNING",
+            compute.details.outboundPort
+          );
+        } else {
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "ALLOCATE_ERROR",
+            compute.details.outboundPort
+          );
+        }
+      }
       break;
     case "RESTART":
-      window.electronAPI.startContainer(containerId);
+      {
+        const { success } = await window.electronAPI.startContainer(
+          containerId
+        );
+        if (success) {
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "RUNNING",
+            compute.details.outboundPort
+          );
+        } else {
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "ALLOCATE_ERROR",
+            compute.details.outboundPort
+          );
+        }
+      }
+
       break;
+
     case "DELETE":
-      window.electronAPI.removeContainer(containerId);
+      {
+        const { success } = await window.electronAPI.removeContainer(
+          containerId
+        );
+        if (success) {
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "DELETED",
+            compute.details.outboundPort
+          );
+        } else {
+          sendInstanceUpdate(
+            userId,
+            deploymentId,
+            "ALLOCATE_ERROR",
+            compute.details.outboundPort
+          );
+        }
+      }
       break;
-    case "STOP":
-      window.electronAPI.stopContainer(containerId);
-      window.electronAPI.stopPgrok(deploymentId); // 정지 시 pgrok 로그도 정지
+    case "STOP": {
+      await window.electronAPI.startContainerStats([containerId]);
+      const { success } = await window.electronAPI.stopContainer(containerId);
+      if (success) {
+        sendInstanceUpdate(
+          userId,
+          deploymentId,
+          "STOPPED",
+          compute.details.outboundPort
+        );
+      } else {
+        sendInstanceUpdate(
+          userId,
+          deploymentId,
+          "ALLOCATE_ERROR",
+          compute.details.outboundPort
+        );
+      }
+      await window.electronAPI.stopPgrok(deploymentId); // 정지 시 pgrok 로그도 정지
       break;
+    }
 
     case "REBUILD":
       // 컨테이너 정지 및 삭제
-      window.electronAPI.stopContainer(containerId);
-      window.electronAPI.removeContainer(containerId);
+      await window.electronAPI.stopContainerStats([containerId]);
+      await window.electronAPI.stopLogStream(containerId);
+      await window.electronAPI.stopPgrok(deploymentId);
+      await window.electronAPI.stopContainer(containerId);
+      await window.electronAPI.removeContainer(containerId);
 
       sendInstanceUpdate(
         userId,

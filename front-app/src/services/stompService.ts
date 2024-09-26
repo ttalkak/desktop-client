@@ -151,8 +151,10 @@ function setupClientHandlers(userId: string): void {
                 //deploymentId 기준 깃허브 링크 저장
                 setRepository(compute.deploymentId, compute.sourceCodeLink);
                 setDeploymentDetails(compute.deploymentId, compute);
+
                 //컨테이너 stats 감지 시작
                 window.electronAPI.startContainerStats([containerId]);
+                window.electronAPI.startLogStream(containerId);
                 //로그 모니터링 시작
                 startContainerStatsMonitoring();
                 window.electronAPI.startLogStream(

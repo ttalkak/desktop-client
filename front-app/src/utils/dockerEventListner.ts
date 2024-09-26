@@ -1,8 +1,9 @@
 import { useDockerStore } from "../stores/appStatusStore";
-import { sendInstanceUpdate } from "./sendUpdateUtils";
 import { useAuthStore } from "../stores/authStore";
 import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
 import { useDeploymentStore } from "../stores/deploymentStore";
+
+//이벤트 감지시점에 session store를 add, remover, update 합니다.
 
 const addDockerImage = useDockerStore.getState().addDockerImage;
 const addDockerContainer = useDockerStore.getState().addDockerContainer;
@@ -12,9 +13,6 @@ const updateDockerImage = useDockerStore.getState().updateDockerImage;
 const updateDockerContainer = useDockerStore.getState().updateDockerContainer;
 
 export const registerDockerEventHandlers = () => {
-  //도커 이벤트 감지 시작
-  window.electronAPI.sendDockerEventRequest();
-
   const userId = useAuthStore.getState().userSettings?.userId; // userSettings에서 userId 가져옴
   const getDeploymentByContainer =
     useDeploymentStore.getState().getDeploymentByContainer; // deploymentId 가져옴
@@ -26,7 +24,7 @@ export const registerDockerEventHandlers = () => {
   }
 
   const handleImageEvent = (event: DockerEvent) => {
-    console.log("이미지 이벤트 :", event.Action);
+    console.log("image :", event.Action);
     switch (event.Action) {
       case "build":
         window.electronAPI.getDockerImages().then((images) => {
@@ -38,10 +36,10 @@ export const registerDockerEventHandlers = () => {
 
             if (existingImage) {
               updateDockerImage(builtImage);
-              console.log(`Image with ID ${builtImage.Id} updated.`);
+              console.log(`Store : ImageID ${builtImage.Id} updated.`);
             } else {
               addDockerImage(builtImage);
-              console.log(`Image with ID ${builtImage.Id} added.`);
+              console.log(`Store : ImageID ${builtImage.Id} added.`);
             }
           } else {
             console.error(`Built image with ID ${event.Actor.ID} not found.`);
@@ -62,7 +60,6 @@ export const registerDockerEventHandlers = () => {
       console.error(
         `No deployment found for container ID: ${event.Actor.ID}, ${deploymentId}`
       );
-
       return;
     }
 
@@ -71,8 +68,6 @@ export const registerDockerEventHandlers = () => {
       console.error(`No details found for deployment ID: ${deploymentId}`);
       return;
     }
-
-    const port = deploymentDetails.details?.outboundPort;
 
     switch (event.Action) {
       case "start":
@@ -91,32 +86,23 @@ export const registerDockerEventHandlers = () => {
               addDockerContainer(container);
               console.log(`Container with ID ${container.Id} added.`);
             }
-
-            window.electronAPI.startLogStream(container.Id); // 로그 스트림 시작+els 전송 시작
-            sendInstanceUpdate(userId, deploymentId, "RUNNING", port);
           } else {
             console.error(
               `Container with ID ${event.Actor.ID} not found during start.`
-            );
-            sendInstanceUpdate(
-              userId,
-              deploymentId,
-              "ALLOCATE_ERROR",
-              port,
-              "Container start failed"
             );
           }
         });
         break;
 
       case "stop":
-        console.log("컨테이너 정지함");
+        console.log("eventListner : container stopped.. ");
         try {
           const containers = await window.electronAPI.getDockerContainers(
             false
           );
           const container = containers.find((c) => c.Id === event.Actor.ID);
 
+          // 이벤트 값과 실제 상태간 시간 차이를 고려한 interval 작성
           if (container) {
             let inspectedContainer;
             let attempt = 0;
@@ -134,6 +120,7 @@ export const registerDockerEventHandlers = () => {
               await new Promise((resolve) => setTimeout(resolve, 500));
             }
 
+            //store 상태 업데이트
             if (inspectedContainer?.State.Running === false) {
               const updatedContainer = {
                 ...container,
@@ -141,59 +128,36 @@ export const registerDockerEventHandlers = () => {
               };
 
               updateDockerContainer(updatedContainer);
-              window.electronAPI.stopLogStream(updatedContainer.Id); // 로그 스트림 중지
-              sendInstanceUpdate(userId, deploymentId, "STOPPED", port);
-              console.log("Container state forcibly updated to 'stopped'.");
+              console.log(
+                `store : ContainerID ${updatedContainer.Id} state forcibly updated to 'stopped'.`
+              );
             } else {
               console.warn(
                 `Container with ID ${container.Id} is still running after multiple checks.`
               );
-              sendInstanceUpdate(
-                userId,
-                deploymentId,
-                "RUNNING",
-                port,
-                "Container was not stopped successfully."
-              );
             }
           } else {
             console.error(
-              `Container with ID ${event.Actor.ID} not found during stop.`
-            );
-            sendInstanceUpdate(
-              userId,
-              deploymentId,
-              "ALLOCATE_ERROR",
-              port,
-              "Container stop failed"
+              `store : Container ID ${event.Actor.ID} not found during stop.`
             );
           }
         } catch (error) {
           console.error(`Error handling stop event: ${error}`);
-          sendInstanceUpdate(
-            userId,
-            deploymentId,
-            "ALLOCATE_ERROR",
-            port,
-            `Error handling stop event: ${error}`
-          );
         }
         break;
 
       case "destroy":
         console.log("컨테이너 삭제됨");
-        //컨테이너 삭제시 pgrok 종료
-        window.electronAPI.stopPgrok(deploymentId);
+
+        // window.electronAPI.stopPgrok(deploymentId);
         window.electronAPI
           .stopContainerStats([event.Actor.ID])
-          .then((_result) => {
-            window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
-            sendInstanceUpdate(userId, deploymentId, "DELETED", port);
+          .then(() => {
             removeDockerContainer(event.Actor.ID);
           })
           .catch((error) => {
             console.error(
-              `Failed to stop stats monitoring for container ${event.Actor.ID}:`,
+              `Failed to stop stats Container ${event.Actor.ID}:`,
               error
             );
             removeDockerContainer(event.Actor.ID);
@@ -205,6 +169,7 @@ export const registerDockerEventHandlers = () => {
     }
   };
 
+  //Container, Image dockerEvent
   window.electronAPI.onDockerEventResponse((event: DockerEvent) => {
     switch (event.Type) {
       case "container":
@@ -218,6 +183,7 @@ export const registerDockerEventHandlers = () => {
     }
   });
 
+  //이벤트 감지 에러시 => 중앙에 아직 별도로 없음
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
   });

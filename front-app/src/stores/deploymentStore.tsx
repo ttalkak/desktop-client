@@ -5,8 +5,8 @@ interface DeploymentState {
   deployments: { [deploymentId: number]: string }; // deploymentId를 키로 하고 containerId를 값으로 갖는 객체
   addDeployment: (deploymentId: number, containerId: string) => void;
   removeDeployment: (deploymentId: number) => void;
-  getContainerByDeployment: (deploymentId: number) => string | undefined;
-  getDeploymentByContainer: (containerId: string) => number | undefined;
+  getContainerByDeployment: (deploymentId: number) => string;
+  getDeploymentByContainer: (containerId: string) => number;
   clearAllDeployments: () => void;
 }
 
@@ -28,7 +28,7 @@ export const useDeploymentStore = create<DeploymentState>()(
       getDeploymentByContainer: (containerId) => {
         const entries = Object.entries(get().deployments);
         const found = entries.find(([_, value]) => value === containerId);
-        return found ? Number(found[0]) : undefined;
+        return found ? Number(found[0]) : 0;
       },
       clearAllDeployments: () =>
         set(() => ({
