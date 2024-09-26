@@ -63,6 +63,7 @@ export function findDockerfile(directory: string): Promise<string> {
     }
 
     console.log(`No Dockerfile found in directory: ${absoluteDirectory}`);
+
     reject(new Error("Dockerfile not found in the specified directory."));
   });
 }

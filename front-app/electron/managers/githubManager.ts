@@ -21,6 +21,7 @@ export function getProjectSourceDirectory(): string {
 }
 
 //압축해제하면서 context와 dockerfile 경로 반환
+// 압축 해제 및 Dockerfile 경로 반환 함수
 async function downloadAndUnzip(
   repositoryUrl: string,
   rootDirectory?: string,
@@ -38,78 +39,57 @@ async function downloadAndUnzip(
     const downloadDir = getProjectSourceDirectory(); // 다운로드 위치
     const extractDir = getProjectSourceDirectory(); // 압축 해제할 위치
 
-    // URL을 파싱하여 경로 부분을 추출
+    // URL에서 브랜치명 추출 및 ZIP 파일 이름 생성
     const urlParts = repositoryUrl.split("/");
     const branch = repositoryUrl.substring(
       repositoryUrl.indexOf("heads/") + 6, // "heads/" 이후의 부분
       repositoryUrl.lastIndexOf(".zip") // ".zip" 직전까지
     );
-
     const safeBranchName = branch.replace(/\//g, "-");
     const repoName = urlParts[4].toLowerCase();
 
-    console.log("reponame", `${repoName}-${safeBranchName}`);
-
-    const zipFileName = `${repoName}-${safeBranchName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
-    const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const savePath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
-
-    console.log("Downloading from:", repositoryUrl);
-    console.log("Saving to.. same with contextPath:", savePath);
-    console.log("Downloading ZIP file...");
+    const zipFileName = `${repoName}-${safeBranchName}.zip`; // ZIP 파일 이름 설정
+    const zipFilePath = path.join(downloadDir, zipFileName);
+    const savePath = `${extractDir}\\${repoName}-${safeBranchName}`; // 압축 해제 경로 설정
 
     await downloadFile(repositoryUrl, zipFilePath);
-    console.log("Download completed:", zipFilePath);
-
-    console.log("Unzipping file...");
     await unzipFile(zipFilePath, extractDir);
-    console.log("Unzipping completed:", extractDir);
 
-    // 사용자가 제공한 rootDirectory가 있는 경우 이를 포함한 경로로 설정
-    if (rootDirectory) {
-      dockerDir = path.resolve(
-        extractDir,
-        `${repoName}-${safeBranchName}`,
-        rootDirectory
-      );
-      console.log(`Provided rootDirectory로 설정된 dockerDir: ${dockerDir}`);
-    } else {
-      // rootDirectory가 없을 경우 도커 파일 위치를 기본 경로 설정//contextPath와 동일
-      dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
-      console.log(`기본 설정 dockerDir: ${dockerDir}`);
-    }
+    // rootDirectory가 있는 경우 해당 경로로 설정, 없을 경우 기본 경로 설정
+    dockerDir = rootDirectory
+      ? path.resolve(extractDir, `${repoName}-${safeBranchName}`, rootDirectory)
+      : path.resolve(extractDir, `${repoName}-${safeBranchName}`);
 
-    // Dockerfile 경로 탐색
-    if (fs.existsSync(dockerDir)) {
-      //실제로 해당 디렉토리가 존재하는지 확인
-      dockerfilePath = await findDockerfile(dockerDir); //있는 경우 dockerFile이 실제로 해당 경로에 있는지 확인
-    } else {
-      //해당 dockerDir가 존재하지 않는 경우
-      return {
-        success: false,
-        message: `Directory not found at: ${dockerDir}`,
-      };
-    }
+    let contextPath: string | undefined;
+    try {
+      // Dockerfile 경로 찾기
+      dockerfilePath = await findDockerfile(dockerDir);
+      contextPath = path.dirname(dockerfilePath);
+    } catch (error) {
+      console.error("Dockerfile not found, attempting to create it...");
 
-    //도커 파일이 없으면서 script는 있음
-    if (!dockerfilePath && script) {
-      const { success } = await dockerFileMaker(dockerfilePath, script);
-      if (success) {
+      // Dockerfile을 찾지 못했고 script가 있으면 dockerFileMaker 실행
+      if (script) {
+        const { success } = await dockerFileMaker(dockerDir, script); // Dockerfile 생성 시 root 디렉토리 경로 사용
+        if (success) {
+          console.log("Dockerfile successfully created.");
+          dockerfilePath = path.join(dockerDir, "Dockerfile"); // 새로 생성된 Dockerfile 경로
+          contextPath = dockerDir; // context는 dockerDir
+        } else {
+          return {
+            success: false,
+            message: "Failed to create Dockerfile.",
+          };
+        }
+      } else {
         return {
-          success: true,
-          message: "Dockerfile making success",
+          success: false,
+          message: "Dockerfile not found and script not provided.",
         };
       }
-    } else if (!dockerfilePath && !script)
-      // 둘다 없는 경우
-      return {
-        success: false,
-        message: "Dockerfile not found in any subdirectory.",
-      };
+    }
 
-    const contextPath = path.dirname(dockerfilePath);
-    // 성공 시 Dockerfile 경로와 함께 반환
-    console.log(`02. dockerfilePath 확인`, dockerfilePath);
+    console.log(`Dockerfile 경로: ${dockerfilePath}`);
     return { success: true, dockerfilePath, contextPath };
   } catch (error) {
     console.error("Error during download and unzip:", error);
