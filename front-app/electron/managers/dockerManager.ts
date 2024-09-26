@@ -208,6 +208,7 @@ export function handleFindDockerFile() {
   });
 }
 
+//도커 이미지 빌드
 export async function buildDockerImage(
   contextPath: string,
   dockerfilePath: string | null,
@@ -243,6 +244,15 @@ export async function buildDockerImage(
     // 삭제 후 다시 빌드
     console.log(`Rebuilding Docker image ${fullTag}`);
   }
+
+  // 권한 설정을 적용합니다.
+  fs.chmod(dockerfilePath, "755", (err: NodeJS.ErrnoException | null) => {
+    if (err) {
+      console.error(`Failed to set permissions for Dockerfile: ${err.message}`);
+      return { status: "failed" };
+    }
+    console.log(`Permissions set for Dockerfile at ${dockerfilePath}`);
+  });
 
   // Dockerfile 경로를 컨텍스트에 상대적으로 만듭니다.
   const relativeDockerfilePath = path

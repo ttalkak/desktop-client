@@ -173,7 +173,7 @@ export async function handleContainerCommand(
                 compute.details?.outboundPort,
                 ""
               );
-
+              window.electronAPI.startLogStream(containerId);
               window.electronAPI // pgrok 시작
                 .runPgrok(
                   "pgrok.ttalkak.com:2222",

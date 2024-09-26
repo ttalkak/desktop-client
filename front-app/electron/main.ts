@@ -42,7 +42,6 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
-let helpWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // 애플리케이션 종료 상태를 추적하는 변수
 
