@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { docker } from "./dockerManager";
+import { docker } from "./dockerUtils";
 // 도커 이벤트, 메모리, 사용량 감지
 
 // 도커 이벤트 감지: 개별 컨테이너별 ID 기준

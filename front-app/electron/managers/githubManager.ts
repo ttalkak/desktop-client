@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "node:path";
 import { ipcMain } from "electron";
 import { dockerFileMaker } from "./dockerFileManager";
-import { findDockerfile } from "../managers/dockerManager";
+import { findDockerfile } from "./dockerUtils";
 import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
 
 export const projectSourceDirectory = path.join(
@@ -52,10 +52,10 @@ async function downloadAndUnzip(
 
     const zipFileName = `${repoName}-${safeBranchName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
+    const savePath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
 
     console.log("Downloading from:", repositoryUrl);
-    console.log("Saving to.. same with contextPath:", contextPath);
+    console.log("Saving to.. same with contextPath:", savePath);
     console.log("Downloading ZIP file...");
 
     await downloadFile(repositoryUrl, zipFilePath);
@@ -107,6 +107,7 @@ async function downloadAndUnzip(
         message: "Dockerfile not found in any subdirectory.",
       };
 
+    const contextPath = path.dirname(dockerfilePath);
     // 성공 시 Dockerfile 경로와 함께 반환
     console.log(`02. dockerfilePath 확인`, dockerfilePath);
     return { success: true, dockerfilePath, contextPath };

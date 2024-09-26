@@ -1,12 +1,10 @@
 import { ipcMain } from "electron";
 import { Readable } from "stream";
-import { docker } from "./dockerManager";
+import { docker } from "./dockerUtils";
 import { Client } from "@elastic/elasticsearch";
 
 export const logStreams: Record<string, Readable> = {};
 
-// Elasticsearch 클라이언트 설정
-// const esClient = new Client({ node: "http://localhost:9200" }); // Elasticsearch 서버 주소
 const esClient = new Client({ node: "http://34.64.227.45:9200" }); // Elasticsearch 서버 주소
 
 // Docker 컨테이너 로그 스트리밍 및 Elasticsearch로 전송
