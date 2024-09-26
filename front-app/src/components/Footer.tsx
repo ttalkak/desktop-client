@@ -2,6 +2,10 @@ import { GoQuestion } from "react-icons/go";
 import { BsBoxArrowRight } from "react-icons/bs";
 
 const Footer = () => {
+  const openHelpWindow = () => {
+    window.ipcRenderer.send("open-help-window");
+  };
+
   const content =
     "flex items-center text-color-5 hover:text-color-5 py-0.5 px-2 cursor-pointer";
 
@@ -16,7 +20,7 @@ const Footer = () => {
         <BsBoxArrowRight />
         <div className="ml-1.5">Join our website</div>
       </a>
-      <div className={content}>
+      <div className={content} onClick={openHelpWindow}>
         <GoQuestion />
         <div className="ml-1">help</div>
       </div>

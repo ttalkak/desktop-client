@@ -18,15 +18,19 @@ export const startService = async () => {
       await startDocker();
     }
 
+    //도커 시작
     setDockerStatus("running");
     console.log("4. ServiceUtil: Docker is running");
 
     // // Docker 이벤트 핸들러 등록
     registerDockerEventHandlers();
+    //도커 이벤트 감지 시작
+    window.electronAPI.sendDockerEventRequest();
+    console.log("5. ServiceUtil: Docker event listener start");
 
     // 3. WebSocket 연결
-    connectWebSocket();
-    console.log("5. ServiceUtil: WebSocket connected");
+    await connectWebSocket();
+    console.log("6. ServiceUtil: WebSocket connected");
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);
     setServiceStatus("stopped");

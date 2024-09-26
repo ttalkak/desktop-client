@@ -1,6 +1,6 @@
 // dockerUtils.ts
 
-import { docker } from "./dockerManager";
+import { docker } from "./dockerUtils";
 import { ipcMain } from "electron";
 
 export async function pullDockerImage(imageName: string): Promise<void> {

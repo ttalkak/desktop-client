@@ -55,10 +55,13 @@ export async function unzipFile(
       } else {
         // 파일 압축 해제
         await zip.extract(entry.name, filePath);
+
+        // 파일 권한 설정 (읽기/쓰기/실행: 0777)
+        fs.chmodSync(filePath, 0o777); // 모든 사용자에게 읽기/쓰기/실행 권한 부여
       }
     }
 
-    console.log("Unzip completed!");
+    console.log("Unzip completed and permissions set!");
   } catch (err) {
     console.error("Error during unzip:", err);
     throw err;
