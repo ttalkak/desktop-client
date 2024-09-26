@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "node:path";
 import { ipcMain } from "electron";
-// import { dockerFileMaker } from "./dockerFileManager";
+import { dockerFileMaker } from "./dockerFileManager";
 import { findDockerfile } from "../managers/dockerManager";
 import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
 
@@ -23,7 +23,8 @@ export function getProjectSourceDirectory(): string {
 //압축해제하면서 context와 dockerfile 경로 반환
 async function downloadAndUnzip(
   repositoryUrl: string,
-  rootDirectory?: string
+  rootDirectory?: string,
+  script?: string
 ): Promise<{
   success: boolean;
   message?: string;
@@ -32,6 +33,7 @@ async function downloadAndUnzip(
 }> {
   try {
     let dockerfilePath: string | null = null;
+    let dockerDir: string;
 
     const downloadDir = getProjectSourceDirectory(); // 다운로드 위치
     const extractDir = getProjectSourceDirectory(); // 압축 해제할 위치
@@ -50,22 +52,18 @@ async function downloadAndUnzip(
 
     const zipFileName = `${repoName}-${safeBranchName}.zip`; // 레포지토리 이름을 기반으로 파일명 생성
     const zipFilePath = path.join(downloadDir, zipFileName); // 동적 파일명 설정
-    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로
+    const contextPath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
 
     console.log("Downloading from:", repositoryUrl);
-    console.log("Saving to:", zipFilePath);
-
+    console.log("Saving to.. same with contextPath:", contextPath);
     console.log("Downloading ZIP file...");
+
     await downloadFile(repositoryUrl, zipFilePath);
     console.log("Download completed:", zipFilePath);
 
     console.log("Unzipping file...");
     await unzipFile(zipFilePath, extractDir);
     console.log("Unzipping completed:", extractDir);
-
-    console.log("download&Unzip시 contextPath", contextPath);
-
-    let dockerDir: string;
 
     // 사용자가 제공한 rootDirectory가 있는 경우 이를 포함한 경로로 설정
     if (rootDirectory) {
@@ -76,29 +74,38 @@ async function downloadAndUnzip(
       );
       console.log(`Provided rootDirectory로 설정된 dockerDir: ${dockerDir}`);
     } else {
-      // rootDirectory가 없을 경우 기본 경로 설정
+      // rootDirectory가 없을 경우 도커 파일 위치를 기본 경로 설정//contextPath와 동일
       dockerDir = path.resolve(extractDir, `${repoName}-${safeBranchName}`);
       console.log(`기본 설정 dockerDir: ${dockerDir}`);
     }
 
     // Dockerfile 경로 탐색
     if (fs.existsSync(dockerDir)) {
-      dockerfilePath = await findDockerfile(dockerDir);
+      //실제로 해당 디렉토리가 존재하는지 확인
+      dockerfilePath = await findDockerfile(dockerDir); //있는 경우 dockerFile이 실제로 해당 경로에 있는지 확인
     } else {
-      // await dockerFileMaker(dataString, dockerDir); 웹소켓으로 전달되면 작성해주기
+      //해당 dockerDir가 존재하지 않는 경우
       return {
         success: false,
         message: `Directory not found at: ${dockerDir}`,
       };
     }
 
-    //도커 파일이 없는 경우 => directory 기준으로 dockerfile s3에서 다운로드 후 삽입
-    if (!dockerfilePath) {
+    //도커 파일이 없으면서 script는 있음
+    if (!dockerfilePath && script) {
+      const { success } = await dockerFileMaker(dockerfilePath, script);
+      if (success) {
+        return {
+          success: true,
+          message: "Dockerfile making success",
+        };
+      }
+    } else if (!dockerfilePath && !script)
+      // 둘다 없는 경우
       return {
         success: false,
         message: "Dockerfile not found in any subdirectory.",
       };
-    }
 
     // 성공 시 Dockerfile 경로와 함께 반환
     console.log(`02. dockerfilePath 확인`, dockerfilePath);

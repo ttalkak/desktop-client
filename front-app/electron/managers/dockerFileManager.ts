@@ -1,17 +1,38 @@
 import fs from "fs";
-// import { projectSourceDirectory } from "./githubManager";
+import path from "path";
 
-//도커파일이 없는 경우 파일 생성 후 디렉토리에 넣어주는 함수
+// 도커파일이 없는 경우 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
+export const dockerFileMaker = async (
+  dockerfilePath: string,
+  script: string
+): Promise<{ success: boolean; message: string }> => {
+  const directory = path.dirname(dockerfilePath); // 디렉토리 경로 추출
+  const fileName = "Dockerfile"; // 파일 이름 정의
 
-// 저장 디렉토리 : 압축해제후 rootDirectory 위치 => contextPath 받아와서 저장하기
-// 파일 이름 : Dockerfile
+  // Dockerfile 경로 설정
+  const fullFilePath = path.join(directory, fileName);
 
-// const projectDirectory = projectSourceDirectory;
-// const fileName = "Dockerfile";
+  try {
+    // 파일이 이미 존재하는지 확인
+    if (fs.existsSync(fullFilePath)) {
+      console.log(`Dockerfile already exists at ${fullFilePath}`);
+      return { success: false, message: "Dockerfile already exists" }; // 이미 파일이 존재하는 경우 반환
+    }
 
-export const dockerFileMaker = (dataString: string, localFilePath: string) => {
-  console.log(`try dockerfile making..`);
-  // 파일로 저장 (동기식)
-  fs.writeFileSync(localFilePath, dataString, "utf8");
-  console.log(`File created successfully at ${localFilePath}`);
+    // 디렉토리가 존재하는지 확인하고 없으면 생성 (비동기식)
+    if (!fs.existsSync(directory)) {
+      console.log(`Directory does not exist. Creating directory: ${directory}`);
+      await fs.promises.mkdir(directory, { recursive: true }); // 디렉토리 생성
+    }
+
+    // 파일 생성 (비동기식)
+    console.log(`Creating Dockerfile at ${fullFilePath}...`);
+    await fs.promises.writeFile(fullFilePath, script, "utf8");
+    console.log(`File created successfully at ${fullFilePath}`);
+
+    return { success: true, message: "File created successfully" }; // 성공 시 반환
+  } catch (error) {
+    console.error("Error during Dockerfile creation:", error);
+    return { success: false, message: `Error: ${(error as Error).message}` }; // 실패 시 에러 메시지 반환
+  }
 };

@@ -101,7 +101,7 @@ export const registerDockerEventHandlers = () => {
             sendInstanceUpdate(
               userId,
               deploymentId,
-              "PENDING",
+              "ALLOCATE_ERROR",
               port,
               "Container start failed"
             );
@@ -163,7 +163,7 @@ export const registerDockerEventHandlers = () => {
             sendInstanceUpdate(
               userId,
               deploymentId,
-              "STOPPED",
+              "ALLOCATE_ERROR",
               port,
               "Container stop failed"
             );
@@ -173,7 +173,7 @@ export const registerDockerEventHandlers = () => {
           sendInstanceUpdate(
             userId,
             deploymentId,
-            "PENDING",
+            "ALLOCATE_ERROR",
             port,
             `Error handling stop event: ${error}`
           );
@@ -188,7 +188,6 @@ export const registerDockerEventHandlers = () => {
           .stopContainerStats([event.Actor.ID])
           .then((_result) => {
             window.electronAPI.stopLogStream(event.Actor.ID); // 로그 스트림 중지
-            // sendInstanceUpdate(userId, deploymentId, "STOPPED", port);
             sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
           })
@@ -197,7 +196,6 @@ export const registerDockerEventHandlers = () => {
               `Failed to stop stats monitoring for container ${event.Actor.ID}:`,
               error
             );
-            sendInstanceUpdate(userId, deploymentId, "DELETED", port);
             removeDockerContainer(event.Actor.ID);
           });
         break;

@@ -94,23 +94,43 @@ function setupClientHandlers(userId: string): void {
           if (compute.hasDockerImage) {
             // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
           } else {
-            const { success, dockerfilePath, contextPath } =
+            const { success, dockerfilePath, contextPath, message } =
               await window.electronAPI.downloadAndUnzip(
                 compute.sourceCodeLink,
-                compute.dockerRootDirectory
+                compute.dockerRootDirectory,
+                compute.script
               );
+
+            if (!success) {
+              console.log(`도커파일 찾기 실패시`, message);
+              // 도커 파일 에러
+              sendInstanceUpdate(
+                userId,
+                compute.deploymentId,
+                "DOCKER_FILE_ERROR",
+                compute.outboundPort,
+                ""
+              );
+            }
             if (success) {
-              const { image } = await handleBuildImage(
+              const { image, success } = await handleBuildImage(
                 contextPath,
                 dockerfilePath,
                 compute.subdomainName
               );
-              console.log(`도커 파일 위치임 ${dockerfilePath}`);
-              if (!image) {
-                console.log(`이미지 생성 실패`);
-              } else {
+              if (!success) {
+                // 도커 파일 에러
+                sendInstanceUpdate(
+                  userId,
+                  compute.deploymentId,
+                  "DOCKER_FILE_ERROR",
+                  compute.outboundPort,
+                  ""
+                );
+              }
+              if (image) {
+                //성공한 경우
                 addDockerImage(image);
-
                 const containerId = await createAndStartContainer(
                   image,
                   compute.inboundPort || 80,

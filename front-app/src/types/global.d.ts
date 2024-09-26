@@ -48,6 +48,7 @@ declare global {
     dockerRootDirectory: string;
     branch: string;
     databases?: databasesDTO[] | [];
+    script?: string;
   }
 
   interface ContainerStatsError {
@@ -214,7 +215,8 @@ declare global {
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
       sourceCodeLink: string,
-      dockerRootDirectory?: string
+      dockerRootDirectory?: string,
+      script?: string
     ) => Promise<{
       success: boolean;
       message?: string;
