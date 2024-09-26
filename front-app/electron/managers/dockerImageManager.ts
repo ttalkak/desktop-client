@@ -2,6 +2,7 @@ import { docker } from "./dockerUtils";
 import * as fs from "fs";
 import path from "path";
 
+//이미지 빌드
 export async function buildDockerImage(
   contextPath: string,
   dockerfilePath: string | null,
@@ -31,7 +32,7 @@ export async function buildDockerImage(
     }
     console.log(`Rebuilding Docker image ${fullTag}`);
   }
-
+  //도커파일에 755
   fs.chmod(dockerfilePath, "755", (err: NodeJS.ErrnoException | null) => {
     if (err) {
       console.error(`Failed to set permissions for Dockerfile: ${err.message}`);

@@ -13,7 +13,7 @@ import {
 } from "../utils/stompClientUtils";
 import { sendPaymentInfo } from "../utils/paymentUtils";
 import { sendInstanceUpdate } from "../utils/sendUpdateUtils";
-import { handleContainerCommand } from "../utils/containerCommandHandler";
+import { handleContainerCommand } from "../utils/dockerCommandHandler";
 import {
   startContainerStatsMonitoring,
   startSendingCurrentState,
@@ -64,7 +64,28 @@ function setupClientHandlers(userId: string): void {
     // 2. 결제 정보 전송 시작=>userId로 변경하기
     sendPaymentInfo(userId);
 
+    // 3. sub/compute-update/{userId} 업데이트요청 구독
+    client?.subscribe(`/sub/compute-update/${userId}`, async (message) => {
+      // 수신한 메시지 처리 로직 작성
+      try {
+        const { deploymentId, command } = JSON.parse(message.body);
+        console.log("Received updateCommand:", {
+          deploymentId,
+          command,
+        });
+        // handleContainerCommand 함수를 호출하여 명령을 처리
+        handleContainerCommand(deploymentId, command, userId);
+      } catch (error) {
+        console.error("Error processing compute update message:", error);
+      }
+    });
+
+    //4.현재 배포 상태 PING 시작
+    startSendingCurrentState(userId);
+
+    //5. 서비스 상태 running으로 변경
     setServiceStatus("running");
+
     //sub/compute-create/{userId} 컴퓨트 서버 구독 시작
     client.subscribe(
       `/sub/compute-create/${userId}`,
@@ -94,40 +115,20 @@ function setupClientHandlers(userId: string): void {
           if (compute.hasDockerImage) {
             // Docker 이미지가 이미 있을 경우 => 추가 작업 필요
           } else {
-            const { success, dockerfilePath, contextPath, message } =
+            const { success, dockerfilePath, contextPath } =
               await window.electronAPI.downloadAndUnzip(
                 compute.sourceCodeLink,
                 compute.dockerRootDirectory,
                 compute.script
               );
 
-            if (!success) {
-              console.log(`도커파일 찾기 실패시`, message);
-              // 도커 파일 에러
-              sendInstanceUpdate(
-                userId,
-                compute.deploymentId,
-                "DOCKER_FILE_ERROR",
-                compute.outboundPort,
-                ""
-              );
-            }
             if (success) {
-              const { image, success } = await handleBuildImage(
+              const { image } = await handleBuildImage(
                 contextPath,
                 dockerfilePath,
                 compute.subdomainName
               );
-              if (!success) {
-                // 도커 파일 에러
-                sendInstanceUpdate(
-                  userId,
-                  compute.deploymentId,
-                  "DOCKER_FILE_ERROR",
-                  compute.outboundPort,
-                  ""
-                );
-              }
+
               if (image) {
                 //성공한 경우
                 addDockerImage(image);
@@ -162,30 +163,6 @@ function setupClientHandlers(userId: string): void {
                   compute.deploymentId
                 );
 
-                // sub/compute-update/{userId} 업데이트요청 구독
-                client?.subscribe(
-                  `/sub/compute-update/${userId}`,
-                  async (message) => {
-                    // 수신한 메시지 처리 로직 작성
-                    try {
-                      const { deploymentId, command } = JSON.parse(
-                        message.body
-                      );
-                      console.log("Received updateCommand:", {
-                        deploymentId,
-                        command,
-                      });
-                      // handleContainerCommand 함수를 호출하여 명령을 처리
-                      handleContainerCommand(deploymentId, command, userId);
-                    } catch (error) {
-                      console.error(
-                        "Error processing compute update message:",
-                        error
-                      );
-                    }
-                  }
-                );
-
                 console.log(compute);
 
                 window.electronAPI // pgrok 시작
@@ -203,14 +180,21 @@ function setupClientHandlers(userId: string): void {
                     alert(`Failed to start pgrok: ${error}`);
                   });
               }
+            } else {
+              // 도커 파일 에러
+              sendInstanceUpdate(
+                userId,
+                compute.deploymentId,
+                "DOCKER_FILE_ERROR",
+                compute.outboundPort,
+                ""
+              );
             }
           }
         });
       }
     );
   };
-
-  startSendingCurrentState(userId); //현재 배포 상태 PING 시작
 
   client.onStompError = (frame) => {
     console.error("Broker reported error: " + frame.headers["message"]);
