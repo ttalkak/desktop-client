@@ -1,4 +1,5 @@
 import { Client } from "@stomp/stompjs";
+import { createStompClient } from "./createClient";
 
 export let client: Client;
 
@@ -31,17 +32,6 @@ export async function waitForSessionData(
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
   throw new Error("Failed to get session data after maximum attempts");
-}
-
-export function createStompClient(userId: string): Client {
-  return new Client({
-    brokerURL: "wss://api.ttalkak.com/ws",
-    connectHeaders: {
-      "X-USER-ID": userId,
-    },
-    heartbeatIncoming: 0,
-    heartbeatOutgoing: 0,
-  });
 }
 
 // STOMP 클라이언트를 초기화하는 함수

@@ -1,5 +1,5 @@
 import { Message } from "@stomp/stompjs";
-import { handleContainerCommand } from "../utils/deployments/dockerCommandHandler";
+import { handleContainerCommand } from "../utils/deployments/deployCommandHandler";
 import { sendPaymentInfo } from "./paymentService";
 import {
   startSendingCurrentState,

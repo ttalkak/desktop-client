@@ -1,9 +1,9 @@
-import { client } from "../../utils/websocket/stompClientUtils";
+import { client } from "./stompClientUtils";
 import {
   getRunningContainers,
   getTotalMemoryUsage,
   globalStats,
-} from "../../utils/monitoring/healthCheckPingUtils";
+} from "../monitoring/healthCheckPingUtils";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 
 export const sendCurrentState = async (userId: string) => {

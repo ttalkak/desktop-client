@@ -2,7 +2,6 @@ import { useDockerStore } from "../../stores/appStatusStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
-
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { startContainerStatsMonitoring } from "../monitoring/healthCheckPingUtils";
 import { startPgrok } from "./pgrokHandler.ts";
