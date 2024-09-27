@@ -1,11 +1,7 @@
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
-import { handleBuildImage } from "./dockerUtils";
-import { useDockerStore } from "../../stores/appStatusStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { createAndStartContainer } from "./dockerUtils";
-
-const addDockerImage = useDockerStore.getState().addDockerImage;
+import { handleDockerBuild } from "./dockerBuildHandler";
 
 export async function handleContainerCommand(
   deploymentId: number,
@@ -24,9 +20,8 @@ export async function handleContainerCommand(
   }
 
   const compute =
-    useDeploymentDetailsStore.getState().deploymentDetails[deploymentId];
-  const repoUrl = compute?.details?.sourceCodeLink;
-  const rootDirectory = compute?.details?.dockerRootDirectory;
+    useDeploymentDetailsStore.getState().deploymentDetails[deploymentId]
+      .details;
 
   if (!compute) {
     console.error(
@@ -51,7 +46,7 @@ export async function handleContainerCommand(
             userId,
             deploymentId,
             "RUNNING",
-            compute.details.outboundPort,
+            compute.outboundPort,
             "deploy started"
           );
         } else {
@@ -59,8 +54,8 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             userId,
             deploymentId,
-            "ALLOCATE_ERROR",
-            compute.details.outboundPort,
+            "ERROR",
+            compute.outboundPort,
             "deploy start failed"
           );
         }
@@ -79,7 +74,7 @@ export async function handleContainerCommand(
             userId,
             deploymentId,
             "RUNNING",
-            compute.details.outboundPort,
+            compute.outboundPort,
             "deploy restarted"
           );
         } else {
@@ -88,7 +83,7 @@ export async function handleContainerCommand(
             userId,
             deploymentId,
             "ERROR",
-            compute.details.outboundPort,
+            compute.outboundPort,
             "deploy restart failed"
           );
         }
@@ -107,7 +102,7 @@ export async function handleContainerCommand(
             userId,
             deploymentId,
             "DELETED",
-            compute.details.outboundPort,
+            compute.outboundPort,
             "deploy deleted success"
           );
         } else {
@@ -115,8 +110,8 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             userId,
             deploymentId,
-            "ALLOCATE_ERROR",
-            compute.details.outboundPort,
+            "ERROR",
+            compute.outboundPort,
             "deleted failed"
           );
         }
@@ -136,7 +131,7 @@ export async function handleContainerCommand(
             userId,
             deploymentId,
             "STOPPED",
-            compute.details.outboundPort,
+            compute.outboundPort,
             "deploy stopped success"
           );
         } else {
@@ -144,8 +139,8 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             userId,
             deploymentId,
-            "ALLOCATE_ERROR",
-            compute.details.outboundPort,
+            "ERROR",
+            compute.outboundPort,
             "deploy stopped failed"
           );
         }
@@ -158,6 +153,20 @@ export async function handleContainerCommand(
     case "REBUILD":
       {
         console.log(`Rebuilding container for deploymentId: ${deploymentId}`);
+
+        // deploymentId로 details 가져오기
+        const details = useDeploymentDetailsStore
+          .getState()
+          .getDeploymentDetails(deploymentId);
+
+        if (!details) {
+          console.error(
+            `No deployment details found for deploymentId: ${deploymentId}`
+          );
+          return;
+        }
+
+        // 기존 컨테이너 상태 및 로그 스트림 중지
         await window.electronAPI.stopContainerStats([containerId]);
         await window.electronAPI.stopLogStream(containerId);
         await window.electronAPI.stopPgrok(deploymentId);
@@ -168,67 +177,12 @@ export async function handleContainerCommand(
           userId,
           deploymentId,
           "STOPPED",
-          compute.details?.outboundPort,
+          compute?.outboundPort,
           "rebuild will start"
         );
 
-        if (repoUrl) {
-          console.log(`Rebuilding container for repoUrl: ${repoUrl}`);
-          const { success, dockerfilePath, contextPath } =
-            await window.electronAPI.downloadAndUnzip(repoUrl, rootDirectory);
-
-          if (success) {
-            console.log(`Downloaded and unzipped repo successfully`);
-            const { image } = await handleBuildImage(
-              contextPath,
-              dockerfilePath
-            );
-            if (!image) {
-              console.error(`Failed to build Docker image`);
-            } else {
-              console.log(`Docker image built successfully: ${image}`);
-              addDockerImage(image);
-
-              const newContainerId = await createAndStartContainer(
-                image,
-                compute.details?.inboundPort || 80,
-                compute.details?.outboundPort || 8080
-              );
-
-              if (newContainerId) {
-                console.log(`New container started: ${newContainerId}`);
-                sendInstanceUpdate(
-                  userId,
-                  deploymentId,
-                  "RUNNING",
-                  compute.details?.outboundPort,
-                  ""
-                );
-                window.electronAPI.startLogStream(newContainerId);
-                window.electronAPI
-                  .runPgrok(
-                    "pgrok.ttalkak.com:2222",
-                    `http://localhost:${compute.details?.outboundPort}`,
-                    compute.details.subdomainKey,
-                    compute.details.deploymentId,
-                    compute.details.subdomainName
-                  )
-                  .then((message) => {
-                    console.log(`pgrok started: ${message}`);
-                  })
-                  .catch((error) => {
-                    console.error(`Failed to start pgrok: ${error}`);
-                  });
-              }
-            }
-          } else {
-            console.error(
-              `Failed to download and unzip for repoUrl: ${repoUrl}`
-            );
-          }
-        } else {
-          console.error(`No repoUrl found for deploymentId: ${deploymentId}`);
-        }
+        // handleDockerBuild 함수를 호출하여 이미지 빌드 및 컨테이너 생성
+        await handleDockerBuild(compute, userId);
       }
       break;
 
