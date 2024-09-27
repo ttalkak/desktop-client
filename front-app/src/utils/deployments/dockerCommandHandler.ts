@@ -1,9 +1,9 @@
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
-import { useDeploymentStore } from "../stores/deploymentStore";
-import { handleBuildImage } from "./dockerUtils";
-import { useDockerStore } from "../stores/appStatusStore";
-import { sendInstanceUpdate } from "./sendUpdateUtils";
-import { createAndStartContainer } from "./dockerUtils";
+import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
+import { useDeploymentStore } from "../../stores/deploymentStore";
+import { handleBuildImage } from "../deployments/dockerUtils";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
+import { createAndStartContainer } from "../deployments/dockerUtils";
 
 const addDockerImage = useDockerStore.getState().addDockerImage;
 

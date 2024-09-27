@@ -1,6 +1,6 @@
 import Docker from "dockerode";
 import { EventEmitter } from "events";
-import { useCpuStore } from "../stores/appStatusStore";
+import { useCpuStore } from "../../stores/appStatusStore";
 
 const docker = new Docker();
 

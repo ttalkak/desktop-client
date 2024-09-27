@@ -1,4 +1,4 @@
-import { client } from "./stompClientUtils";
+import { client } from "../utils/websocket/stompClientUtils";
 
 // 결제 정보를 전송하는 함수
 export function sendPaymentInfo(userId: string) {

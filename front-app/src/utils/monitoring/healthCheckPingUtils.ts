@@ -1,5 +1,5 @@
-import { useDockerStore } from "../stores/appStatusStore";
-import { sendCurrentState } from "../services/stompService";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { sendCurrentState } from "../websocket/sendCurrentState";
 
 // 컨테이너 상태와 관련된 인터페이스 정의
 interface ContainerStats {

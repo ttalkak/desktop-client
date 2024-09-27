@@ -1,7 +1,7 @@
-import { useDockerStore } from "../stores/appStatusStore";
-import { useAuthStore } from "../stores/authStore";
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
-import { useDeploymentStore } from "../stores/deploymentStore";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { useAuthStore } from "../../stores/authStore";
+import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
+import { useDeploymentStore } from "../../stores/deploymentStore";
 
 //이벤트 감지시점에 session store를 add, remover, update 합니다.
 
@@ -163,7 +163,6 @@ export const registerDockerEventHandlers = () => {
             removeDockerContainer(event.Actor.ID);
           });
 
-          
         break;
 
       default:

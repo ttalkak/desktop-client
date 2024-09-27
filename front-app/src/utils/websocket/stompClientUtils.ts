@@ -1,6 +1,7 @@
 import { Client } from "@stomp/stompjs";
 
 export let client: Client;
+
 interface SessionData {
   userId: number;
   maxCompute: number;

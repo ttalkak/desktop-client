@@ -1,8 +1,8 @@
-import { useAuthStore } from "../stores/authStore";
-import { useDockerStore } from "../stores/appStatusStore";
-import { sendInstanceUpdate } from "./sendUpdateUtils";
-import { useDeploymentStore } from "../stores/deploymentStore";
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
+import { useAuthStore } from "../../stores/authStore";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
+import { useDeploymentStore } from "../../stores/deploymentStore";
+import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 
 export async function terminateAndRemoveContainersAndImages() {
   const containers = useDockerStore.getState().dockerContainers;
