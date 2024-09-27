@@ -64,22 +64,6 @@ function setupClientHandlers(userId: string): void {
     // 2. 결제 정보 전송 시작=>userId로 변경하기
     sendPaymentInfo(userId);
 
-    // 3. sub/compute-update/{userId} 업데이트요청 구독
-    client?.subscribe(`/sub/compute-update/${userId}`, async (message) => {
-      // 수신한 메시지 처리 로직 작성
-      try {
-        const { deploymentId, command } = JSON.parse(message.body);
-        console.log("Received updateCommand:", {
-          deploymentId,
-          command,
-        });
-        // handleContainerCommand 함수를 호출하여 명령을 처리
-        handleContainerCommand(deploymentId, command, userId);
-      } catch (error) {
-        console.error("Error processing compute update message:", error);
-      }
-    });
-
     //4.현재 배포 상태 PING 시작
     startSendingCurrentState(userId);
 
@@ -93,7 +77,7 @@ function setupClientHandlers(userId: string): void {
         const computes = JSON.parse(message.body);
         console.log(computes);
         computes.forEach(async (compute: DeploymentCommand) => {
-          //db있는 경우 먼저 설치 및 실행
+          //전달되는 타입이 BACKEND면 추가DB
           if (compute.databases && compute.databases.length > 0) {
             for (const dbInfo of compute.databases) {
               const dbSetupResult = await window.electronAPI.setupDatabase(
@@ -195,6 +179,25 @@ function setupClientHandlers(userId: string): void {
       }
     );
   };
+
+  // 8. sub/compute-update/{userId} 업데이트요청 구독
+  client.subscribe(
+    `/sub/compute-update/${userId}`,
+    async (message: Message) => {
+      // 수신한 메시지 처리 로직 작성
+      try {
+        const { deploymentId, command } = JSON.parse(message.body);
+        console.log("Received updateCommand:", {
+          deploymentId,
+          command,
+        });
+        // handleContainerCommand 함수를 호출하여 명령을 처리
+        handleContainerCommand(deploymentId, command, userId);
+      } catch (error) {
+        console.error("Error processing compute update message:", error);
+      }
+    }
+  );
 
   client.onStompError = (frame) => {
     console.error("Broker reported error: " + frame.headers["message"]);
