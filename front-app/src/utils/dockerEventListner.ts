@@ -162,6 +162,8 @@ export const registerDockerEventHandlers = () => {
             );
             removeDockerContainer(event.Actor.ID);
           });
+
+          
         break;
 
       default:

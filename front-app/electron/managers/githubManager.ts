@@ -119,8 +119,6 @@ async function downloadAndUnzip(
       };
 
     const contextPath = path.dirname(dockerfilePath);
-    // 성공 시 Dockerfile 경로와 함께 반환
-    console.log(`02. dockerfilePath 확인`, dockerfilePath);
     return { success: true, dockerfilePath, contextPath };
   } catch (error) {
     console.error("Error during download and unzip:", error);

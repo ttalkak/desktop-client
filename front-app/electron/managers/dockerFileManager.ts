@@ -6,6 +6,7 @@ export const dockerFileMaker = async (
   dockerfilePath: string,
   script: string
 ): Promise<{ success: boolean; message: string }> => {
+  console.log("start DockerFilMaker!!!");
   const directory = path.dirname(dockerfilePath); // 디렉토리 경로 추출
   const fileName = "Dockerfile"; // 파일 이름 정의
 
