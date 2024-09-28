@@ -16,7 +16,8 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
     await window.electronAPI.downloadAndUnzip(
       compute.sourceCodeLink,
       compute.dockerRootDirectory,
-      compute.script
+      compute.dockerFileScript,
+      compute.envs
     );
 
   if (success) {

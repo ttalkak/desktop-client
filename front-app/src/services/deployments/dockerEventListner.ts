@@ -1,7 +1,7 @@
 import { useAuthStore } from "../../stores/authStore";
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
-import { dockerStateManager } from "./dockerStateHandler";
+import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 
 interface DockerEvent {
   Type: string;

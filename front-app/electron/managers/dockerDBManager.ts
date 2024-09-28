@@ -1,43 +1,6 @@
-// dockerUtils.ts
+import { pullDockerImage } from "./dockerImageManager";
 
-import { docker } from "./dockerUtils";
-import { ipcMain } from "electron";
-
-export async function pullDockerImage(imageName: string): Promise<void> {
-  const stream = await docker.pull(imageName);
-  return new Promise<void>((resolve, reject) => {
-    docker.modem.followProgress(stream, (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
-export async function createDockerContainer(
-  imageName: string,
-  envVars: string[],
-  port: number
-) {
-  const container = await docker.createContainer({
-    Image: imageName,
-    Env: envVars,
-    ExposedPorts: {
-      [`${port}/tcp`]: {},
-    },
-    HostConfig: {
-      PortBindings: {
-        [`${port}/tcp`]: [{ HostPort: `${port}` }],
-      },
-    },
-  });
-
-  await container.start();
-  return container.id;
-}
-
+// DB 타입에 따른 이미지 이름을 반환하는 함수
 export function getDatabaseImageName(databaseType: string): string {
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
@@ -55,73 +18,18 @@ export function getDatabaseImageName(databaseType: string): string {
   }
 }
 
-function getEnvVariables(
-  databaseType: string,
-  username?: string,
-  password?: string
-): string[] {
-  switch (databaseType.toUpperCase()) {
-    case "MYSQL":
-      const envVars: string[] = [];
-      if (password) {
-        envVars.push(`MYSQL_ROOT_PASSWORD=${password}`);
-      }
-      if (username) {
-        envVars.push(`MYSQL_USER=${username}`);
-      }
-      if (password && username) {
-        envVars.push(`MYSQL_PASSWORD=${password}`);
-      }
-      return envVars;
-    case "POSTGRESQL":
-      return [
-        username && `POSTGRES_USER=${username}`,
-        password && `POSTGRES_PASSWORD=${password}`,
-      ].filter(Boolean) as string[];
-    case "REDIS":
-      return password ? [`REDIS_PASSWORD=${password}`] : [];
-    case "MONGODB":
-      return [
-        username && `MONGO_INITDB_ROOT_USERNAME=${username}`,
-        password && `MONGO_INITDB_ROOT_PASSWORD=${password}`,
-      ].filter(Boolean) as string[];
-    case "MARIADB":
-      const mariaDBEnvVars: string[] = [];
-      if (password) {
-        mariaDBEnvVars.push(`MARIADB_ROOT_PASSWORD=${password}`);
-      }
-      if (username) {
-        mariaDBEnvVars.push(`MARIADB_USER=${username}`);
-      }
-      if (password && username) {
-        mariaDBEnvVars.push(`MARIADB_PASSWORD=${password}`);
-      }
-      return mariaDBEnvVars;
-    default:
-      throw new Error(`Unsupported database type: ${databaseType}`);
+//DB 타입을 입력받아 해당 Docker 이미지를 pull하는 함수
+export async function pullDatabaseImage(
+  databaseType: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const imageName = getDatabaseImageName(databaseType);
+    console.log(`Pulling Docker image for ${databaseType}: ${imageName}`);
+    await pullDockerImage(imageName);
+    console.log(`Successfully pulled Docker image for ${databaseType}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to pull Docker image for ${databaseType}: ${error}`);
+    return { success: false };
   }
-}
-
-// db 셋팅 함수
-export function handleDatabaseSetup() {
-  ipcMain.handle("setup-database", async (_event, dbInfo: any) => {
-    try {
-      const database = dbInfo.databases[0];
-      const { databaseType, username, password, port } = database;
-
-      const imageName = getDatabaseImageName(databaseType);
-      const envVars = getEnvVariables(databaseType, username, password);
-
-      // Docker 이미지 pull
-      await pullDockerImage(imageName);
-
-      // Docker 컨테이너 실행
-      const containerId = await createDockerContainer(imageName, envVars, port);
-
-      return { success: true, containerId };
-    } catch (error) {
-      console.error(`Failed to setup database:`, error);
-      return { success: false, message: (error as Error).message };
-    }
-  });
 }

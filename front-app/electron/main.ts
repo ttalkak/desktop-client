@@ -10,7 +10,6 @@ import {
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import * as os from "os";
-
 import { registerIpcHandlers as registerDockerIpcHandlers } from "./dockerManager";
 import {
   setMainWindow,
@@ -23,7 +22,6 @@ import {
   handleGetContainerMemoryUsage,
   handleGetContainerStatsPeriodic,
 } from "./managers/dockerEventManager";
-import { handleDatabaseSetup } from "./managers/dockerDBManager";
 import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +47,6 @@ function registerIpcHandlers() {
   handleGetDockerEvent();
   handleGetContainerMemoryUsage();
   handleGetContainerStatsPeriodic();
-  handleDatabaseSetup();
   handleFetchContainerLogs();
 
   ipcMain.handle("get-cpu-usage", async () => {

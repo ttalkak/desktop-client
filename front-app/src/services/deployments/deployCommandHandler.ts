@@ -2,7 +2,7 @@ import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { handleDockerBuild } from "./dockerBuildHandler";
-import { dockerStateManager } from "./dockerStateHandler";
+import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 
 export async function handleContainerCommand(
   deploymentId: number,
@@ -106,9 +106,8 @@ export async function handleContainerCommand(
         await window.electronAPI.stopLogStream(containerId);
         await window.electronAPI.stopPgrok(deploymentId);
         await window.electronAPI.stopContainer(containerId);
-        await window.electronAPI.removeContainer(containerId);
-
         dockerStateManager.removeContainer(containerId);
+        await window.electronAPI.removeContainer(containerId);
 
         // Rebuild
         await handleDockerBuild(compute);

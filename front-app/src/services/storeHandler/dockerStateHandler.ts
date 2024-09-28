@@ -4,6 +4,7 @@ import { useDeploymentStore } from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 
 export const dockerStateManager = {
+  //dockerContainer 상태값 변화(running..stopped..)
   updateContainerState: async (containerId: string, newState: string) => {
     const { updateDockerContainer, dockerContainers } =
       useDockerStore.getState();
@@ -33,7 +34,9 @@ export const dockerStateManager = {
         `Container ${newState}`
       );
     }
+
     const container = dockerContainers.find((c) => c.Id === containerId);
+
     if (container) {
       updateDockerContainer(containerId, { State: newState });
       console.log(
@@ -51,15 +54,6 @@ export const dockerStateManager = {
     } else {
       console.error(`Container with ID ${containerId} not found in store.`);
     }
-  },
-
-  updateContainerDetails: (
-    containerId: string,
-    updates: Partial<DockerContainer>
-  ) => {
-    const { updateDockerContainer } = useDockerStore.getState();
-    updateDockerContainer(containerId, updates);
-    console.log(`Store: ContainerID ${containerId} details updated.`);
   },
 
   removeContainer: (containerId: string) => {

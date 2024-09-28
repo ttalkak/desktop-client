@@ -75,6 +75,17 @@ export const startContainer = async (
     if (containerInfo.State && containerInfo.State.Status !== "running") {
       await container.start();
       console.log(`Container ${containerId} started successfully`);
+
+      // 컨테이너가 실행된 후 권한 변경
+      await container.exec({
+        Cmd: ["chmod", "-R", "755", "/"],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+      console.log(
+        `Permissions updated successfully for container ${containerId}`
+      );
+
       return { success: true };
     } else if (containerInfo.State.Status === "running") {
       console.log(`Container ${containerId} is already running`);

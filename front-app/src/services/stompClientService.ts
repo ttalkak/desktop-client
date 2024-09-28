@@ -28,11 +28,23 @@ export function setupClientHandlers(userId: string): void {
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
         const computes = JSON.parse(message.body);
+
         computes.forEach(async (compute: DeploymentCommand) => {
+          if (compute.envs) {
+            const result = await window.electronAPI.pullDatabaseImage(
+              compute.envs.dbInfo
+            );
+            if (result.success) {
+              console.log("dbimage pulled");
+            }
+          }
+
           if (compute.hasDockerImage) {
             // Docker 이미지 존재 시 처리
           } else {
-            console.log(`compute-create started.. ${compute}`);
+            console.log(
+              `compute-create started.. ${JSON.stringify(compute, null, 2)}`
+            );
             await handleDockerBuild(compute);
           }
         });

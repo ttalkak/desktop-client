@@ -107,6 +107,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
       tag
     ),
 
+  pullDatabaseImage: async (databaseType: string) => {
+    return await ipcRenderer.invoke("pull-database-image", databaseType);
+  },
   //-------------------- 컨테이너 생성 및 실행
 
   createContainerOptions: (

@@ -4,7 +4,7 @@ import path from "path";
 // 도커파일이 없는 경우 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
 export const dockerFileMaker = async (
   dockerfilePath: string,
-  script: string
+  dockerFileScript: string
 ): Promise<{ success: boolean; message: string }> => {
   console.log("start DockerFilMaker!!!");
   const directory = path.dirname(dockerfilePath); // 디렉토리 경로 추출
@@ -28,7 +28,7 @@ export const dockerFileMaker = async (
 
     // 파일 생성 (비동기식)
     console.log(`Creating Dockerfile at ${fullFilePath}...`);
-    await fs.promises.writeFile(fullFilePath, script, "utf8");
+    await fs.promises.writeFile(fullFilePath, dockerFileScript, "utf8");
     console.log(`File created successfully at ${fullFilePath}`);
 
     return { success: true, message: "File created successfully" }; // 성공 시 반환
