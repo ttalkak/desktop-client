@@ -4,8 +4,13 @@ import path from "path";
 // .env 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
 export const envFileMaker = async (
   envfilePath: string,
-  envs: EnvironmentVariables
-): Promise<{ success: boolean; message: string }> => {
+  envs: EnvironmentVariable
+): Promise<{
+  success: boolean;
+  message: string;
+  contextPath?: string;
+  envFilePath?: string;
+}> => {
   console.log("start envFileMaker!!!");
   const directory = path.dirname(envfilePath); // 디렉토리 경로 추출
   const fileName = ".env"; // 파일 이름 정의
@@ -17,7 +22,12 @@ export const envFileMaker = async (
     // 파일이 이미 존재하는지 확인
     if (fs.existsSync(fullFilePath)) {
       console.log(`.env already exists at ${fullFilePath}`);
-      return { success: false, message: ".env already exists" }; // 이미 파일이 존재하는 경우 반환
+      return {
+        success: false,
+        message: ".env already exists",
+        contextPath: directory,
+        envFilePath: fullFilePath,
+      }; // 이미 파일이 존재하는 경우 경로도 반환
     }
 
     // 디렉토리가 존재하는지 확인하고 없으면 생성 (비동기식)
@@ -36,7 +46,12 @@ export const envFileMaker = async (
     await fs.promises.writeFile(fullFilePath, script, "utf8");
     console.log(`.env successfully created at ${fullFilePath}`);
 
-    return { success: true, message: ".env File created successfully" }; // 성공 시 반환
+    return {
+      success: true,
+      message: ".env File created successfully",
+      contextPath: directory, // 상위 경로 반환
+      envFilePath: fullFilePath, // .env 파일 경로 반환
+    };
   } catch (error) {
     console.error("Error during .env creation:", error);
     return { success: false, message: `Error: ${(error as Error).message}` }; // 실패 시 에러 메시지 반환

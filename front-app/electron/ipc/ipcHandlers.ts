@@ -3,9 +3,9 @@ import { exec } from "child_process";
 import {
   checkDockerStatus,
   getDockerPath,
-  findDockerfile,
   docker,
 } from "../managers/dockerUtils";
+import { findDockerfile } from "../managers/filemanager/dokerFileFinder";
 import {
   pullDockerImage,
   buildDockerImage,
@@ -23,6 +23,8 @@ import {
   getDatabaseImageName,
   pullDatabaseImage,
 } from "../managers/dockerDBManager";
+import { dockerFileMaker } from "../managers/filemanager/dockerFileMaker";
+import { envFileMaker } from "../managers/filemanager/envFileMaker";
 
 // IPC 핸들러들을 등록하는 함수
 export function registerIpcHandlers() {
@@ -248,4 +250,28 @@ export function registerIpcHandlers() {
       return await pullDatabaseImage(databaseType);
     }
   );
+
+  ipcMain.handle(
+    "create-dockerfile",
+    async (_event, dockerfilePath, dockerFileScript) => {
+      try {
+        const result = await dockerFileMaker(dockerfilePath, dockerFileScript);
+        return result;
+      } catch (error) {
+        console.error("Error in create-dockerfile handler:", error);
+        return { success: false, message: error };
+      }
+    }
+  );
+
+  // .env 파일 생성 핸들러
+  ipcMain.handle("create-envfile", async (_event, envfilePath, envs) => {
+    try {
+      const result = await envFileMaker(envfilePath, envs);
+      return result;
+    } catch (error) {
+      console.error("Error in create-envfile handler:", error);
+      return { success: false, message: (error as Error).message };
+    }
+  });
 }

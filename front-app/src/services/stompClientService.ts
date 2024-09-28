@@ -10,6 +10,7 @@ import { client } from "./websocket/stompClientUtils";
 import { sendComputeConnectMessage } from "./websocket/sendComputeConnect";
 import { useAppStore } from "../stores/appStatusStore";
 import { handleDockerBuild } from "./deployments/dockerBuildHandler";
+import { handleBuildImage } from "./deployments/dockerUtils";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -30,21 +31,24 @@ export function setupClientHandlers(userId: string): void {
         const computes = JSON.parse(message.body);
 
         computes.forEach(async (compute: DeploymentCommand) => {
-          if (compute.envs) {
-            const result = await window.electronAPI.pullDatabaseImage(
-              compute.envs.dbInfo
-            );
-            if (result.success) {
-              console.log("dbimage pulled");
-            }
+          console.log(
+            `compute-create started.. ${JSON.stringify(compute, null, 2)}`
+          );
+
+          if (compute.serviceType == "FRONTEND") {
+            await handleDockerBuild(compute);
           }
 
-          if (compute.hasDockerImage) {
-            // Docker 이미지 존재 시 처리
-          } else {
-            console.log(
-              `compute-create started.. ${JSON.stringify(compute, null, 2)}`
-            );
+          if (compute.serviceType == "BACKEND") {
+            if (compute.databases && compute.databases.length > 0) {
+              // databases가 존재할 때 DB 이미지 풀링
+              for (const db of compute.databases) {
+                console.log(`Pulling database image for ${db.databaseType}`);
+                await window.electronAPI.pullDatabaseImage(db.databaseType);
+              }
+            }
+
+            // DB 이미지 풀 이후 또는 databases가 없을 때 Docker 빌드 실행
             await handleDockerBuild(compute);
           }
         });

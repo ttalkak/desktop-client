@@ -13,4 +13,4 @@ export {
   removeContainer,
   createContainerOptions,
 } from "./managers/dockerContainerManager";
-export { githubDownLoadAndUnzip } from "./managers/githubManager";
+export { githubDownLoadAndUnzip } from "./managers/filemanager/downloadManager";

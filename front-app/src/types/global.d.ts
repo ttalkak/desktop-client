@@ -54,32 +54,40 @@ declare global {
     cpuUsagePercent: number;
   }
 
-  // Deployment Types
-  interface databasesDTO {
-    databaseId: string;
+  // Database 인터페이스
+  export interface Database {
+    databaseId: number;
     databaseType: string;
+    name?: string | null; // 이름은 null이 될 수 있음
     username: string;
     password: string;
     port: number;
   }
 
-  export interface EnvironmentVariables {
-    [key: string]: string;
+  // EnvironmentVariable 배열 정의
+  export interface EnvironmentVariable {
+    key: string;
+    value: string;
   }
 
+  // DeploymentCommand 인터페이스 수정
   export interface DeploymentCommand {
     deploymentId: number;
+    serviceType: string; // 예: FRONTEND, BACKEND, web-service 등
+    hasDockerFile: boolean;
     hasDockerImage: boolean;
     containerName: string;
-    inboundPort?: number;
+    inboundPort: number;
     outboundPort: number;
     subdomainName: string;
     subdomainKey: string;
     sourceCodeLink: string;
-    dockerRootDirectory: string;
-    hasDockerFile: boolean;
-    dockerFileScript?: string;
-    envs?: EnvironmentVariables;
+    databases?: Database[];
+    envs: EnvironmentVariable[]; // EnvironmentVariable 배열
+    dockerRootDirectory?: string; // 선택적 필드
+    dockerImageName?: string | null;
+    dockerImageTag?: string | null;
+    dockerFileScript?: string; // 선택적 필드
   }
 
   // Docker Image Build Result
@@ -193,10 +201,8 @@ declare global {
     // Project and Source Code Management
     getProjectSourceDirectory: () => Promise<string>;
     downloadAndUnzip: (
-      sourceCodeLink: string,
-      dockerRootDirectory: string,
-      script?: string,
-      envs?: EnvironmentVariables
+      sourceCodeLink?: string,
+      dockerRootDirectory?: string
     ) => Promise<{
       success: boolean;
       message?: string;
@@ -213,6 +219,17 @@ declare global {
     pullDatabaseImage: (
       databaseType: string
     ) => Promise<{ success: boolean; error?: string }>;
+
+    // Dockerfile을 처리하는 메서드
+    handleDockerfile: (
+      contextPath: string,
+      dockerFileScript?: string,
+      envs?: EnvironmentVariables
+    ) => Promise<{
+      success: boolean;
+      dockerfilePath?: string;
+      message?: string;
+    }>;
 
     // Docker Image and Container Operations
     buildDockerImage: (
