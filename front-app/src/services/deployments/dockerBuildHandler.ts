@@ -1,7 +1,7 @@
-import { useDockerStore } from "../../stores/appStatusStore";
-import { useDeploymentStore } from "../../stores/deploymentStore";
-import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
-import { createAndStartContainer, handleBuildImage } from "./dockerUtils";
+import { useDockerStore } from "../../stores/appStatusStore.tsx";
+import { useDeploymentStore } from "../../stores/deploymentStore.tsx";
+import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore.tsx";
+import { createAndStartContainer, handleBuildImage } from "./dockerUtils.ts";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { startContainerStatsMonitoring } from "../monitoring/healthCheckPingUtils";
 import { startPgrok } from "./pgrokHandler.ts";
@@ -11,10 +11,7 @@ const DEFAULT_INBOUND_PORT = 80;
 const DEFAULT_OUTBOUND_PORT = 8080;
 
 // 공통 유틸 함수: Docker 이미지 및 컨테이너 생성 로직
-export async function handleDockerBuild(
-  compute: DeploymentCommand,
-  userId: string
-) {
+export async function handleDockerBuild(compute: DeploymentCommand) {
   const { success, dockerfilePath, contextPath } =
     await window.electronAPI.downloadAndUnzip(
       compute.sourceCodeLink,
@@ -39,12 +36,12 @@ export async function handleDockerBuild(
 
       // 배포 및 컨테이너 상태 업데이트
       sendInstanceUpdate(
-        userId,
         compute.deploymentId,
         "RUNNING",
         compute.outboundPort,
         ""
       );
+
       useDeploymentStore
         .getState()
         .addDeployment(compute.deploymentId, containerId);
@@ -63,7 +60,6 @@ export async function handleDockerBuild(
     }
   } else {
     sendInstanceUpdate(
-      userId,
       compute.deploymentId,
       "DOCKER_FILE_ERROR",
       compute.outboundPort,

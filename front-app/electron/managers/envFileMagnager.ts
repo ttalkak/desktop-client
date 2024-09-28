@@ -1,0 +1,39 @@
+import fs from "fs";
+import path from "path";
+
+// env 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
+export const envFileMaker = async (
+  envfilePath: string,
+  script: string
+): Promise<{ success: boolean; message: string }> => {
+  console.log("start DockerFilMaker!!!");
+  const directory = path.dirname(envfilePath); // 디렉토리 경로 추출
+  const fileName = ".env"; // 파일 이름 정의
+
+  // Dockerfile 경로 설정
+  const fullFilePath = path.join(directory, fileName);
+
+  try {
+    // 파일이 이미 존재하는지 확인
+    if (fs.existsSync(fullFilePath)) {
+      console.log(`.env already exists at ${fullFilePath}`);
+      return { success: false, message: ".env already exists" }; // 이미 파일이 존재하는 경우 반환
+    }
+
+    // 디렉토리가 존재하는지 확인하고 없으면 생성 (비동기식)
+    if (!fs.existsSync(directory)) {
+      console.log(`.env  does not exist. Creating directory: ${directory}`);
+      await fs.promises.mkdir(directory, { recursive: true }); // 디렉토리 생성
+    }
+
+    // 파일 생성 (비동기식)
+    console.log(`Creating .env at ${fullFilePath}...`);
+    await fs.promises.writeFile(fullFilePath, script, "utf8");
+    console.log(`.env successfully at ${fullFilePath}`);
+
+    return { success: true, message: ".env File created successfully" }; // 성공 시 반환
+  } catch (error) {
+    console.error("Error during .env creation:", error);
+    return { success: false, message: `Error: ${(error as Error).message}` }; // 실패 시 에러 메시지 반환
+  }
+};

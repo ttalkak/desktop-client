@@ -1,7 +1,7 @@
 import { useAppStore } from "../stores/appStatusStore";
-import { client } from "../utils/websocket/stompClientUtils";
-import { waitForSessionData } from "../utils/websocket/stompClientUtils";
-import { initializeStompClient } from "../utils/websocket/stompClientUtils";
+import { client } from "./websocket/stompClientUtils";
+import { waitForSessionData } from "./websocket/stompClientUtils";
+import { initializeStompClient } from "./websocket/stompClientUtils";
 import { setupClientHandlers } from "./stompClientService";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;

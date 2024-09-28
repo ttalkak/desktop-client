@@ -34,10 +34,13 @@ declare global {
     port: number;
   }
 
+  export interface EnvironmentVariables {
+    [key: string]: string;
+  }
   export interface DeploymentCommand {
     deploymentId: number;
     hasDockerImage: boolean;
-    envs?: EnvironmentVariables[];
+    envs?: EnvironmentVariables;
     containerName: string;
     serviceType: string;
     inboundPort?: number;
@@ -47,7 +50,6 @@ declare global {
     sourceCodeLink: string;
     dockerRootDirectory: string;
     branch: string;
-    databases?: databasesDTO[] | [];
     script?: string;
   }
 
@@ -80,8 +82,6 @@ declare global {
   }
 
   type EventCallback = (event: DockerEvent) => void;
-  // type EventErrorCallback = (error: string) => void;
-  // type EventEndCallback = () => void;
 
   interface DockerPort {
     IP: string;

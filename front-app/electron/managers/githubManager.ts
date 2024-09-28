@@ -59,7 +59,7 @@ async function downloadAndUnzip(
     const savePath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
 
     console.log("Downloading from:", repositoryUrl);
-    console.log("Saving to.. same with contextPath:", savePath);
+    console.log("Saving to:", savePath);
     console.log("Downloading ZIP file...");
 
     // 기존 파일이 있으면 삭제

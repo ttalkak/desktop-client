@@ -1,7 +1,7 @@
+import { useAuthStore } from "../../stores/authStore";
 import { client } from "./stompClientUtils";
 
 export function sendInstanceUpdate(
-  userId: string,
   deploymentId: number,
   status: string,
   port?: number,
@@ -13,8 +13,10 @@ export function sendInstanceUpdate(
     message: details || "",
   };
 
+  const userId = useAuthStore.getState().userSettings?.userId;
+
   const headers = {
-    "X-USER-ID": userId,
+    "X-USER-ID": userId || "0",
   };
 
   client?.publish({

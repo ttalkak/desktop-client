@@ -1,15 +1,15 @@
 import { Message } from "@stomp/stompjs";
-import { handleContainerCommand } from "../utils/deployments/deployCommandHandler";
+import { handleContainerCommand } from "./deployments/deployCommandHandler";
 import { sendPaymentInfo } from "./paymentService";
 import {
   startSendingCurrentState,
   stopContainerStatsMonitoring,
   stopSendingCurrentState,
-} from "../utils/monitoring/healthCheckPingUtils";
-import { client } from "../utils/websocket/stompClientUtils";
-import { sendComputeConnectMessage } from "../utils/websocket/sendComputeConnect";
+} from "./monitoring/healthCheckPingUtils";
+import { client } from "./websocket/stompClientUtils";
+import { sendComputeConnectMessage } from "./websocket/sendComputeConnect";
 import { useAppStore } from "../stores/appStatusStore";
-import { handleDockerBuild } from "../utils/deployments/dockerBuildHandler";
+import { handleDockerBuild } from "./deployments/dockerBuildHandler";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -32,7 +32,8 @@ export function setupClientHandlers(userId: string): void {
           if (compute.hasDockerImage) {
             // Docker 이미지 존재 시 처리
           } else {
-            await handleDockerBuild(compute, userId);
+            console.log(`compute-create started.. ${compute}`);
+            await handleDockerBuild(compute);
           }
         });
       }
@@ -43,7 +44,7 @@ export function setupClientHandlers(userId: string): void {
       async (message: Message) => {
         try {
           const { deploymentId, command } = JSON.parse(message.body);
-          handleContainerCommand(deploymentId, command, userId); // 컨테이너 명령 처리
+          handleContainerCommand(deploymentId, command); // 컨테이너 명령 처리
         } catch (error) {
           console.error("Error processing compute update message:", error);
         }

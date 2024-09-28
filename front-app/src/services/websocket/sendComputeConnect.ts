@@ -5,7 +5,7 @@ import {
   getTotalMemoryUsage,
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
-import { client } from "../websocket/stompClientUtils";
+import { client } from "./stompClientUtils";
 
 interface Deployment {
   deploymentId: number;

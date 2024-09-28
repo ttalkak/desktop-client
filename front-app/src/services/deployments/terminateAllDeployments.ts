@@ -23,11 +23,11 @@ export async function terminateAndRemoveContainersAndImages() {
         .details.outboundPort;
     if (container) {
       try {
-        sendInstanceUpdate(userId, deploymentId, "CLOUD_MANIPULATE", port);
+        sendInstanceUpdate(deploymentId, "WAITING", port, "cloud manipulate");
         await window.electronAPI.removeContainer(container.Id);
         console.log(`${container.Id} forcerDelected`);
       } catch (error) {
-        sendInstanceUpdate(userId, deploymentId, "ALLOCATE_ERROR", port);
+        sendInstanceUpdate(deploymentId, "ERROR", port, "allocate");
         console.error(`Error removing container ${container.Id}:`, error);
       }
     } else {
