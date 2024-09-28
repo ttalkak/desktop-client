@@ -1,7 +1,9 @@
 import { useAppStore } from "../stores/appStatusStore";
-import { checkDockerStatus, startDocker } from "../utils/dockerUtils";
+import { checkDockerStatus } from "./deployments/dockerUtils";
+import { startDocker } from "./deployments/dockerUtils";
+import { registerDockerEventHandlers } from "./deployments/dockerEventListner";
 import { connectWebSocket } from "./stompService";
-import { registerDockerEventHandlers } from "./../utils/dockerEventListner";
+
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
@@ -10,27 +12,28 @@ export const startService = async () => {
     console.log("1. ServiceUtil: Starting service");
     setServiceStatus("loading");
 
-    // 1. Docker 상태 확인 및 실행
+    // Docker 상태 확인 및 실행
     const dockerStatus = await checkDockerStatus();
     console.log("2. ServiceUtil: Docker status:", dockerStatus);
+
     if (dockerStatus !== "running") {
       console.log("3. ServiceUtil: Starting Docker");
       await startDocker();
     }
 
-    //도커 시작
     setDockerStatus("running");
     console.log("4. ServiceUtil: Docker is running");
 
-    // // Docker 이벤트 핸들러 등록
+    // Docker 이벤트 핸들러 등록
     registerDockerEventHandlers();
-    //도커 이벤트 감지 시작
     window.electronAPI.sendDockerEventRequest();
-    console.log("5. ServiceUtil: Docker event listener start");
+    console.log("5. ServiceUtil: Docker event listener started");
 
-    // 3. WebSocket 연결
+    // WebSocket 연결
     await connectWebSocket();
     console.log("6. ServiceUtil: WebSocket connected");
+
+    setServiceStatus("running");
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);
     setServiceStatus("stopped");

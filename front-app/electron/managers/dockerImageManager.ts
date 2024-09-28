@@ -2,6 +2,21 @@ import { docker } from "./dockerUtils";
 import * as fs from "fs";
 import path from "path";
 
+// Docker 이미지를 pull 받는 함수
+export async function pullDockerImage(imageName: string): Promise<void> {
+  const stream = await docker.pull(imageName);
+  return new Promise<void>((resolve, reject) => {
+    docker.modem.followProgress(stream, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`Docker image ${imageName} pulled successfully`);
+        resolve();
+      }
+    });
+  });
+}
+
 //이미지 빌드
 export async function buildDockerImage(
   contextPath: string,

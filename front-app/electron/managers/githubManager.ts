@@ -5,6 +5,7 @@ import { ipcMain } from "electron";
 import { dockerFileMaker } from "./dockerFileManager";
 import { findDockerfile } from "./dockerUtils";
 import { downloadFile, unzipFile, getTtalkakDirectory } from "../utils";
+import { envFileMaker } from "./envFileMagnager";
 
 const unlinkAsync = promisify(fs.unlink);
 const existsAsync = promisify(fs.exists);
@@ -28,7 +29,8 @@ export function getProjectSourceDirectory(): string {
 async function downloadAndUnzip(
   repositoryUrl: string,
   rootDirectory?: string,
-  script?: string
+  dockerFileScript?: string,
+  envs?: EnvironmentVariables
 ): Promise<{
   success: boolean;
   message?: string;
@@ -59,7 +61,7 @@ async function downloadAndUnzip(
     const savePath = `${extractDir}\\${repoName}-${safeBranchName}`; // 기본 압축 해제 경로//빌드위한 최상단 위치
 
     console.log("Downloading from:", repositoryUrl);
-    console.log("Saving to.. same with contextPath:", savePath);
+    console.log("Saving to:", savePath);
     console.log("Downloading ZIP file...");
 
     // 기존 파일이 있으면 삭제
@@ -102,25 +104,26 @@ async function downloadAndUnzip(
       };
     }
 
+    const contextPath = path.dirname(dockerfilePath);
+    if (envs) {
+      const { success } = await envFileMaker(contextPath, envs);
+    }
     //도커 파일이 없으면서 script는 있음
-    if (!dockerfilePath && script) {
-      const { success } = await dockerFileMaker(dockerfilePath, script);
+    if (!dockerfilePath && dockerFileScript) {
+      const { success } = await dockerFileMaker(contextPath, dockerFileScript);
       if (success) {
         return {
           success: true,
           message: "Dockerfile making success",
         };
       }
-    } else if (!dockerfilePath && !script)
+    } else if (!dockerfilePath && !dockerFileScript)
       // 둘다 없는 경우
       return {
         success: false,
         message: "Dockerfile not found in any subdirectory.",
       };
 
-    const contextPath = path.dirname(dockerfilePath);
-    // 성공 시 Dockerfile 경로와 함께 반환
-    console.log(`02. dockerfilePath 확인`, dockerfilePath);
     return { success: true, dockerfilePath, contextPath };
   } catch (error) {
     console.error("Error during download and unzip:", error);
@@ -137,8 +140,19 @@ ipcMain.handle("get-project-source-directory", async () => {
 export const githubDownLoadAndUnzip = (): void => {
   ipcMain.handle(
     "download-and-unzip",
-    async (_, repositoryUrl: string, rootDirectory: string) => {
-      return await downloadAndUnzip(repositoryUrl, rootDirectory);
+    async (
+      _,
+      repositoryUrl: string,
+      rootDirectory: string,
+      dockerFileScript: string,
+      envs: EnvironmentVariables
+    ) => {
+      return await downloadAndUnzip(
+        repositoryUrl,
+        rootDirectory,
+        dockerFileScript,
+        envs
+      );
     }
   );
 };

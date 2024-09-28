@@ -1,11 +1,11 @@
-import { disconnectWebSocket } from "../services/stompService";
+import { disconnectWebSocket } from "./stompService";
 import { useDockerStore, useAppStore } from "../stores/appStatusStore";
-import { terminateAndRemoveContainersAndImages } from "./deploymentRemoveUtils";
+import { terminateAndRemoveContainersAndImages } from "./deployments/terminateAllDeployments";
 import {
   stopSendingCurrentState,
   stopContainerStatsMonitoring,
   stopPeriodicContainerCheck,
-} from "../utils/healthCheckPingUtils";
+} from "./monitoring/healthCheckPingUtils";
 import { useDeploymentStore } from "../stores/deploymentStore";
 import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
 

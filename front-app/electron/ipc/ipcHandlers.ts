@@ -6,7 +6,11 @@ import {
   findDockerfile,
   docker,
 } from "../managers/dockerUtils";
-import { buildDockerImage, removeImage } from "../managers/dockerImageManager";
+import {
+  pullDockerImage,
+  buildDockerImage,
+  removeImage,
+} from "../managers/dockerImageManager";
 import {
   createContainerOptions,
   createContainer,
@@ -15,12 +19,20 @@ import {
   removeContainer,
 } from "../managers/dockerContainerManager";
 import Docker from "dockerode";
+import {
+  getDatabaseImageName,
+  pullDatabaseImage,
+} from "../managers/dockerDBManager";
 
+// IPC 핸들러들을 등록하는 함수
 export function registerIpcHandlers() {
+  // Docker 상태를 체크하는 핸들러
   ipcMain.handle("check-docker-status", checkDockerStatus);
 
+  // Docker 실행 파일 경로를 가져오는 핸들러
   ipcMain.handle("get-docker-path", getDockerPath);
 
+  // Docker Desktop을 실행하는 핸들러
   ipcMain.handle("open-docker-desktop", async (_event, dockerPath: string) => {
     if (!dockerPath) {
       throw new Error("Docker executable path not provided.");
@@ -35,6 +47,7 @@ export function registerIpcHandlers() {
     });
   });
 
+  // Docker 이미지를 조회하는 핸들러
   ipcMain.handle("fetch-docker-image", async (_event, imageId: string) => {
     try {
       return await docker.getImage(imageId).inspect();
@@ -44,6 +57,7 @@ export function registerIpcHandlers() {
     }
   });
 
+  // Docker 컨테이너 정보를 조회하는 핸들러
   ipcMain.handle(
     "fetch-docker-container",
     async (_event, containerId: string) => {
@@ -56,6 +70,7 @@ export function registerIpcHandlers() {
     }
   );
 
+  // 모든 Docker 이미지를 가져오는 핸들러
   ipcMain.handle("get-all-docker-images", async () => {
     try {
       return await docker.listImages({ all: true });
@@ -65,6 +80,7 @@ export function registerIpcHandlers() {
     }
   });
 
+  // 모든 Docker 컨테이너를 가져오는 핸들러 (옵션: 실행 중인 컨테이너만 or 모두)
   ipcMain.handle(
     "get-all-docker-containers",
     async (_event, all: boolean = false) => {
@@ -77,6 +93,7 @@ export function registerIpcHandlers() {
     }
   );
 
+  // 지정된 경로에서 Dockerfile을 찾는 핸들러
   ipcMain.handle("find-dockerfile", async (_event, directory: string) => {
     try {
       const dockerfilePath = await findDockerfile(directory);
@@ -87,6 +104,7 @@ export function registerIpcHandlers() {
     }
   });
 
+  // Docker 이미지를 빌드하는 핸들러
   ipcMain.handle(
     "build-docker-image",
     async (
@@ -112,10 +130,12 @@ export function registerIpcHandlers() {
     }
   );
 
+  // Docker 이미지를 삭제하는 핸들러
   ipcMain.handle("remove-image", async (_event, imageId: string) => {
     return removeImage(imageId);
   });
 
+  // 컨테이너 생성 옵션을 생성하는 핸들러
   ipcMain.handle(
     "create-container-options",
     async (
@@ -139,6 +159,7 @@ export function registerIpcHandlers() {
     }
   );
 
+  // Docker 컨테이너를 생성하는 핸들러
   ipcMain.handle(
     "create-container",
     async (_event, options: Docker.ContainerCreateOptions) => {
@@ -146,10 +167,12 @@ export function registerIpcHandlers() {
     }
   );
 
+  // Docker 컨테이너를 시작하는 핸들러
   ipcMain.handle("start-container", async (_event, containerId: string) => {
     return startContainer(containerId);
   });
 
+  // Docker 컨테이너를 생성하고 시작하는 핸들러
   ipcMain.handle(
     "create-and-start-container",
     async (_event, containerOptions: Docker.ContainerCreateOptions) => {
@@ -173,6 +196,7 @@ export function registerIpcHandlers() {
     }
   );
 
+  // Docker 컨테이너를 중지하는 핸들러
   ipcMain.handle("stop-container", async (_event, containerId: string) => {
     try {
       await stopContainer(containerId);
@@ -183,6 +207,7 @@ export function registerIpcHandlers() {
     }
   });
 
+  // Docker 컨테이너를 제거하는 핸들러
   ipcMain.handle(
     "remove-container",
     async (
@@ -197,6 +222,30 @@ export function registerIpcHandlers() {
         console.error(`Error removing container ${containerId}:`, err);
         return { success: false, error: (err as Error).message };
       }
+    }
+  );
+
+  // DB 타입에 따른 Docker 이미지 이름을 가져오는 핸들러
+  ipcMain.handle("get-database-image-name", (_event, databaseType: string) => {
+    return getDatabaseImageName(databaseType);
+  });
+
+  // Docker 이미지를 pull하는 핸들러
+  ipcMain.handle("pull-docker-image", async (_event, imageName: string) => {
+    try {
+      await pullDockerImage(imageName);
+      return { success: true };
+    } catch (error) {
+      console.error(`Failed to pull Docker image ${imageName}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // DB Docker 이미지를 pull 받는 핸들러
+  ipcMain.handle(
+    "pull-database-image",
+    async (_event, databaseType: string) => {
+      return await pullDatabaseImage(databaseType);
     }
   );
 }

@@ -1,8 +1,8 @@
-import { useAuthStore } from "../stores/authStore";
-import { useDockerStore } from "../stores/appStatusStore";
-import { sendInstanceUpdate } from "./sendUpdateUtils";
-import { useDeploymentStore } from "../stores/deploymentStore";
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
+import { useAuthStore } from "../../stores/authStore";
+import { useDockerStore } from "../../stores/appStatusStore";
+import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
+import { useDeploymentStore } from "../../stores/deploymentStore";
+import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 
 export async function terminateAndRemoveContainersAndImages() {
   const containers = useDockerStore.getState().dockerContainers;
@@ -23,11 +23,11 @@ export async function terminateAndRemoveContainersAndImages() {
         .details.outboundPort;
     if (container) {
       try {
-        sendInstanceUpdate(userId, deploymentId, "CLOUD_MANIPULATE", port);
+        sendInstanceUpdate(deploymentId, "WAITING", port, "cloud manipulate");
         await window.electronAPI.removeContainer(container.Id);
         console.log(`${container.Id} forcerDelected`);
       } catch (error) {
-        sendInstanceUpdate(userId, deploymentId, "ALLOCATE_ERROR", port);
+        sendInstanceUpdate(deploymentId, "ERROR", port, "allocate");
         console.error(`Error removing container ${container.Id}:`, error);
       }
     } else {

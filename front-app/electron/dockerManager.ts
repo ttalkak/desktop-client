@@ -1,3 +1,4 @@
+export { registerIpcHandlers } from "./ipc/ipcHandlers";
 export {
   checkDockerStatus,
   handlecheckDockerStatus,
@@ -12,5 +13,4 @@ export {
   removeContainer,
   createContainerOptions,
 } from "./managers/dockerContainerManager";
-export { registerIpcHandlers } from "./ipc/ipcHandlers";
 export { githubDownLoadAndUnzip } from "./managers/githubManager";

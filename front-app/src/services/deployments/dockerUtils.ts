@@ -1,4 +1,4 @@
-import { useDockerStore } from "../stores/appStatusStore";
+import { useDockerStore } from "../../stores/appStatusStore";
 
 // 도커 상태 확인 함수
 export const checkDockerStatus = async (): Promise<
