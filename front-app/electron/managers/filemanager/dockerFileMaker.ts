@@ -8,8 +8,8 @@ export const dockerFileMaker = async (
 ): Promise<{
   success: boolean;
   message: string;
-  contextPath?: string;
-  dockerFilePath?: string;
+  contextPath: string;
+  dockerFilePath: string;
 }> => {
   console.log("start DockerFilMaker!!!");
   const directory = path.dirname(dockerfilePath); // 디렉토리 경로 추출
@@ -50,6 +50,11 @@ export const dockerFileMaker = async (
     };
   } catch (error) {
     console.error("Error during Dockerfile creation:", error);
-    return { success: false, message: `Error: ${(error as Error).message}` }; // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      message: `Error: ${(error as Error).message}`,
+      contextPath: "",
+      dockerFilePath: "",
+    };
   }
 };
