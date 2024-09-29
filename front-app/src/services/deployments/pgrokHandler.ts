@@ -1,8 +1,17 @@
+import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
+
 const PGROK_URL = "pgrok.ttalkak.com:2222";
 
 // pgrok 실행 함수
 export async function startPgrok(compute: DeploymentCommand) {
   try {
+    sendInstanceUpdate(
+      compute.deploymentId,
+      "RUNNING",
+      compute.outboundPort,
+      "도메인 생성 시작"
+    );
+
     const message = await window.electronAPI.runPgrok(
       PGROK_URL,
       `http://localhost:${compute.outboundPort}`,
@@ -11,8 +20,20 @@ export async function startPgrok(compute: DeploymentCommand) {
       compute.subdomainName
     );
     console.log(`pgrok started: ${message}`);
+    sendInstanceUpdate(
+      compute.deploymentId,
+      "RUNNING",
+      compute.outboundPort,
+      "배포 완료"
+    );
   } catch (error) {
     console.error(`Failed to start pgrok: ${error}`);
+    sendInstanceUpdate(
+      compute.deploymentId,
+      "ERROR",
+      compute.outboundPort,
+      "도메인 생성 실패"
+    );
   }
 }
 

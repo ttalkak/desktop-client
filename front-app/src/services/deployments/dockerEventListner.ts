@@ -51,6 +51,10 @@ export const registerDockerEventHandlers = () => {
             `Error handling ${event.Action} event for image ${event.Actor.ID}:`,
             error
           );
+          return {
+            error: true,
+            message: `Failed to process image event: ${event.Action}`,
+          };
         }
         break;
       case "delete":
@@ -58,7 +62,10 @@ export const registerDockerEventHandlers = () => {
         break;
       default:
         console.log(`Unhandled image action: ${event.Action}`);
+        return { status: "unhandled", eventAction: event.Action };
     }
+
+    return { status: "success", eventAction: event.Action };
   };
 
   const handleContainerEvent = async (event: DockerEvent) => {
@@ -69,13 +76,13 @@ export const registerDockerEventHandlers = () => {
     const deploymentId = getDeploymentByContainer(event.Actor.ID);
     if (!deploymentId) {
       console.error(`No deployment found for container ID: ${event.Actor.ID}`);
-      return;
+      return { error: true, message: "No deployment found for container" };
     }
 
     const deploymentDetails = getDeploymentDetails(deploymentId);
     if (!deploymentDetails) {
       console.error(`No details found for deployment ID: ${deploymentId}`);
-      return;
+      return { error: true, message: "No details found for deployment" };
     }
 
     try {
@@ -84,19 +91,17 @@ export const registerDockerEventHandlers = () => {
           dockerStateManager.updateContainerState(event.Actor.ID, "created");
           break;
         case "start":
+          window.electronAPI.startContainerStats([event.Actor.ID]);
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
             "running"
           );
-
-          window.electronAPI.startContainerStats([event.Actor.ID]);
           break;
         case "stop":
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
             "stopped"
           );
-
           window.electronAPI.stopContainerStats([event.Actor.ID]);
           window.electronAPI.stopPgrok(deploymentId);
           break;
@@ -107,7 +112,6 @@ export const registerDockerEventHandlers = () => {
           );
           window.electronAPI.stopContainerStats([event.Actor.ID]);
           break;
-
         case "destroy":
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
@@ -130,25 +134,31 @@ export const registerDockerEventHandlers = () => {
           break;
         default:
           console.log(`Unhandled container action: ${event.Action}`);
+          return { status: "unhandled", eventAction: event.Action };
       }
     } catch (error) {
       console.error(
         `Error handling ${event.Action} event for container ${event.Actor.ID}:`,
         error
       );
+      return {
+        error: true,
+        message: `Failed to process container event: ${event.Action}`,
+      };
     }
+
+    return { status: "success", eventAction: event.Action };
   };
 
   const handleDockerEvent = (event: DockerEvent) => {
     switch (event.Type) {
       case "container":
-        handleContainerEvent(event);
-        break;
+        return handleContainerEvent(event);
       case "image":
-        handleImageEvent(event);
-        break;
+        return handleImageEvent(event);
       default:
         console.log(`Unknown event type: ${event.Type}`);
+        return { status: "unhandled", eventType: event.Type };
     }
   };
 
@@ -160,5 +170,3 @@ export const registerDockerEventHandlers = () => {
     // You might want to update some global error state here
   });
 };
-
-export default registerDockerEventHandlers;

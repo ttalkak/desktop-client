@@ -6,118 +6,127 @@ import { downloadFile, unzipFile, getTtalkakDirectory } from "../../utils";
 
 const unlinkAsync = promisify(fs.unlink);
 const existsAsync = promisify(fs.exists);
+const rmAsync = fs.promises.rm || fs.promises.rmdir; // Node.js 14 and above uses rm, below uses rmdir
 
-// 기본 프로젝트 소스 디렉토리 경로 설정
+// Define the base project source directory path
 export const projectSourceDirectory = path.join(
-  getTtalkakDirectory(), // Ttalkak의 기본 경로 가져오기
+  getTtalkakDirectory(), // Get the base directory for Ttalkak
   "project",
   "source"
 );
 
-// 프로젝트 소스 디렉토리를 반환하는 함수
+// Function to return the project source directory
 export function getProjectSourceDirectory(): string {
-  // 1. 프로젝트 소스 디렉토리 존재 여부 확인
+  // 1. Check if the project source directory exists
   if (!fs.existsSync(projectSourceDirectory)) {
     fs.mkdirSync(projectSourceDirectory, { recursive: true });
-    console.log(`1. 디렉토리가 생성되었습니다: ${projectSourceDirectory}`);
+    console.log(`1. Directory created: ${projectSourceDirectory}`);
   }
 
-  // 2. 디렉토리 경로 반환
+  // 2. Return the directory path
   return projectSourceDirectory;
 }
 
-// 레포지토리를 다운로드하고 압축을 해제한 후 Dockerfile과 컨텍스트 경로를 반환하는 함수
+// Function to download and unzip the repository, then return the Dockerfile and context path
 export async function downloadAndUnzip(
   repositoryUrl: string,
   rootDirectory: string
 ): Promise<{
   success: boolean;
-  found: boolean; // Dockerfile이 발견되었는지 여부 추가
+  found: boolean; // Indicates if the Dockerfile was found
   message?: string;
   contextPath?: string;
   dockerfilePath?: string;
 }> {
   try {
-    // 3. 다운로드 및 압축 해제 디렉토리 설정
+    // 3. Set download and extraction directories
     const downloadDir = getProjectSourceDirectory();
     const extractDir = getProjectSourceDirectory();
 
-    // 4. URL을 파싱하여 브랜치 이름과 레포지토리 이름 추출
+    // 4. Parse URL to extract branch name and repository name
     const urlParts = repositoryUrl.split("/");
     const branch = repositoryUrl.substring(
       repositoryUrl.indexOf("heads/") + 6,
       repositoryUrl.lastIndexOf(".zip")
     );
-    const safeBranchName = branch.replace(/\//g, "-"); // 브랜치 이름의 슬래시를 하이픈으로 대체
-    const repoName = urlParts[4].toLowerCase(); // 레포지토리 이름 추출
+    const safeBranchName = branch.replace(/\//g, "-"); // Replace slashes in branch name with hyphens
+    const repoName = urlParts[4].toLowerCase(); // Extract repository name
 
-    console.log("5. 레포 이름:", `${repoName}-${safeBranchName}`);
+    console.log("5. Repository name:", `${repoName}-${safeBranchName}`);
 
-    // 6. ZIP 파일 이름 및 경로 설정
+    // 6. Set ZIP file name and path
     const zipFileName = `${repoName}-${safeBranchName}.zip`;
     const zipFilePath = path.join(downloadDir, zipFileName);
     const savePath = `${extractDir}\\${repoName}-${safeBranchName}`;
 
-    console.log("7. 다운로드 경로:", repositoryUrl);
-    console.log("8. 저장 경로:", savePath);
-    console.log("9. ZIP 파일 다운로드 중...");
+    console.log("7. Download URL:", repositoryUrl);
+    console.log("8. Save path:", savePath);
+    console.log("9. Downloading ZIP file...");
 
-    // 10. 기존 ZIP 파일이 있으면 삭제
+    // 10. Delete existing ZIP file if it exists
     if (await existsAsync(zipFilePath)) {
-      console.log(`10. 기존 파일 삭제 중: ${zipFilePath}...`);
+      console.log(`10. Deleting existing file: ${zipFilePath}...`);
       await unlinkAsync(zipFilePath);
-      console.log("11. 기존 파일 삭제 완료.");
+      console.log("11. Existing file deleted.");
     }
 
-    // 12. 파일 다운로드
+    // 11. Delete existing extracted folder if it exists
+    if (await existsAsync(savePath)) {
+      console.log(`11. Deleting existing folder: ${savePath}...`);
+      await rmAsync(savePath, { recursive: true, force: true });
+      console.log("12. Existing folder deleted.");
+    }
+
+    // 12. Download the file
     await downloadFile(repositoryUrl, zipFilePath);
-    console.log("12. 다운로드 완료:", zipFilePath);
+    console.log("13. Download completed:", zipFilePath);
 
-    // 13. 파일 압축 해제
-    console.log("13. 파일 압축 해제 중...");
+    // 13. Unzip the file
+    console.log("14. Unzipping file...");
     await unzipFile(zipFilePath, extractDir);
-    console.log("14. 압축 해제 완료:", extractDir);
+    console.log("15. Unzipping completed:", extractDir);
 
-    // 15. 사용자가 제공한 rootDirectory를 고려하여 Docker 디렉토리 설정
-    const dockerDir = rootDirectory
+    // 16. Set Docker directory based on provided rootDirectory
+    let dockerDir = rootDirectory
       ? path.resolve(
           extractDir,
           `${repoName}-${safeBranchName}`,
           ...rootDirectory.split("/")
-        ) // rootDirectory가 제공된 경우 이를 경로에 포함
-      : path.resolve(extractDir, `${repoName}-${safeBranchName}`); // 제공되지 않으면 기본 경로 사용
+        ) // Include rootDirectory if provided
+      : path.resolve(extractDir, `${repoName}-${safeBranchName}`); // Use default path if rootDirectory is not provided
 
-    console.log(`15. Docker 디렉토리: ${dockerDir}`);
+    console.log(`16. Docker directory: ${dockerDir}`);
 
-    // 16. 디렉토리가 존재하지 않으면 오류 반환
+    // 17. Return an error if the directory does not exist
     if (!fs.existsSync(dockerDir)) {
       return {
         success: false,
         found: false,
-        message: `디렉토리를 찾을 수 없습니다: ${dockerDir}`,
+        message: `Directory not found: ${dockerDir}`,
       };
     }
 
-    // 17. Dockerfile 경로 찾기 및 존재 여부 확인
+    // 18. Find the Dockerfile path and check if it exists
     const { found, dockerfilePath } = await findDockerfile(dockerDir);
 
     if (!found) {
       console.log(
-        `17. Dockerfile이 없습니다. 기본 Dockerfile 경로 사용: ${dockerfilePath}`
+        `19. Dockerfile not found. Using default Dockerfile path: ${dockerDir}`
       );
     } else {
-      console.log(`18. Dockerfile이 발견되었습니다: ${dockerfilePath}`);
+      dockerDir = dockerfilePath;
+      console.log(`20. Dockerfile found: ${dockerDir}`);
     }
 
-    const contextPath = path.dirname(dockerfilePath); // Dockerfile의 부모 디렉토리를 컨텍스트 경로로 설정
+    const contextPath = path.dirname(dockerDir); // Set the context path as the parent directory of the Dockerfile
 
-    console.log(`19. 컨텍스트 경로: ${contextPath}`);
-
-    // 20. Dockerfile과 컨텍스트 경로를 성공적으로 반환
-    return { success: true, found, contextPath, dockerfilePath };
+    console.log(`21. Context path: ${contextPath}`);
+    console.log(`21. Dockerfile Path: ${dockerDir}`);
+    // 22. Return the Dockerfile and context path
+    return { success: true, found, contextPath, dockerfilePath: dockerDir };
   } catch (error) {
-    console.error("21. 다운로드 및 압축 해제 중 오류:", error);
-    // 실패 시 오류 메시지와 경로 반환
+    console.error("23. Error during download and unzip:", error);
+    // Return the error message and paths on failure
     return {
       success: false,
       found: false,

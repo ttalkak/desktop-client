@@ -13,7 +13,9 @@ export async function handleContainerCommand(
   const containerId = useDeploymentStore
     .getState()
     .getContainerByDeployment(deploymentId);
-
+  console.log(
+    `Retrieved containerId: ${containerId} for deploymentId: ${deploymentId}`
+  );
   if (!containerId) {
     console.error(`No container found for deploymentId: ${deploymentId}`);
     return;

@@ -29,9 +29,9 @@ export const dockerStateManager = {
     if ((newState = "error")) {
       sendInstanceUpdate(
         deploymentId,
-        newState.toUpperCase(),
+        "ERROR",
         compute?.outboundPort,
-        `Container ${newState}`
+        `dockerfile`
       );
     }
 
@@ -49,7 +49,7 @@ export const dockerStateManager = {
         deploymentId,
         newState.toUpperCase(),
         outboundPort,
-        `Container ${newState}`
+        `${newState}`
       );
     } else {
       console.error(`Container with ID ${containerId} not found in store.`);

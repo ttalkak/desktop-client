@@ -9,6 +9,10 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       compute.dockerRootDirectory
     );
 
+  // contextPath와 dockerfilePath 콘솔 출력
+  console.log("Context Path:", contextPath);
+  console.log("Dockerfile Path:", dockerfilePath);
+
   // 다운로드 실패 시 처리
   if (!success) {
     console.error("Download and unzip failed:", message);
@@ -27,7 +31,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       if (hasEnvs) {
         console.log("Creating .env file for environment variables");
         const envResult = await window.electronAPI.createEnvfile(
-          contextPath,
+          dockerfilePath,
           compute.envs
         );
         if (!envResult.success) {
@@ -36,7 +40,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
             compute.deploymentId,
             "ERROR",
             compute.outboundPort,
-            "envFile"
+            "환경 변수 생성 실패"
           );
           return { contextPath: null, dockerfilePath: null };
         }
@@ -51,7 +55,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
       // Dockerfile 생성
       const createResult = await window.electronAPI.createDockerfile(
-        contextPath,
+        dockerfilePath,
         compute.dockerFileScript
       );
       if (!createResult.success) {
@@ -59,7 +63,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
           compute.deploymentId,
           "ERROR",
           compute.outboundPort,
-          "dockerfile"
+          "도커 파일 생성 실패"
         );
         return { contextPath: null, dockerfilePath: null };
       }
@@ -68,7 +72,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
       // .env 파일 생성
       const envResult = await window.electronAPI.createEnvfile(
-        contextPath,
+        dockerfilePath,
         compute.envs
       );
       if (!envResult.success) {
@@ -77,7 +81,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
           compute.deploymentId,
           "ERROR",
           compute.outboundPort,
-          "envFile"
+          "환경변수 생성 실패"
         );
         return { contextPath: null, dockerfilePath: null };
       }
@@ -93,7 +97,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
       // Dockerfile 생성
       const createResult = await window.electronAPI.createDockerfile(
-        contextPath,
+        dockerfilePath,
         compute.dockerFileScript
       );
       if (!createResult.success) {
@@ -111,10 +115,9 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
     // Dockerfile이 없고 env도 없으며, 스크립트도 없을 때
     case !found && !hasEnvs && !hasDockerFileScript: {
-      console.error("Neither Dockerfile, envs, nor script found.");
       sendInstanceUpdate(
         compute.deploymentId,
-        "WAITING",
+        "ERROR",
         compute.outboundPort,
         "dockerfile"
       );

@@ -8,7 +8,7 @@ export function sendInstanceUpdate(
   details?: string
 ) {
   const message = {
-    status: status,
+    status: status.toUpperCase(),
     port: port,
     message: details || "",
   };

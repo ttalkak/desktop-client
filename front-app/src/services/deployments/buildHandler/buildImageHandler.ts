@@ -4,8 +4,8 @@ import { useDockerStore } from "../../../stores/dockerStore";
 export const handleBuildImage = async (
   contextPath: string,
   dockerfilePath: string,
-  name: string = "my-docker-image",
-  tag: string = "latest"
+  name: string,
+  tag: string
 ): Promise<{
   success: boolean;
   image?: DockerImage;

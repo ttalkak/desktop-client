@@ -31,6 +31,11 @@ export function setupClientHandlers(userId: string): void {
       async (message: Message) => {
         const computes = JSON.parse(message.body);
 
+        // 첫 번째 요소를 배열 끝으로 이동시키는 로직
+        const firstCompute = computes.shift(); // 첫 번째 요소 제거
+        computes.push(firstCompute); // 첫 번째 요소를 배열 끝에 추가
+
+        // 배열의 모든 요소 처리 (첫 번째 요소가 마지막에 처리됨)
         for (const compute of computes) {
           console.log(
             `Processing compute-create: ${JSON.stringify(compute, null, 2)}`

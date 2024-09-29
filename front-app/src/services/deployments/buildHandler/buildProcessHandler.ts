@@ -6,7 +6,6 @@ import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
 import { startContainerStatsMonitoring } from "../../monitoring/healthCheckPingUtils.ts";
 import { startPgrok } from "../pgrokHandler.ts";
 import { createAndStartContainer } from "./buildImageHandler.ts";
-import { dockerStateManager } from "../../storehandler/dockerStateHandler.ts";
 
 // 상수 정의
 const DEFAULT_INBOUND_PORT = 80;
@@ -20,19 +19,43 @@ export async function buildAndDeploy(
 ) {
   // Docker 이미지 빌드
   if (dockerfilePath) {
+    sendInstanceUpdate(
+      compute.deploymentId,
+      "PENDING",
+      compute.outboundPort,
+      "이미지 생성 시작.."
+    );
+
+    const imageName = compute.dockerImageName
+      ? compute.dockerImageName
+      : compute.subdomainName;
+
+    const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
+
     const { success, image } = await handleBuildImage(
       contextPath,
-      dockerfilePath
+      dockerfilePath,
+      imageName,
+      tagName
     );
 
     if (!image) {
       sendInstanceUpdate(
         compute.deploymentId,
-        "WAITING",
+        "ERROR",
         compute.outboundPort,
-        "dockerfile"
+        "이미지 생성에 실패했습니다..dockerfile을 확인하세요"
       );
       return;
+    }
+
+    if (success) {
+      sendInstanceUpdate(
+        compute.deploymentId,
+        "PENDING",
+        compute.outboundPort,
+        "이미지 생성 성공"
+      );
     }
     // 도커 이미지 추가 및 컨테이너 생성 및 시작
     await completeDeployment(compute, image);
@@ -46,6 +69,7 @@ async function completeDeployment(
 ) {
   useDockerStore.getState().addDockerImage(image);
 
+  //여기서 dockerstore에 저장됨
   const containerId = await createAndStartContainer(
     image,
     compute.inboundPort || DEFAULT_INBOUND_PORT,
@@ -55,7 +79,7 @@ async function completeDeployment(
   if (!containerId) {
     sendInstanceUpdate(
       compute.deploymentId,
-      "WAITING",
+      "ERROR",
       compute.outboundPort,
       "dockerfile"
     );
@@ -66,10 +90,8 @@ async function completeDeployment(
     compute.deploymentId,
     "RUNNING",
     compute.outboundPort,
-    "Service is now running"
+    "container 실행"
   );
-
-  dockerStateManager.addContainer;
 
   useDeploymentStore
     .getState()
