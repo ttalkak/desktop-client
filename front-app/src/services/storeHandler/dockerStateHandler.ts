@@ -1,5 +1,5 @@
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
-import { useDockerStore } from "../../stores/appStatusStore";
+import { useDockerStore } from "../../stores/dockerStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 

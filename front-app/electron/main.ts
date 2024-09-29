@@ -16,7 +16,6 @@ import {
   registerPgrokIpcHandlers,
   stopAllPgrokProcesses,
 } from "./managers/pgrokManager";
-import { githubDownLoadAndUnzip } from "./dockerManager";
 import {
   handleGetDockerEvent,
   handleGetContainerMemoryUsage,
@@ -43,7 +42,6 @@ let isQuiting = false;
 function registerIpcHandlers() {
   registerDockerIpcHandlers();
   registerPgrokIpcHandlers();
-  githubDownLoadAndUnzip();
   handleGetDockerEvent();
   handleGetContainerMemoryUsage();
   handleGetContainerStatsPeriodic();

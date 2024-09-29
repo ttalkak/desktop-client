@@ -1,5 +1,5 @@
 import React from "react";
-import { useDockerStore } from "../../stores/appStatusStore";
+import { useDockerStore } from "../../stores/dockerStore";
 
 const ImageList: React.FC = () => {
   const dockerImages = useDockerStore((state) => state.dockerImages);
