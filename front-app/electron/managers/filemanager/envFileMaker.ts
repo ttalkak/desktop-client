@@ -4,7 +4,7 @@ import path from "path";
 // .env 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
 export const envFileMaker = async (
   envfilePath: string,
-  envs: EnvironmentVariable
+  envs: Array<{ key: string; value: string }>
 ): Promise<{
   success: boolean;
   message: string;
@@ -36,9 +36,9 @@ export const envFileMaker = async (
       await fs.promises.mkdir(directory, { recursive: true }); // 디렉토리 생성
     }
 
-    // envs 객체를 key=value 형식으로 변환
-    const script = Object.entries(envs)
-      .map(([key, value]) => `${key}=${value}`) // key=value 형식으로 변환
+    // envs 배열을 key=value 형식으로 변환
+    const script = envs
+      .map(({ key, value }) => `${key}=${value}`) // key=value 형식으로 변환
       .join("\n"); // 각 항목을 줄바꿈(\n)으로 구분
 
     // 파일 생성 (비동기식)

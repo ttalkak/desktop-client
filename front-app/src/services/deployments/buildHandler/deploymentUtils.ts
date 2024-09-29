@@ -1,45 +1,117 @@
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils";
 
 export async function prepareDeploymentContext(compute: DeploymentCommand) {
+  const { hasEnvs, hasDockerFileScript } = determineDeploymentType(compute);
+
   const { success, found, contextPath, dockerfilePath, message } =
     await window.electronAPI.downloadAndUnzip(
       compute.sourceCodeLink,
       compute.dockerRootDirectory
     );
 
-  compute.hasDockerFile;
-
+  // 다운로드 실패 시 처리
   if (!success) {
     console.error("Download and unzip failed:", message);
-    sendInstanceUpdate(
-      compute.deploymentId,
-      "ERROR",
-      compute.outboundPort,
-      `dockerfile`
-    );
-    return { contextPath: null, dockerfilePath: null };
-  }
-
-  if (!contextPath || !dockerfilePath) {
-    console.error("Context path is missing");
-    sendInstanceUpdate(
-      compute.deploymentId,
-      "WAITING",
-      compute.outboundPort,
-      "dockerfile"
-    );
     return { contextPath: null, dockerfilePath: null };
   }
 
   let finalDockerfilePath = dockerfilePath;
+  let envFileCreated = false;
 
-  if (!found && compute.dockerFileScript) {
-    console.log("Creating Dockerfile from provided script");
-    const createResult = await window.electronAPI.createDockerfile(
-      contextPath,
-      compute.dockerFileScript
-    );
-    if (!createResult.success) {
+  // Switch문으로 조건 나누기
+  switch (true) {
+    // Dockerfile이 있을 때
+    case found: {
+      console.log("Dockerfile found");
+      // envs가 있는 경우 .env 파일 생성
+      if (hasEnvs) {
+        console.log("Creating .env file for environment variables");
+        const envResult = await window.electronAPI.createEnvfile(
+          contextPath,
+          compute.envs
+        );
+        if (!envResult.success) {
+          console.error("Failed to create .env file");
+          sendInstanceUpdate(
+            compute.deploymentId,
+            "ERROR",
+            compute.outboundPort,
+            "envFile"
+          );
+          return { contextPath: null, dockerfilePath: null };
+        }
+        envFileCreated = true;
+      }
+      break;
+    }
+
+    // Dockerfile이 없고 env가 있으며, 스크립트가 있을 때
+    case !found && hasEnvs && hasDockerFileScript: {
+      console.log("Dockerfile not found, creating Dockerfile and .env file");
+
+      // Dockerfile 생성
+      const createResult = await window.electronAPI.createDockerfile(
+        contextPath,
+        compute.dockerFileScript
+      );
+      if (!createResult.success) {
+        sendInstanceUpdate(
+          compute.deploymentId,
+          "ERROR",
+          compute.outboundPort,
+          "dockerfile"
+        );
+        return { contextPath: null, dockerfilePath: null };
+      }
+
+      finalDockerfilePath = createResult.dockerFilePath;
+
+      // .env 파일 생성
+      const envResult = await window.electronAPI.createEnvfile(
+        contextPath,
+        compute.envs
+      );
+      if (!envResult.success) {
+        console.error("Failed to create .env file");
+        sendInstanceUpdate(
+          compute.deploymentId,
+          "ERROR",
+          compute.outboundPort,
+          "envFile"
+        );
+        return { contextPath: null, dockerfilePath: null };
+      }
+      envFileCreated = true;
+      break;
+    }
+
+    // Dockerfile이 없고 env가 없으며 스크립트가 있을 때
+    case !found && !hasEnvs && hasDockerFileScript: {
+      console.log(
+        "Dockerfile not found, creating Dockerfile without .env file"
+      );
+
+      // Dockerfile 생성
+      const createResult = await window.electronAPI.createDockerfile(
+        contextPath,
+        compute.dockerFileScript
+      );
+      if (!createResult.success) {
+        sendInstanceUpdate(
+          compute.deploymentId,
+          "ERROR",
+          compute.outboundPort,
+          "dockerfile"
+        );
+        return { contextPath: null, dockerfilePath: null };
+      }
+      finalDockerfilePath = createResult.dockerFilePath;
+      break;
+    }
+
+    // Dockerfile이 없고 env도 없으며, 스크립트도 없을 때
+    case !found && !hasEnvs && !hasDockerFileScript: {
+      console.error("Neither Dockerfile, envs, nor script found.");
       sendInstanceUpdate(
         compute.deploymentId,
         "WAITING",
@@ -48,12 +120,13 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       );
       return { contextPath: null, dockerfilePath: null };
     }
-    if (createResult.contextPath && createResult.dockerFilePath) {
-      finalDockerfilePath = createResult.dockerFilePath;
-    }
+
+    default:
+      console.error("Unexpected case occurred in deployment preparation.");
+      return { contextPath: null, dockerfilePath: null };
   }
 
-  return { contextPath, dockerfilePath: finalDockerfilePath };
+  return { contextPath, dockerfilePath: finalDockerfilePath, envFileCreated };
 }
 
 export function determineDeploymentType(compute: DeploymentCommand) {

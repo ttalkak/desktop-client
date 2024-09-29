@@ -131,9 +131,10 @@ declare global {
     ) => Promise<{
       success: boolean;
       message: string;
-      contextPath?: string;
-      dockerFilePath?: string;
+      contextPath: string;
+      dockerFilePath: string;
     }>;
+
     createEnvfile: (
       envfilePath: string,
       envs: EnvironmentVariable[]
