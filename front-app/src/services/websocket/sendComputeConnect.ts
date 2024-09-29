@@ -1,4 +1,4 @@
-import { useDockerStore } from "../../stores/appStatusStore";
+import { useDockerStore } from "../../stores/dockerStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import {
   getRunningContainers,

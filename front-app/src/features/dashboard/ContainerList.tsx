@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
-import { useDockerStore } from "../../stores/appStatusStore";
+import { useDockerStore } from "../../stores/dockerStore";
 import Dockerode from "dockerode";
 
 const ContainerList: React.FC = () => {

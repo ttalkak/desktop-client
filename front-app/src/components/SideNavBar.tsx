@@ -3,8 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import { FaCircle } from "react-icons/fa";
 import { startService } from "../services/startService";
 import { useAppStore } from "../stores/appStatusStore";
-import { useDockerStore, useCpuStore } from "../stores/appStatusStore";
+import { useCpuStore } from "../stores/appStatusStore";
 import { useAuthStore } from "../stores/authStore";
+import { useDockerStore } from "../stores/dockerStore";
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);

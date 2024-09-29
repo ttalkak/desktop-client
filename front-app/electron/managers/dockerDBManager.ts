@@ -5,7 +5,7 @@ export function getDatabaseImageName(databaseType: string): string {
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
       return "mysql:latest";
-    case "POSTGRESQL":
+    case "POSTGRES":
       return "postgres:latest";
     case "REDIS":
       return "redis:latest";

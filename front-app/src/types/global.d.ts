@@ -1,6 +1,7 @@
 import Dockerode from "dockerode";
 export {};
 
+// Docker Related Types
 declare global {
   // Docker Basic Types
   type DockerImage = Dockerode.ImageInfo;
@@ -34,62 +35,6 @@ declare global {
     Type: string;
   }
 
-  // Container Stats Types
-  interface ContainerStatsError {
-    containerId: string;
-    error: string;
-  }
-
-  interface ContainerStats {
-    cpu_usage: number;
-    memory_usage: number;
-    container_id: string;
-    running_time: number;
-    blkio_read: number;
-    blkio_write: number;
-  }
-
-  interface CpuUsageData {
-    containerId: string;
-    cpuUsagePercent: number;
-  }
-
-  // Database 인터페이스
-  export interface Database {
-    databaseId: number;
-    databaseType: string;
-    name?: string | null; // 이름은 null이 될 수 있음
-    username: string;
-    password: string;
-    port: number;
-  }
-
-  // EnvironmentVariable 배열 정의
-  export interface EnvironmentVariable {
-    key: string;
-    value: string;
-  }
-
-  // DeploymentCommand 인터페이스 수정
-  export interface DeploymentCommand {
-    deploymentId: number;
-    serviceType: string; // 예: FRONTEND, BACKEND, web-service 등
-    hasDockerFile: boolean;
-    hasDockerImage: boolean;
-    containerName: string;
-    inboundPort: number;
-    outboundPort: number;
-    subdomainName: string;
-    subdomainKey: string;
-    sourceCodeLink: string;
-    databases?: Database[];
-    envs: EnvironmentVariable[]; // EnvironmentVariable 배열
-    dockerRootDirectory?: string; // 선택적 필드
-    dockerImageName?: string | null;
-    dockerImageTag?: string | null;
-    dockerFileScript?: string; // 선택적 필드
-  }
-
   // Docker Image Build Result
   interface BuildDockerImageResult {
     status: string;
@@ -97,45 +42,13 @@ declare global {
     message?: string;
   }
 
-  // Callback Types
-  type CpuUsageCallback = (cpuUsage: number) => void;
-  type ErrorCallback = (data: { containerId: string; error: string }) => void;
-  type EndCallback = (data: { containerId: string }) => void;
+  // Docker Logs
   type LogCallback = (log: string) => void;
 
-  // Electron API Interface
+  // Docker Event Listeners
   interface ElectronAPI {
-    // Window Management
-    minimizeWindow: () => void;
-    maximizeWindow: () => void;
-    closeWindow: () => void;
-
-    // System Operations
-    getOsType: () => Promise<string>;
-    terminateTasks: () => void;
-    onTerminated: (
-      callback: (event: Electron.IpcRendererEvent) => void
-    ) => void;
-    onTerminateError: (
-      callback: (event: Electron.IpcRendererEvent, error: string) => void
-    ) => void;
-
-    // Docker Status and Management
+    openDockerDesktop: (dockerPath: string | null) => Promise<void>;
     checkDockerStatus: () => Promise<"running" | "not running" | "unknown">;
-    fetchDockerImage: (imageId: string) => Promise<Dockerode.ImageInspectInfo>;
-    fetchDockerContainer: (
-      containerId: string
-    ) => Promise<Dockerode.ContainerInspectInfo>;
-    getDockerImages: () => Promise<DockerImage[]>;
-    getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
-    findDockerfile: (directory: string) => Promise<{
-      success: boolean;
-      dockerfilePath?: string;
-      message?: string;
-    }>;
-    getDockerExecutablePath: () => Promise<string | null>;
-    openDockerDesktop: (dockerPath: string) => Promise<void>;
-
     // Docker Events
     sendDockerEventRequest: () => void;
     onDockerEventResponse: (callback: EventCallback) => void;
@@ -155,93 +68,33 @@ declare global {
     onLogEnd: (callback: (data: { containerId: string }) => void) => void;
     removeAllLogListeners: () => void;
 
-    // Container Stats
-    getContainerMemoryUsage(containerId: string): Promise<{
-      success: boolean;
-      memoryUsage?: number;
-      error?: string;
-    }>;
-    startContainerStats: (containerIds: string[]) => Promise<{
-      success: boolean;
-      message: string;
-    }>;
-    stopContainerStats: (containerIds: string[]) => Promise<{
-      success: boolean;
-      stoppedContainers: string[];
-      notMonitoredContainers: string[];
-      message: string;
-    }>;
-    onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
-    onContainerStatsError: (
-      callback: (error: ContainerStatsError) => void
-    ) => void;
-    removeContainerStatsListeners: () => void;
-
-    // CPU Usage
-    getCpuUsage: () => Promise<number>;
-    removeAllCpuListeners: () => void;
-    monitorCpuUsage: () => void;
-
-    // Network and Port Management
-    getInboundRules: () => Promise<string>;
-    togglePort: (name: string, newEnabled: string) => Promise<void>;
-
-    // pgrok Operations
-    downloadPgrok: () => Promise<string>;
-    runPgrok: (
-      remoteAddr: string,
-      forwardAddr: string,
-      token: string,
-      deploymentId: number,
-      subdomainName: string
-    ) => Promise<string>;
-    onPgrokLog: (callback: LogCallback) => void;
-    stopPgrok: (deploymentId: number) => Promise<string>;
-
-    // Project and Source Code Management
-    getProjectSourceDirectory: () => Promise<string>;
-    downloadAndUnzip: (
-      sourceCodeLink?: string,
-      dockerRootDirectory?: string
-    ) => Promise<{
-      success: boolean;
-      message?: string;
-      dockerfilePath: string;
-      contextPath: string;
-    }>;
-    getDatabaseImageName: (databaseType: string) => Promise<string>;
+    // Docker Image and Container Operations
+    fetchDockerImage: (imageId: string) => Promise<Dockerode.ImageInspectInfo>;
+    fetchDockerContainer: (
+      containerId: string
+    ) => Promise<Dockerode.ContainerInspectInfo>;
+    getDockerImages: () => Promise<DockerImage[]>;
+    getDockerContainers: (all: boolean) => Promise<DockerContainer[]>;
+    //image, container manipulate
     pullDockerImage: (imageName: string) => Promise<{
       success: boolean;
       error?: string;
     }>;
-    joinPath: (...paths: string[]) => string;
-    // DB Docker 이미지를 pull하는 메서드
-    pullDatabaseImage: (
-      databaseType: string
-    ) => Promise<{ success: boolean; error?: string }>;
 
-    // Dockerfile을 처리하는 메서드
-    handleDockerfile: (
-      contextPath: string,
-      dockerFileScript?: string,
-      envs?: EnvironmentVariables
-    ) => Promise<{
-      success: boolean;
-      dockerfilePath?: string;
-      message?: string;
-    }>;
-
-    // Docker Image and Container Operations
     buildDockerImage: (
       contextPath: string,
-      dockerfilePath?: string,
+      dockerfilePath: string,
       imageName?: string,
       tag?: string
-    ) => Promise<BuildDockerImageResult>;
-    removeImage: (imageId: string) => Promise<{
+    ) => Promise<{
       success: boolean;
+      image?: DockerImage;
       error?: string;
     }>;
+
+    removeImage: (
+      imageId: string
+    ) => Promise<{ success: boolean; error?: string }>;
     createContainerOptions: (
       image: string,
       containerName?: string,
@@ -269,10 +122,142 @@ declare global {
     removeContainer: (
       containerId: string,
       options?: ContainerRemoveOptions
+    ) => Promise<{ success: boolean; error?: string }>;
+
+    // Dockerfile, env 생성 메서드
+    createDockerfile: (
+      dockerfilePath: string,
+      dockerFileScript: string
     ) => Promise<{
       success: boolean;
+      message: string;
+      contextPath?: string;
+      dockerFilePath?: string;
+    }>;
+    createEnvfile: (
+      envfilePath: string,
+      envs: EnvironmentVariable[]
+    ) => Promise<{ success: boolean; message?: string }>;
+  }
+
+  // Container Stats and CPU Usage Types
+  interface ContainerStatsError {
+    containerId: string;
+    error: string;
+  }
+
+  interface ContainerStats {
+    cpu_usage: number;
+    memory_usage: number;
+    container_id: string;
+    running_time: number;
+    blkio_read: number;
+    blkio_write: number;
+  }
+
+  interface CpuUsageData {
+    containerId: string;
+    cpuUsagePercent: number;
+  }
+
+  type CpuUsageCallback = (cpuUsage: number) => void;
+
+  // Container Stats Event Listeners
+  interface ElectronAPI {
+    getContainerMemoryUsage(containerId: string): Promise<{
+      success: boolean;
+      memoryUsage?: number;
       error?: string;
     }>;
+    startContainerStats: (containerIds: string[]) => Promise<{
+      success: boolean;
+      message: string;
+    }>;
+    stopContainerStats: (containerIds: string[]) => Promise<{
+      success: boolean;
+      stoppedContainers: string[];
+      notMonitoredContainers: string[];
+      message: string;
+    }>;
+    onContainerStatsUpdate: (callback: (stats: ContainerStats) => void) => void;
+    onContainerStatsError: (
+      callback: (error: ContainerStatsError) => void
+    ) => void;
+    removeContainerStatsListeners: () => void;
+
+    // CPU Usage
+    getCpuUsage: () => Promise<number>;
+    removeAllCpuListeners: () => void;
+    monitorCpuUsage: () => void;
+  }
+
+  export interface EnvironmentVariable {
+    key: string;
+    value: string;
+  }
+
+  export interface DeploymentCommand {
+    deploymentId: number;
+    serviceType: string;
+    hasDockerFile: boolean;
+    hasDockerImage: boolean;
+    containerName: string;
+    inboundPort: number;
+    outboundPort: number;
+    subdomainName: string;
+    subdomainKey: string;
+    sourceCodeLink: string;
+    dockerRootDirectory: string; // 선택적 필드에서 필수 필드로 변경
+    dockerFileScript: string; // 선택적 필드에서 필수 필드로 변경
+    envs: EnvironmentVariable[];
+    dockerImageName?: string | null; // 백엔드 db 설정 있을때
+    dockerImageTag?: string | null; // 백엔드 db 설정있을때
+  }
+
+  // pgrok Operations
+  interface ElectronAPI {
+    downloadPgrok: () => Promise<string>;
+    runPgrok: (
+      remoteAddr: string,
+      forwardAddr: string,
+      token: string,
+      deploymentId: number,
+      subdomainName: string
+    ) => Promise<string>;
+    onPgrokLog: (callback: LogCallback) => void;
+    stopPgrok: (deploymentId: number) => Promise<string>;
+  }
+
+  // System and Project Operations
+  interface ElectronAPI {
+    minimizeWindow: () => void;
+    maximizeWindow: () => void;
+    closeWindow: () => void;
+    getOsType: () => Promise<string>;
+    terminateTasks: () => void;
+    onTerminated: (
+      callback: (event: Electron.IpcRendererEvent) => void
+    ) => void;
+    onTerminateError: (
+      callback: (event: Electron.IpcRendererEvent, error: string) => void
+    ) => void;
+    getProjectSourceDirectory: () => Promise<string>;
+    downloadAndUnzip: (
+      sourceCodeLink?: string,
+      dockerRootDirectory?: string
+    ) => Promise<{
+      success: boolean;
+      found: boolean;
+      message?: string;
+      contextPath: string;
+      dockerfilePath: string;
+    }>;
+    getDatabaseImageName: (databaseType: string) => Promise<string>;
+    pullDatabaseImage: (
+      databaseType: string
+    ) => Promise<{ success: boolean; error?: string }>;
+
+    joinPath: (...paths: string[]) => string;
   }
 
   interface Window {

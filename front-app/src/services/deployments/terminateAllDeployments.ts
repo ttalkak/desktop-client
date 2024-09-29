@@ -1,5 +1,5 @@
 import { useAuthStore } from "../../stores/authStore";
-import { useDockerStore } from "../../stores/appStatusStore";
+import { useDockerStore } from "../../stores/dockerStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";

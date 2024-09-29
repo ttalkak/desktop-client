@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import ContainerList from "../features/dashboard/ContainerList";
 import ImageList from "../features/dashboard/ImageList";
-import { useAppStore, useDockerStore } from "../stores/appStatusStore";
+import { useAppStore } from "../stores/appStatusStore";
+import { useDockerStore } from "../stores/dockerStore";
 import {
   Tabs,
   TabsContent,

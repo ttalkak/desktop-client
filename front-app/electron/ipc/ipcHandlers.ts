@@ -17,14 +17,17 @@ import {
   startContainer,
   stopContainer,
   removeContainer,
-} from "../managers/dockerContainerManager";
+  dockerFileMaker,
+} from "../dockerManager";
+
 import Docker from "dockerode";
 import {
   getDatabaseImageName,
   pullDatabaseImage,
 } from "../managers/dockerDBManager";
-import { dockerFileMaker } from "../managers/filemanager/dockerFileMaker";
 import { envFileMaker } from "../managers/filemanager/envFileMaker";
+import { downloadAndUnzip } from "../managers/filemanager/downloadManager";
+import { getProjectSourceDirectory } from "../managers/filemanager/downloadManager";
 
 // IPC 핸들러들을 등록하는 함수
 export function registerIpcHandlers() {
@@ -47,6 +50,21 @@ export function registerIpcHandlers() {
       }
       console.log("Docker Desktop launched successfully.");
     });
+  });
+
+  //레포지토리 다운로드 및 압축 해제 처리
+  ipcMain.handle(
+    "download-and-unzip",
+    async (_, repositoryUrl: string, rootDirectory: string) => {
+      console.log("23. IPC: download-and-unzip called");
+      return await downloadAndUnzip(repositoryUrl, rootDirectory); // Asynchronously handle download and unzip
+    }
+  );
+
+  // IPC handler: Return the project source directory path
+  ipcMain.handle("get-project-source-directory", async () => {
+    console.log("22. IPC: get-project-source-directory called");
+    return getProjectSourceDirectory();
   });
 
   // Docker 이미지를 조회하는 핸들러
@@ -106,28 +124,27 @@ export function registerIpcHandlers() {
     }
   });
 
-  // Docker 이미지를 빌드하는 핸들러
+  // Docker 이미지 빌드 핸들러
   ipcMain.handle(
     "build-docker-image",
     async (
-      _event,
+      _,
       contextPath: string,
       dockerfilePath: string,
-      imageName: string = "myimage",
-      tag: string = "latest"
+      imageName: string,
+      tag: string
     ) => {
       try {
-        const buildResult = await buildDockerImage(
+        const result = await buildDockerImage(
           contextPath,
           dockerfilePath,
-          imageName.toLowerCase(),
-          tag.toLowerCase()
+          imageName,
+          tag
         );
-        console.log(buildResult.status);
-        return { success: true, image: buildResult.image };
+        return result; // 성공/실패에 맞는 결과 반환
       } catch (error) {
-        console.error("Error processing Docker image:", error);
-        return { success: false, message: (error as Error).message };
+        console.error("Error building Docker image:", error);
+        return { success: false, error: error }; // 오류가 발생하면 실패와 에러 메시지 반환
       }
     }
   );
@@ -251,6 +268,7 @@ export function registerIpcHandlers() {
     }
   );
 
+  //도커파일 생성 핸들러
   ipcMain.handle(
     "create-dockerfile",
     async (_event, dockerfilePath, dockerFileScript) => {

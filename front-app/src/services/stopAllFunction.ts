@@ -1,5 +1,6 @@
 import { disconnectWebSocket } from "./stompService";
-import { useDockerStore, useAppStore } from "../stores/appStatusStore";
+import { useAppStore } from "../stores/appStatusStore";
+import { useDockerStore } from "../stores/dockerStore";
 import { terminateAndRemoveContainersAndImages } from "./deployments/terminateAllDeployments";
 import {
   stopSendingCurrentState,

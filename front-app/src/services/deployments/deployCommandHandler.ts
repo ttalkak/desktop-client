@@ -1,7 +1,7 @@
 import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { handleDockerBuild } from "./dockerBuildHandler";
+import { handleDockerBuild } from "./buildHandler/buildDeployHandler";
 import { dockerStateManager } from "../storehandler/dockerStateHandler";
 
 export async function handleContainerCommand(

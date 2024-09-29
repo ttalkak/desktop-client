@@ -9,8 +9,7 @@ import {
 import { client } from "./websocket/stompClientUtils";
 import { sendComputeConnectMessage } from "./websocket/sendComputeConnect";
 import { useAppStore } from "../stores/appStatusStore";
-import { handleDockerBuild } from "./deployments/dockerBuildHandler";
-import { handleBuildImage } from "./deployments/dockerUtils";
+import { handleDockerBuild } from "./deployments/buildHandler/buildDeployHandler";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -20,41 +19,30 @@ export function setupClientHandlers(userId: string): void {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
 
-    sendComputeConnectMessage(userId); // WebSocket 연결 메시지 전송
-    sendPaymentInfo(userId); // 결제 정보 전송
+    // WebSocket 연결 시, 컴퓨트 연결 메시지 및 결제 정보 전송
+    sendComputeConnectMessage(userId);
+    sendPaymentInfo(userId);
     startSendingCurrentState(userId); // 배포 상태 PING 전송 시작
     setServiceStatus("running");
 
+    // compute-create 구독
     client.subscribe(
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
         const computes = JSON.parse(message.body);
 
-        computes.forEach(async (compute: DeploymentCommand) => {
+        for (const compute of computes) {
           console.log(
-            `compute-create started.. ${JSON.stringify(compute, null, 2)}`
+            `Processing compute-create: ${JSON.stringify(compute, null, 2)}`
           );
 
-          if (compute.serviceType == "FRONTEND") {
-            await handleDockerBuild(compute);
-          }
-
-          if (compute.serviceType == "BACKEND") {
-            if (compute.databases && compute.databases.length > 0) {
-              // databases가 존재할 때 DB 이미지 풀링
-              for (const db of compute.databases) {
-                console.log(`Pulling database image for ${db.databaseType}`);
-                await window.electronAPI.pullDatabaseImage(db.databaseType);
-              }
-            }
-
-            // DB 이미지 풀 이후 또는 databases가 없을 때 Docker 빌드 실행
-            await handleDockerBuild(compute);
-          }
-        });
+          // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
+          await handleDockerBuild(compute);
+        }
       }
     );
 
+    // compute-update 구독
     client.subscribe(
       `/sub/compute-update/${userId}`,
       async (message: Message) => {
@@ -67,12 +55,14 @@ export function setupClientHandlers(userId: string): void {
       }
     );
 
+    // WebSocket 오류 처리
     client.onStompError = (frame) => {
       console.error("Broker reported error: " + frame.headers["message"]);
       console.error("Additional details: " + frame.body);
       setWebsocketStatus("disconnected");
     };
 
+    // WebSocket 연결 해제 처리
     client.onDisconnect = () => {
       console.log("Disconnected");
       setWebsocketStatus("disconnected");
