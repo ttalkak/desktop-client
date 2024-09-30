@@ -20,7 +20,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
   }
 
   let finalDockerfilePath = dockerfilePath;
-  let envFileCreated = false;
+  // let envFileCreated = false;
 
   // Switch문으로 조건 나누기
   switch (true) {
@@ -28,24 +28,24 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
     case found: {
       console.log("Dockerfile found");
       // envs가 있는 경우 .env 파일 생성
-      if (hasEnvs) {
-        console.log("Creating .env file for environment variables");
-        const envResult = await window.electronAPI.createEnvfile(
-          dockerfilePath,
-          compute.envs
-        );
-        if (!envResult.success) {
-          console.error("Failed to create .env file");
-          sendInstanceUpdate(
-            compute.deploymentId,
-            "ERROR",
-            compute.outboundPort,
-            "환경 변수 생성 실패"
-          );
-          return { contextPath: null, dockerfilePath: null };
-        }
-        envFileCreated = true;
-      }
+      // if (hasEnvs) {
+      //   console.log("Creating .env file for environment variables");
+      //   const envResult = await window.electronAPI.createEnvfile(
+      //     dockerfilePath,
+      //     compute.envs
+      //   );
+      //   if (!envResult.success) {
+      //     console.error("Failed to create .env file");
+      //     sendInstanceUpdate(
+      //       compute.deploymentId,
+      //       "ERROR",
+      //       compute.outboundPort,
+      //       "환경 변수 생성 실패"
+      //     );
+      //     return { contextPath: null, dockerfilePath: null };
+      //   }
+      //   envFileCreated = true;
+      // }
       break;
     }
 
@@ -70,22 +70,22 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
       finalDockerfilePath = createResult.dockerFilePath;
 
-      // .env 파일 생성
-      const envResult = await window.electronAPI.createEnvfile(
-        dockerfilePath,
-        compute.envs
-      );
-      if (!envResult.success) {
-        console.error("Failed to create .env file");
-        sendInstanceUpdate(
-          compute.deploymentId,
-          "ERROR",
-          compute.outboundPort,
-          "환경변수 생성 실패"
-        );
-        return { contextPath: null, dockerfilePath: null };
-      }
-      envFileCreated = true;
+      // // .env 파일 생성
+      // const envResult = await window.electronAPI.createEnvfile(
+      //   dockerfilePath,
+      //   compute.envs
+      // );
+      // if (!envResult.success) {
+      //   console.error("Failed to create .env file");
+      //   sendInstanceUpdate(
+      //     compute.deploymentId,
+      //     "ERROR",
+      //     compute.outboundPort,
+      //     "환경변수 생성 실패"
+      //   );
+      //   return { contextPath: null, dockerfilePath: null };
+      // }
+      // envFileCreated = true;
       break;
     }
 

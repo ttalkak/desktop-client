@@ -2,12 +2,19 @@ import { docker } from "./dockerUtils";
 import Docker from "dockerode";
 
 //컨테이너 옵션 생성
+// 컨테이너 옵션 생성 함수 (envs를 조건부로 받도록 수정)
 export const createContainerOptions = (
   name: string,
   containerName: string,
   inboundPort: number = 80,
-  outboundPort: number = 8080
+  outboundPort: number = 8080,
+  envs?: Record<string, string> // envs를 조건부로 받음
 ): Docker.ContainerCreateOptions => {
+  // 환경 변수를 Docker 형식에 맞게 변환 (envs가 존재하는 경우)
+  const envArray = envs
+    ? Object.entries(envs).map(([key, value]) => `${key}=${value}`)
+    : [];
+
   return {
     Image: name,
     name: containerName,
@@ -24,6 +31,8 @@ export const createContainerOptions = (
             }
           : {},
     },
+    // envs가 있을 경우 Env 옵션에 환경 변수를 전달
+    Env: envArray.length > 0 ? envArray : undefined,
     Healthcheck: {
       Test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
       Interval: 30000000000,

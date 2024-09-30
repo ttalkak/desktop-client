@@ -15,8 +15,10 @@ const DEFAULT_OUTBOUND_PORT = 8080;
 export async function buildAndDeploy(
   compute: DeploymentCommand,
   contextPath: string,
-  dockerfilePath: string | null
+  dockerfilePath: string | null,
+  envs?: EnvironmentVariable[]
 ) {
+  console.log("수정예정", envs);
   // Docker 이미지 빌드
   if (dockerfilePath) {
     sendInstanceUpdate(

@@ -4,7 +4,7 @@ import { determineDeploymentType } from "./deploymentUtils";
 export async function processFrontendDeployment(
   compute: DeploymentCommand,
   contextPath: string,
-  dockerfilePath: string | null
+  dockerfilePath: string
 ) {
   const { hasEnvs, hasDockerFileScript } = determineDeploymentType(compute);
 
