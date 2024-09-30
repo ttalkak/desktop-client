@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { dockerFileHtmlPermission } from "./dockerFileHtmlPermission"; // 권한 설정 함수 가져오기
 
 // 도커파일이 없는 경우 파일을 생성 후 디렉토리에 넣어주는 함수 (비동기식)
 export const dockerFileMaker = async (
@@ -16,7 +17,7 @@ export const dockerFileMaker = async (
   const fileName = "Dockerfile"; // 파일 이름 정의
 
   // Dockerfile 경로 설정
-  const fullFilePath = path.join(dockerfilePath, fileName);
+  const fullFilePath = path.join(directory, fileName);
 
   try {
     // 파일이 이미 존재하는지 확인
@@ -25,7 +26,7 @@ export const dockerFileMaker = async (
       return {
         success: false,
         message: "Dockerfile already exists",
-        contextPath: dockerfilePath,
+        contextPath: directory,
         dockerFilePath: fullFilePath,
       }; // 이미 파일이 존재하는 경우 반환
     }
@@ -41,13 +42,28 @@ export const dockerFileMaker = async (
     await fs.promises.writeFile(fullFilePath, dockerFileScript, "utf8");
     console.log(`File created successfully at ${fullFilePath}`);
 
-    // 성공 시 contextPath (디렉토리 경로)와 dockerFilePath 반환
-    return {
-      success: true,
-      message: "File created successfully",
-      contextPath: directory,
-      dockerFilePath: fullFilePath,
-    };
+    // Dockerfile 생성 후, 권한 설정 로직 적용
+    const permissionResult = await dockerFileHtmlPermission(fullFilePath);
+
+    if (permissionResult.success) {
+      console.log(
+        `Permissions applied successfully to Dockerfile at: ${fullFilePath}`
+      );
+      return {
+        success: true,
+        message: "File created and permissions applied successfully",
+        contextPath: directory,
+        dockerFilePath: fullFilePath,
+      };
+    } else {
+      console.error(`Failed to apply permissions: ${permissionResult.message}`);
+      return {
+        success: false,
+        message: `File created but failed to apply permissions: ${permissionResult.message}`,
+        contextPath: directory,
+        dockerFilePath: fullFilePath,
+      };
+    }
   } catch (error) {
     console.error("Error during Dockerfile creation:", error);
     return {

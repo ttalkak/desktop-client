@@ -1,5 +1,6 @@
 import path from "node:path";
 import * as fs from "fs";
+import { dockerFileHtmlPermission } from "./dockerFileHtmlPermission";
 
 export function findDockerfile(directory: string): Promise<{
   found: boolean; // Dockerfile이 있는지 여부를 나타냄
@@ -19,7 +20,37 @@ export function findDockerfile(directory: string): Promise<{
 
       if (!stat.isDirectory() && file === "Dockerfile") {
         console.log(`Dockerfile found at: ${fullPath}`);
-        resolve({ found: true, dockerfilePath: fullPath }); // Dockerfile을 찾은 경우
+
+        // Dockerfile에 HTML 권한 설정 추가
+        dockerFileHtmlPermission(fullPath)
+          .then((result) => {
+            if (result.success) {
+              console.log(
+                `Dockerfile found and permissions applied successfully. ${result.success}`
+              );
+              resolve({
+                found: true,
+                dockerfilePath: fullPath,
+              });
+            } else {
+              console.log(
+                `Dockerfile found, but failed to apply permissions: ${result.message}`
+              );
+              resolve({
+                found: true,
+                dockerfilePath: fullPath,
+              });
+            }
+          })
+          .catch((error) => {
+            console.log(
+              `Dockerfile found, but failed to apply permissions due to error: ${error.message}`
+            );
+            reject({
+              found: true,
+              dockerfilePath: fullPath,
+            });
+          });
         return;
       }
     }
