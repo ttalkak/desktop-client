@@ -5,6 +5,12 @@ import { prepareDeploymentContext } from "./deploymentUtils.ts";
 
 export async function handleDockerBuild(compute: DeploymentCommand) {
   try {
+    // if (compute.dockerImageName && compute.serviceType == "BACKEND") {
+    //   //docker
+    // } else {
+
+    // }
+
     //env, dockerfile 여부 확인하고 생성 후 반환
     const { contextPath, dockerfilePath } = await prepareDeploymentContext(
       compute

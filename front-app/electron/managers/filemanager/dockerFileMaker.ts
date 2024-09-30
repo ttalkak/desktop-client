@@ -25,7 +25,7 @@ export const dockerFileMaker = async (
       return {
         success: false,
         message: "Dockerfile already exists",
-        contextPath: directory,
+        contextPath: dockerfilePath,
         dockerFilePath: fullFilePath,
       }; // 이미 파일이 존재하는 경우 반환
     }

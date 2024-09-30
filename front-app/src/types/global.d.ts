@@ -259,6 +259,9 @@ declare global {
     ) => Promise<{ success: boolean; error?: string }>;
 
     joinPath: (...paths: string[]) => string;
+    // 기타 기능들
+    getInboundRules: () => Promise<string>;
+    togglePort: (name: string, newEnabled: string) => Promise<void>;
   }
 
   interface Window {
