@@ -18,7 +18,6 @@ export async function buildAndDeploy(
   dockerfilePath: string | null,
   envs?: EnvironmentVariable[]
 ) {
-  console.log("수정예정", envs);
   // Docker 이미지 빌드
   if (dockerfilePath) {
     sendInstanceUpdate(
@@ -75,7 +74,8 @@ async function completeDeployment(
   const containerId = await createAndStartContainer(
     image,
     compute.inboundPort || DEFAULT_INBOUND_PORT,
-    compute.outboundPort || DEFAULT_OUTBOUND_PORT
+    compute.outboundPort || DEFAULT_OUTBOUND_PORT,
+    compute.envs
   );
 
   if (!containerId) {

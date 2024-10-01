@@ -129,7 +129,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       return { contextPath: null, dockerfilePath: null };
   }
 
-  return { contextPath, dockerfilePath: finalDockerfilePath, envFileCreated };
+  return { contextPath, dockerfilePath: finalDockerfilePath };
 }
 
 export function determineDeploymentType(compute: DeploymentCommand) {

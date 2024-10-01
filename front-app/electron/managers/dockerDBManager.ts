@@ -1,23 +1,27 @@
 import { docker } from "./dockerUtils";
-import {
-  createContainer,
-  startContainer,
-  createContainerOptions,
-} from "./dockerContainerManager";
+import { createContainer, startContainer } from "./dockerContainerManager";
+import { createContainerOptions } from "./dockerContainerManager";
 
-// DB 타입에 따른 이미지 이름을 반환하는 함수
-export function getDatabaseImageName(databaseType: string): string {
+type EnvVar = { key: string; value: string };
+
+interface DatabaseConfig {
+  imageName: string;
+  defaultPort: number;
+}
+
+// DB 타입에 따른 이미지 이름과 기본 포트를 반환하는 함수
+function getDatabaseConfig(databaseType: string): DatabaseConfig {
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
-      return "mysql:latest";
+      return { imageName: "mysql", defaultPort: 3306 };
     case "POSTGRES":
-      return "postgres:latest";
+      return { imageName: "postgres", defaultPort: 5432 };
     case "REDIS":
-      return "redis:latest";
+      return { imageName: "redis", defaultPort: 6379 };
     case "MONGODB":
-      return "mongo:latest";
+      return { imageName: "mongo", defaultPort: 27017 };
     case "MARIADB":
-      return "mariadb:latest";
+      return { imageName: "mariadb", defaultPort: 3306 };
     default:
       throw new Error(`Unsupported database type: ${databaseType}`);
   }
@@ -28,7 +32,7 @@ export async function pullDatabaseImage(
   databaseType: string
 ): Promise<{ success: boolean; tag?: string; error?: string }> {
   try {
-    const imageName = getDatabaseImageName(databaseType);
+    const { imageName } = getDatabaseConfig(databaseType);
     console.log(`Pulling Docker image for ${databaseType}: ${imageName}`);
 
     // 이미지 풀
@@ -45,47 +49,33 @@ export async function pullDatabaseImage(
   }
 }
 
-// 환경 변수를 Docker-friendly 형식으로 변환하는 함수
-// Record<string, string>을 Docker에 맞는 string[]로 변환
-// const formattedEnvs = Object.entries(envObject).map(
-//   ([key, value]) => `${key}=${value}`
-// );
-
 // DB 타입을 입력받아 Docker 이미지를 pull하고 컨테이너를 시작하는 함수
 export async function pullAndStartDatabaseContainer(
   databaseType: string,
   containerName: string,
-  inboundPort: number,
   outboundPort: number,
-  envs: Array<{ key: string; value: string }> // Accept envs as an array of objects
+  envs: EnvVar[]
 ): Promise<{ success: boolean; containerId?: string; error?: string }> {
   try {
-    // DB 타입을 기반으로 이미지 이름 반환
-    const imageName = getDatabaseImageName(databaseType);
+    const { imageName, defaultPort } = getDatabaseConfig(databaseType);
     console.log(`Pulling Docker image for ${databaseType}: ${imageName}`);
 
     await pullDatabaseImage(databaseType);
     console.log(`Successfully pulled Docker image for ${databaseType}`);
 
-    // 환경 변수를 Docker에서 사용할 수 있도록 변환
-    const formattedEnvs = formattedEnvs(envs);
-
-    // 컨테이너 옵션 생성 (환경 변수를 포함)
     const options = createContainerOptions(
       imageName,
       containerName,
-      inboundPort,
-      outboundPort,
-      formattedEnvs // Pass the formatted envs
+      defaultPort,
+      outboundPort || defaultPort,
+      envs
     );
 
-    // 컨테이너 생성
     const { success, containerId, error } = await createContainer(options);
     if (!success || !containerId) {
       throw new Error(`Error creating container: ${error}`);
     }
 
-    // 컨테이너 시작
     const startResult = await startContainer(containerId);
     if (!startResult.success) {
       throw new Error(`Error starting container: ${startResult.error}`);
