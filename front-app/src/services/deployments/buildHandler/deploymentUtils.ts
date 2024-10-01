@@ -70,7 +70,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
 
       finalDockerfilePath = createResult.dockerFilePath;
 
-      // // .env 파일 생성
+      // .env 파일 생성
       // const envResult = await window.electronAPI.createEnvfile(
       //   dockerfilePath,
       //   compute.envs
