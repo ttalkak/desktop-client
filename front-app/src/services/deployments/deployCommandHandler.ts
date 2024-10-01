@@ -1,7 +1,5 @@
-import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
-import { useDeploymentStore } from "../../stores/deploymentStore";
+import useDeploymentStore from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { handleDockerBuild } from "./buildHandler/buildDeployHandler";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 
 export async function handleContainerCommand(
@@ -12,20 +10,21 @@ export async function handleContainerCommand(
 
   const containerId = useDeploymentStore
     .getState()
-    .getContainerByDeployment(deploymentId);
-  console.log(
-    `Retrieved containerId: ${containerId} for deploymentId: ${deploymentId}`
-  );
+    .getContainerIdByDeploymentIdWithoutDockerImage(deploymentId);
+
+  if (containerId === null) {
+    console.error(`No container found for deploymentId: ${deploymentId}`);
+    return;
+  }
+
+  const deployment = useDeploymentStore.getState().containers[containerId];
+
   if (!containerId) {
     console.error(`No container found for deploymentId: ${deploymentId}`);
     return;
   }
 
-  const compute =
-    useDeploymentDetailsStore.getState().deploymentDetails[deploymentId]
-      ?.details;
-
-  if (!compute) {
+  if (!deployment) {
     console.error(
       `No deployment details found for deploymentId: ${deploymentId}`
     );
@@ -88,11 +87,11 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             deploymentId,
             "DELETED",
-            compute.outboundPort,
+            deployment.outboundPort,
             `successfully deleted`
           );
           dockerStateManager.removeContainer(containerId);
-          useDeploymentStore.getState().removeDeployment(deploymentId);
+          useDeploymentStore.getState().removeContainer(containerId);
         } else {
           console.error(`${deploymentId} delete failed`);
         }
@@ -100,20 +99,6 @@ export async function handleContainerCommand(
       break;
 
     case "REBUILD":
-      {
-        console.log(`Rebuilding container for deploymentId: ${deploymentId}`);
-
-        // Stop and remove existing container
-        await window.electronAPI.stopContainerStats([containerId]);
-        await window.electronAPI.stopLogStream(containerId);
-        await window.electronAPI.stopPgrok(deploymentId);
-        await window.electronAPI.stopContainer(containerId);
-        dockerStateManager.removeContainer(containerId);
-        await window.electronAPI.removeContainer(containerId);
-
-        // Rebuild
-        await handleDockerBuild(compute);
-      }
       break;
 
     default:

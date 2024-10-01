@@ -1,8 +1,7 @@
 import { useAuthStore } from "../../stores/authStore";
 import { useDockerStore } from "../../stores/dockerStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { useDeploymentStore } from "../../stores/deploymentStore";
-import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
+import useDeploymentStore from "../../stores/deploymentStore";
 
 export async function terminateAndRemoveContainersAndImages() {
   const containers = useDockerStore.getState().dockerContainers;
@@ -15,13 +14,12 @@ export async function terminateAndRemoveContainersAndImages() {
   // 1. 모든 컨테이너 종료 및 삭제
   const containerPromises = containers.map(async (container) => {
     // 컨테이너 종료 및 삭제
-    const deploymentId = useDeploymentStore
-      .getState()
-      .getDeploymentByContainer(container.Id);
-    const port =
-      useDeploymentDetailsStore.getState().deploymentDetails[deploymentId]
-        .details.outboundPort;
-    if (container) {
+
+    // 해당 container의 deployment 정보를 가져옵니다.
+    const deployment = useDeploymentStore.getState().containers[container.Id];
+    const deploymentId = deployment.deploymentId;
+    const port = deployment.outboundPort;
+    if (container && deploymentId) {
       try {
         sendInstanceUpdate(deploymentId, "WAITING", port, "cloud manipulate");
         await window.electronAPI.removeContainer(container.Id);

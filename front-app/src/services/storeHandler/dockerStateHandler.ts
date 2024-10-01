@@ -1,6 +1,5 @@
-import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
 import { useDockerStore } from "../../stores/dockerStore";
-import { useDeploymentStore } from "../../stores/deploymentStore";
+import useDeploymentStore from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 
 export const dockerStateManager = {
@@ -9,13 +8,10 @@ export const dockerStateManager = {
     const { updateDockerContainer, dockerContainers } =
       useDockerStore.getState();
 
-    const deploymentId = useDeploymentStore
-      .getState()
-      .getDeploymentByContainer(containerId);
-
-    const compute = useDeploymentDetailsStore
-      .getState()
-      .getDeploymentDetails(deploymentId)?.details;
+    // 해당 container의 deployment 정보를 가져옵니다.
+    const deployment = useDeploymentStore.getState().containers[containerId];
+    const deploymentId = deployment ? deployment.deploymentId : undefined;
+    const compute = deployment;
 
     if (!deploymentId) {
       console.error(`No deployment found for container ID: ${containerId}`);
@@ -25,16 +21,6 @@ export const dockerStateManager = {
     if (!compute) {
       console.error(`no deployment detail for ${deploymentId} `);
     }
-
-    if ((newState = "error")) {
-      sendInstanceUpdate(
-        deploymentId,
-        "ERROR",
-        compute?.outboundPort,
-        `dockerfile`
-      );
-    }
-
     const container = dockerContainers.find((c) => c.Id === containerId);
 
     if (container) {
@@ -43,14 +29,23 @@ export const dockerStateManager = {
         `Store: ContainerID ${containerId} state updated to '${newState}'.`
       );
 
-      const outboundPort = compute?.outboundPort;
+      if ((newState = "error")) {
+        sendInstanceUpdate(
+          deploymentId,
+          "ERROR",
+          compute?.outboundPort,
+          `dockerfile`
+        );
+      }
 
-      sendInstanceUpdate(
-        deploymentId,
-        newState.toUpperCase(),
-        outboundPort,
-        `${newState}`
-      );
+      if ((newState = "error")) {
+        sendInstanceUpdate(
+          deploymentId,
+          "ERROR",
+          compute?.outboundPort,
+          `dockerfile`
+        );
+      }
     } else {
       console.error(`Container with ID ${containerId} not found in store.`);
     }

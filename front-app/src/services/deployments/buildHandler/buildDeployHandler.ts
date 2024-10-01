@@ -1,7 +1,6 @@
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
-import { processFrontendDeployment } from "./buildFrontHandler.ts";
-import { processBackendDeployment } from "./buildBackHandler.ts";
 import { prepareDeploymentContext } from "./deploymentUtils.ts";
+import { buildAndDeploy } from "./buildProcessHandler.ts";
 
 export async function handleDockerBuild(compute: DeploymentCommand) {
   try {
@@ -26,24 +25,26 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
       }
     }
 
-    //compute env, dockerfile 여부 확인하고 생성 후 반환
-    const { contextPath, dockerfilePath } = await prepareDeploymentContext(
-      compute
-    );
+    if (compute.sourceCodeLink) {
+      //compute env, dockerfile 여부 확인하고 생성 후 반환
+      const { contextPath, dockerfilePath } = await prepareDeploymentContext(
+        compute
+      );
 
-    if (!contextPath) {
-      return; // prepareDeploymentContext 내에서 에러 처리 및 상태 업데이트 수행
-    }
+      if (!contextPath) {
+        return;
+      }
 
-    switch (compute.serviceType) {
-      case "FRONTEND":
-        await processFrontendDeployment(compute, contextPath, dockerfilePath);
-        break;
-      case "BACKEND":
-        await processBackendDeployment(compute, contextPath, dockerfilePath);
-        break;
-      default:
-        break;
+      switch (compute.serviceType) {
+        case "FRONTEND":
+          await buildAndDeploy(compute, contextPath, dockerfilePath);
+          break;
+        case "BACKEND":
+          await buildAndDeploy(compute, contextPath, dockerfilePath);
+          break;
+        default:
+          break;
+      }
     }
   } catch (error) {
     console.error("Error during Docker build and setup:", error);
@@ -51,7 +52,7 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
       compute.deploymentId,
       "ERROR",
       compute.outboundPort,
-      `dockerfile`
+      `fail to build`
     );
   }
 }

@@ -1,11 +1,13 @@
 import { useDockerStore } from "../../../stores/dockerStore.tsx";
-import { useDeploymentStore } from "../../../stores/deploymentStore.tsx";
-import { useDeploymentDetailsStore } from "../../../stores/deploymentDetailsStore.tsx";
 import { handleBuildImage } from "./buildImageHandler.ts";
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
 import { startContainerStatsMonitoring } from "../../monitoring/healthCheckPingUtils.ts";
 import { startPgrok } from "../pgrokHandler.ts";
 import { createAndStartContainer } from "./buildImageHandler.ts";
+import {
+  useDeploymentStore,
+  Deployment,
+} from "../../../stores/deploymentStore.tsx";
 
 // 상수 정의
 const DEFAULT_INBOUND_PORT = 80;
@@ -15,8 +17,7 @@ const DEFAULT_OUTBOUND_PORT = 8080;
 export async function buildAndDeploy(
   compute: DeploymentCommand,
   contextPath: string,
-  dockerfilePath: string | null,
-  envs?: EnvironmentVariable[]
+  dockerfilePath: string | null
 ) {
   // Docker 이미지 빌드
   if (dockerfilePath) {
@@ -88,22 +89,33 @@ async function completeDeployment(
     return;
   }
 
+  // Deployment 정보를 DeploymentStore에 추가
+  const deployment: Deployment = {
+    deploymentId: compute.deploymentId,
+    serviceType: compute.serviceType,
+    hasDockerFile: !!compute.hasDockerFile,
+    hasDockerImage: compute.hasDockerImage,
+    containerName: compute.containerName,
+    inboundPort: compute.inboundPort,
+    outboundPort: compute.outboundPort,
+    subdomainName: compute.subdomainName,
+    subdomainKey: compute.subdomainKey,
+    sourceCodeLink: compute.sourceCodeLink,
+    dockerRootDirectory: compute.dockerRootDirectory,
+    dockerFileScript: compute.dockerFileScript,
+    envs: compute.envs,
+    dockerImageName: compute.dockerImageName,
+    dockerImageTag: compute.dockerImageTag,
+  };
+
+  useDeploymentStore.getState().addContainer(containerId, deployment);
+
   sendInstanceUpdate(
     compute.deploymentId,
     "RUNNING",
     compute.outboundPort,
     "container 실행"
   );
-
-  useDeploymentStore
-    .getState()
-    .addDeployment(compute.deploymentId, containerId);
-  useDeploymentDetailsStore
-    .getState()
-    .setRepoUrl(compute.deploymentId, compute.sourceCodeLink);
-  useDeploymentDetailsStore
-    .getState()
-    .setDeploymentDetails(compute.deploymentId, compute);
 
   window.electronAPI.startContainerStats([containerId]);
   window.electronAPI.startLogStream(containerId);

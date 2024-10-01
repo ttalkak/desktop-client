@@ -1,43 +1,87 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-interface DeploymentState {
-  deployments: { [deploymentId: number]: string }; // deploymentId를 키로 하고 containerId를 값으로 갖는 객체
-  addDeployment: (deploymentId: number, containerId: string) => void;
-  removeDeployment: (deploymentId: number) => void;
-  getContainerByDeployment: (deploymentId: number) => string;
-  getDeploymentByContainer: (containerId: string) => number;
-  clearAllDeployments: () => void;
+export interface Deployment {
+  deploymentId: number;
+  serviceType: string;
+  hasDockerFile?: boolean;
+  hasDockerImage?: boolean;
+  containerName?: string;
+  inboundPort: number;
+  outboundPort: number;
+  subdomainName: string;
+  subdomainKey?: string;
+  sourceCodeLink: string;
+  dockerRootDirectory?: string;
+  dockerFileScript?: string;
+  envs?: EnvironmentVariable[];
+  dockerImageName?: string | null;
+  dockerImageTag?: string | null;
+  deploymentUrl?: string;
 }
 
-export const useDeploymentStore = create<DeploymentState>()(
+export interface DeploymentStore {
+  containers: Record<string, Deployment>;
+  addContainer: (containerId: string, deployment: Deployment) => void;
+  removeContainer: (containerId: string) => void;
+  clearAllContainers: () => void;
+  getContainersByDeployment: (deploymentId: number) => string[];
+  getContainerIdByDeploymentIdWithoutDockerImage: (
+    deploymentId: number
+  ) => string | null;
+}
+
+export const useDeploymentStore = create<DeploymentStore>()(
   persist(
     (set, get) => ({
-      deployments: {},
-      addDeployment: (deploymentId, containerId) =>
+      containers: {},
+
+      addContainer: (containerId: string, newDeployment: Deployment) => {
         set((state) => ({
-          deployments: { ...state.deployments, [deploymentId]: containerId },
-        })),
-      removeDeployment: (deploymentId) =>
-        set((state) => {
-          const { [deploymentId]: _, ...rest } = state.deployments;
-          return { deployments: rest };
-        }),
-      getContainerByDeployment: (deploymentId) =>
-        get().deployments[deploymentId],
-      getDeploymentByContainer: (containerId) => {
-        const entries = Object.entries(get().deployments);
-        const found = entries.find(([_, value]) => value === containerId);
-        return found ? Number(found[0]) : 0;
+          containers: {
+            ...state.containers,
+            [containerId]: newDeployment,
+          },
+        }));
       },
-      clearAllDeployments: () =>
-        set(() => ({
-          deployments: {},
-        })),
+
+      removeContainer: (containerId: string) => {
+        set((state) => {
+          const { [containerId]: _, ...remainingContainers } = state.containers;
+          return { containers: remainingContainers };
+        });
+      },
+
+      clearAllContainers: () => {
+        set({ containers: {} });
+      },
+
+      getContainersByDeployment: (deploymentId: number) => {
+        const state = get();
+        return Object.entries(state.containers)
+          .filter(([_, deployment]) => deployment.deploymentId === deploymentId)
+          .map(([containerId, _]) => containerId);
+      },
+
+      getContainerIdByDeploymentIdWithoutDockerImage: (
+        deploymentId: number
+      ) => {
+        const state = get();
+        const entry = Object.entries(state.containers).find(
+          ([_, deployment]) =>
+            deployment.deploymentId === deploymentId &&
+            (deployment.dockerImageName === null ||
+              deployment.dockerImageName === undefined ||
+              deployment.dockerImageName === "")
+        );
+        return entry ? entry[0] : null;
+      },
     }),
     {
-      name: "deploymentStore",
+      name: "deployments",
       storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
+
+export default useDeploymentStore;

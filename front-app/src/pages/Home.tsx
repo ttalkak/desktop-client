@@ -1,11 +1,20 @@
+import React from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
 import PaymentStatusItem from "../features/home/PaymentStatusItem";
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore"; // 스토어 import
+import useDeploymentStore from "../stores/deploymentStore";
 
-const Home = () => {
-  const deploymentDetails = useDeploymentDetailsStore(
-    (state) => state.deploymentDetails
-  );
+const Home: React.FC = () => {
+  const containers = useDeploymentStore((state) => state.containers);
+
+  const getUrl = (deployment: any) => {
+    let subdomain = deployment.subdomainName;
+    if (!subdomain && deployment.serviceType === "BACKEND") {
+      subdomain = `api_${deployment.deploymentId}`;
+    } else if (!subdomain) {
+      subdomain = `${deployment.deploymentId}`;
+    }
+    return `http://${subdomain}.ttalkak.com`;
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -15,7 +24,7 @@ const Home = () => {
       </div>
 
       <div className="card w-full h-full mt-2.5">
-        {Object.keys(deploymentDetails).length === 0 ? (
+        {Object.keys(containers).length === 0 ? (
           <div className="text-center text-gray-500 py-10">
             현재 배포중인 서비스가 없습니다.
           </div>
@@ -29,19 +38,19 @@ const Home = () => {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(deploymentDetails).map(
-                ([deploymentId, details], index) => (
-                  <tr key={index} className="border-b">
-                    <td className="min-w-32 py-2 px-1.5 text-left">
-                      {deploymentId}
-                    </td>
-                    <td className="min-w-32 text-left">{details.domain}</td>
-                    <td className="min-w-md text-left break-words">
-                      {details.url}
-                    </td>
-                  </tr>
-                )
-              )}
+              {Object.entries(containers).map(([containerId, deployment]) => (
+                <tr key={containerId} className="border-b">
+                  <td className="min-w-32 py-2 px-1.5 text-left">
+                    {deployment.deploymentId}
+                  </td>
+                  <td className="min-w-32 text-left">
+                    {deployment.subdomainName || deployment.deploymentId}
+                  </td>
+                  <td className="min-w-md text-left break-words">
+                    {getUrl(deployment)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

@@ -86,7 +86,7 @@ export const useDockerStore = create<DockerState>()(
       clearDockerContainers: () => set({ dockerContainers: [] }),
     }),
     {
-      name: "dockerStore",
+      name: "containers",
       storage: createJSONStorage(() => sessionStorage),
     }
   )
