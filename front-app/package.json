@@ -68,8 +68,30 @@
       "buildResources": "assets"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
       "icon": "public/ttalkak.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ttalkak",
+      "uninstallDisplayName": "Uninstall Ttalkak",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": true,
+      "displayLanguageSelector": true,
+      "installerIcon": "public/ttalkak.ico",
+      "uninstallerIcon": "public/ttalkak.ico",
+      "license": "LICENSE.txt"
     }
   },
   "main": "dist-electron/main.js"

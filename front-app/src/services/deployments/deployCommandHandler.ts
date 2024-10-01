@@ -64,7 +64,6 @@ export async function handleContainerCommand(
     case "RESTART":
       {
         console.log(`Restarting container: ${containerId}`);
-        await window.electronAPI.stopContainer(containerId);
         const { success } = await window.electronAPI.startContainer(
           containerId
         );
@@ -84,6 +83,8 @@ export async function handleContainerCommand(
           containerId
         );
         if (success) {
+          window.electronAPI.stopContainerStats([containerId]);
+          window.electronAPI.stopPgrok(deploymentId);
           sendInstanceUpdate(
             deploymentId,
             "DELETED",

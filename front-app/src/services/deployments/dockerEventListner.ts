@@ -98,8 +98,7 @@ export const registerDockerEventHandlers = () => {
             event.Actor.ID,
             "stopped"
           );
-          window.electronAPI.stopContainerStats([event.Actor.ID]);
-          window.electronAPI.stopPgrok(deploymentId);
+
           break;
         case "die":
           await dockerStateManager.updateContainerState(
@@ -113,8 +112,6 @@ export const registerDockerEventHandlers = () => {
             event.Actor.ID,
             "deleted"
           );
-          window.electronAPI.stopContainerStats([event.Actor.ID]);
-          window.electronAPI.stopPgrok(deploymentId);
           break;
         default:
           console.log(`Unhandled container action: ${event.Action}`);

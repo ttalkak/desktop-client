@@ -37,13 +37,6 @@ export const dockerStateManager = {
           `${newState} 전환 실패`
         );
       }
-
-      sendInstanceUpdate(
-        deploymentId,
-        "ERROR",
-        compute?.outboundPort,
-        `dockerfile`
-      );
     } else {
       console.error(`Container with ID ${containerId} not found in store.`);
     }

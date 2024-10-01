@@ -40,9 +40,8 @@ export const sendComputeConnectMessage = async (
     const totalUsedMemory = totalSize + containerMemoryUsage;
     const deployments: Deployment[] = [];
     for (const [containerId, stats] of globalStats.entries()) {
-      const deploymentId = useDeploymentStore
-        .getState()
-        .getDeploymentByContainer(containerId);
+      const deploymentId =
+        useDeploymentStore.getState().containers[containerId].deploymentId;
       if (deploymentId !== undefined) {
         deployments.push({
           deploymentId: deploymentId,
