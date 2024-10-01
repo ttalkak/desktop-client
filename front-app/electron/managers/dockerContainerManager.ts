@@ -1,13 +1,20 @@
 import { docker } from "./dockerUtils";
 import Docker from "dockerode";
 
-//컨테이너 옵션 생성
+// 환경 변수를 Docker-friendly 형식으로 변환하는 함수
+function formatEnvs(envs: EnvVar[]): string[] {
+  return envs.map(({ key, value }) => `${key}=${value}`);
+}
+
 export const createContainerOptions = (
   name: string,
   containerName: string,
   inboundPort: number = 80,
-  outboundPort: number = 8080
+  outboundPort: number = 8080,
+  envs: EnvVar[] = []
 ): Docker.ContainerCreateOptions => {
+  const formattedEnvs = formatEnvs(envs);
+
   return {
     Image: name,
     name: containerName,
@@ -20,10 +27,11 @@ export const createContainerOptions = (
       PortBindings:
         inboundPort && outboundPort
           ? {
-              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort + "" }],
+              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort.toString() }],
             }
           : {},
     },
+    Env: formattedEnvs.length > 0 ? formattedEnvs : undefined,
     Healthcheck: {
       Test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
       Interval: 30000000000,

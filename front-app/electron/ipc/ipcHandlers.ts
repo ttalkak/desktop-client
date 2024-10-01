@@ -22,8 +22,8 @@ import {
 
 import Docker from "dockerode";
 import {
-  getDatabaseImageName,
   pullDatabaseImage,
+  pullAndStartDatabaseContainer,
 } from "../managers/dockerDBManager";
 import { envFileMaker } from "../managers/filemanager/envFileMaker";
 import { downloadAndUnzip } from "../managers/filemanager/downloadManager";
@@ -244,11 +244,6 @@ export function registerIpcHandlers() {
     }
   );
 
-  // DB 타입에 따른 Docker 이미지 이름을 가져오는 핸들러
-  ipcMain.handle("get-database-image-name", (_event, databaseType: string) => {
-    return getDatabaseImageName(databaseType);
-  });
-
   // Docker 이미지를 pull하는 핸들러
   ipcMain.handle("pull-docker-image", async (_event, imageName: string) => {
     try {
@@ -259,14 +254,6 @@ export function registerIpcHandlers() {
       return { success: false, error: (error as Error).message };
     }
   });
-
-  // DB Docker 이미지를 pull 받는 핸들러
-  ipcMain.handle(
-    "pull-database-image",
-    async (_event, databaseType: string) => {
-      return await pullDatabaseImage(databaseType);
-    }
-  );
 
   //도커파일 생성 핸들러
   ipcMain.handle(
@@ -292,4 +279,30 @@ export function registerIpcHandlers() {
       return { success: false, message: (error as Error).message };
     }
   });
+
+  // DB Docker 이미지를 pull 받는 핸들러
+  ipcMain.handle(
+    "pull-database-image",
+    async (_event, databaseType: string) => {
+      return await pullDatabaseImage(databaseType);
+    }
+  );
+
+  ipcMain.handle(
+    "pullAndStartDatabaseContainer",
+    async (
+      _,
+      databaseType: string,
+      containerName: string,
+      outboundPort: number,
+      envs: Array<{ key: string; value: string }>
+    ) => {
+      return await pullAndStartDatabaseContainer(
+        databaseType,
+        containerName,
+        outboundPort,
+        envs
+      );
+    }
+  );
 }

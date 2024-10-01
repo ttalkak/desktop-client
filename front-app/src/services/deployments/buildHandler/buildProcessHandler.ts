@@ -15,7 +15,8 @@ const DEFAULT_OUTBOUND_PORT = 8080;
 export async function buildAndDeploy(
   compute: DeploymentCommand,
   contextPath: string,
-  dockerfilePath: string | null
+  dockerfilePath: string | null,
+  envs?: EnvironmentVariable[]
 ) {
   // Docker 이미지 빌드
   if (dockerfilePath) {
@@ -73,7 +74,8 @@ async function completeDeployment(
   const containerId = await createAndStartContainer(
     image,
     compute.inboundPort || DEFAULT_INBOUND_PORT,
-    compute.outboundPort || DEFAULT_OUTBOUND_PORT
+    compute.outboundPort || DEFAULT_OUTBOUND_PORT,
+    compute.envs
   );
 
   if (!containerId) {

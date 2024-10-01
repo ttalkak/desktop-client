@@ -8,7 +8,7 @@ declare global {
   type DockerContainer = Dockerode.ContainerInfo;
   type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
   type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
-
+  type EnvVar = { key: string; value: string };
   // Docker Event Types
   interface DockerEventActor {
     ID: string;
@@ -95,12 +95,15 @@ declare global {
     removeImage: (
       imageId: string
     ) => Promise<{ success: boolean; error?: string }>;
+
     createContainerOptions: (
-      image: string,
-      containerName?: string,
+      name: string,
+      containerName: string,
       inboundPort: number,
-      outboundPort: number
-    ) => Promise<Dockerode.ContainerCreateOptions>;
+      outboundPort: number,
+      envs: EnvVar[]
+    ) => Promise<ContainerCreateOptions>;
+
     createContainer: (options: Dockerode.ContainerCreateOptions) => Promise<{
       success: boolean;
       containerId?: string;
@@ -254,14 +257,26 @@ declare global {
       dockerfilePath: string;
     }>;
     getDatabaseImageName: (databaseType: string) => Promise<string>;
+
     pullDatabaseImage: (
       databaseType: string
-    ) => Promise<{ success: boolean; error?: string }>;
+    ) => Promise<{ success: boolean; tag?: string; error?: string }>;
 
     joinPath: (...paths: string[]) => string;
     // 기타 기능들
     getInboundRules: () => Promise<string>;
     togglePort: (name: string, newEnabled: string) => Promise<void>;
+
+    pullDatabaseImage: (
+      databaseType: string
+    ) => Promise<{ success: boolean; tag?: string; error?: string }>;
+
+    pullAndStartDatabaseContainer: (
+      databaseType: string,
+      containerName: string,
+      outboundPort: number,
+      envs: Array<{ key: string; value: string }>
+    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
   }
 
   interface Window {

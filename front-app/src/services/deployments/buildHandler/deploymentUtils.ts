@@ -20,7 +20,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
   }
 
   let finalDockerfilePath = dockerfilePath;
-  let envFileCreated = false;
+  // let envFileCreated = false;
 
   // Switch문으로 조건 나누기
   switch (true) {
@@ -129,7 +129,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       return { contextPath: null, dockerfilePath: null };
   }
 
-  return { contextPath, dockerfilePath: finalDockerfilePath, envFileCreated };
+  return { contextPath, dockerfilePath: finalDockerfilePath };
 }
 
 export function determineDeploymentType(compute: DeploymentCommand) {

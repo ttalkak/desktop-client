@@ -53,9 +53,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   pullDatabaseImage: (
     databaseType: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; tag?: string; error?: string }> => {
     return ipcRenderer.invoke("pull-database-image", databaseType);
   },
+
+  pullAndStartDatabaseContainer: (
+    databaseType: string,
+    containerName: string,
+    inboundPort: number,
+    outboundPort: number,
+    envs: Array<{ key: string; value: string }>
+  ) =>
+    ipcRenderer.invoke(
+      "pullAndStartDatabaseContainer",
+      databaseType,
+      containerName,
+      inboundPort,
+      outboundPort,
+      envs
+    ),
 
   buildDockerImage: (
     contextPath: string,
@@ -77,17 +93,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Container Management
   createContainerOptions: (
-    imageId: DockerImage,
+    name: string,
     containerName: string,
     inboundPort: number,
-    outboundPort: number
+    outboundPort: number,
+    envs: EnvVar[]
   ) =>
     ipcRenderer.invoke(
       "create-container-options",
-      imageId,
+      name,
       containerName,
       inboundPort,
-      outboundPort
+      outboundPort,
+      envs
     ),
 
   createContainer: (options: ContainerCreateOptions) =>

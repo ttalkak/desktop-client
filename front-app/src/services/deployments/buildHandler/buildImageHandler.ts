@@ -40,11 +40,11 @@ export const handleBuildImage = async (
 };
 
 // 컨테이너 생성 및 시작
-// 컨테이너 생성 및 시작
 export const createAndStartContainer = async (
   dockerImage: DockerImage,
   inboundPort: number,
-  outboundPort: number
+  outboundPort: number,
+  envs: EnvVar[]
 ): Promise<string> => {
   try {
     console.log("Starting createAndStartContainer function");
@@ -67,7 +67,8 @@ export const createAndStartContainer = async (
         repoTag,
         containerName,
         inboundPort,
-        outboundPort
+        outboundPort,
+        envs
       );
       console.log("Created container options:", containerOptions);
 

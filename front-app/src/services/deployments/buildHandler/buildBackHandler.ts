@@ -16,11 +16,5 @@ export async function processBackendDeployment(
   );
   console.log(`Dockerfile Path: ${dockerfilePath || "Not found"}`);
 
-  //db pull  당기기
-  if (compute.dockerImageName) {
-    console.log(`Pulling database image for ${compute.dockerImageName}`);
-    await window.electronAPI.pullDatabaseImage(compute.dockerImageName);
-  }
-
   await buildAndDeploy(compute, contextPath, dockerfilePath);
 }

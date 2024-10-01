@@ -5,13 +5,28 @@ import { prepareDeploymentContext } from "./deploymentUtils.ts";
 
 export async function handleDockerBuild(compute: DeploymentCommand) {
   try {
-    // if (compute.dockerImageName && compute.serviceType == "BACKEND") {
-    //   //docker
-    // } else {
+    //1. compute.dockerImageName//Tag 있으면 db 임 =>  envs로 DB 컨테이너 띄워줌
+    if (compute.dockerImageName && compute.serviceType === "BACKEND") {
+      const { success, error } =
+        await window.electronAPI.pullAndStartDatabaseContainer(
+          compute.dockerImageName,
+          compute.containerName,
+          compute.outboundPort,
+          compute.envs
+        );
+      if (success) {
+        console.log("Backendbuild started");
+      } else if (error) {
+        sendInstanceUpdate(
+          compute.deploymentId,
+          "ERROR",
+          compute.outboundPort,
+          "database build fail"
+        );
+      }
+    }
 
-    // }
-
-    //env, dockerfile 여부 확인하고 생성 후 반환
+    //compute env, dockerfile 여부 확인하고 생성 후 반환
     const { contextPath, dockerfilePath } = await prepareDeploymentContext(
       compute
     );

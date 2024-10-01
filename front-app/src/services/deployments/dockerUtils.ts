@@ -17,7 +17,6 @@ export const startDocker = async () => {
   try {
     const resolvedPath =
       "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe";
-    console.log("Starting Docker Desktop from:", resolvedPath);
     await window.electronAPI.openDockerDesktop(resolvedPath);
     await waitForDockerToStart();
     console.log("Docker started successfully");
