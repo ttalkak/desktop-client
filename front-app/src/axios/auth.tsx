@@ -38,6 +38,8 @@ export const getUserSettings = async () => {
     if (success) {
       const userSettings = {
         userId: data.userId,
+        maxCPU: data.maxCPU,
+        maxMemory: data.maxMemory,
         maxCompute: data.maxCompute,
         availablePortStart: data.availablePortStart,
         availablePortEnd: data.availablePortEnd,
