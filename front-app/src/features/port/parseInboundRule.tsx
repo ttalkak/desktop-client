@@ -1,4 +1,4 @@
-import { usePortStore } from "../../stores/authStore";
+import { useAuthStore, usePortStore } from "../../stores/authStore";
 
 export interface InboundRuleDto {
   name: string;
@@ -79,18 +79,21 @@ export function parsePortNumber(rules: string[]): void {
   console.log(portSet);
 }
 
-// 사용 중인 포트인지 확인하고 처리
-export function checkAndAddPortToSet(port: number): string {
-  const { portSet, setPortSet } = usePortStore.getState();
+// 사용 중인 포트 대역 반환
+export function getUsedPortsInRange(): number[] {
+  const { portSet } = usePortStore.getState();
+  const { userSettings } = useAuthStore.getState();
 
-  // 이미 포트가 있는 경우
-  if (portSet.has(port)) {
-    return `${port}는 사용할 수 없는 포트번호입니다.`;
+  // userSettings가 없는 경우 빈 배열 반환
+  if (!userSettings) {
+    return [];
   }
 
-  const updatedPortSet = new Set(portSet);
-  updatedPortSet.add(port);
-  setPortSet(updatedPortSet);
+  const { availablePortStart, availablePortEnd } = userSettings;
 
-  return `${port}는 사용 가능한 포트번호입니다.`;
+  const usedPorts = Array.from(portSet).filter(
+    (port) => port >= availablePortStart && port <= availablePortEnd
+  );
+
+  return usedPorts;
 }
