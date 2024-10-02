@@ -14,9 +14,7 @@ export const stopAllTasks = async (): Promise<void> => {
   const clearImages = useDockerStore.getState().clearDockerImages;
   const clearContainer = useDockerStore.getState().clearDockerContainers;
   const setServiceStatus = useAppStore.getState().setServiceStatus;
-  const clearDeployments = useDeploymentStore(
-    (state) => state.clearAllContainers
-  );
+  const clearDeployments = useDeploymentStore.getState().clearAllContainers;
 
   try {
     console.log("1. Starting task termination...");
