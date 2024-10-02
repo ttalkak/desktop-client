@@ -21,7 +21,7 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
     case "MONGODB":
       return { imageName: "mongo", defaultPort: 27017 };
     case "MARIADB":
-      return { imageName: "mariadb", defaultPort: 3306 };
+      return { imageName: "mariadb:latest", defaultPort: 3306 };
     default:
       throw new Error(`Unsupported database type: ${databaseType}`);
   }

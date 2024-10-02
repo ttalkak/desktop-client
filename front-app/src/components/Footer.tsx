@@ -57,8 +57,8 @@ const Footer = () => {
 
         {isHelpTooltipVisible && (
           <div className={`${tooltip} w-36 right-0`}>
-            <p className="text-center">사용 방법을 제공하는</p>
-            <p className="text-center">페이지가 열립니다</p>
+            <p className="text-center">가이드가 보고싶다면</p>
+            <p className="text-center">click!</p>
           </div>
         )}
       </div>

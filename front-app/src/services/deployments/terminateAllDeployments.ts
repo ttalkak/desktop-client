@@ -2,11 +2,13 @@ import { useAuthStore } from "../../stores/authStore";
 import { useDockerStore } from "../../stores/dockerStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import useDeploymentStore from "../../stores/deploymentStore";
+import { useAppStore } from "../../stores/appStatusStore";
 
 export async function terminateAndRemoveContainersAndImages() {
   const containers = useDockerStore.getState().dockerContainers;
   const images = useDockerStore.getState().dockerImages;
   const userId = useAuthStore.getState().userSettings?.userId;
+  const { setServiceStatus } = useAppStore.getState();
 
   if (!userId) {
     return;
@@ -49,5 +51,6 @@ export async function terminateAndRemoveContainersAndImages() {
   // 모든 이미지 삭제가 완료될 때까지 대기
   await Promise.all(imagePromises);
 
+  setServiceStatus("stopped");
   console.log("All containers and images have been successfully removed.");
 }

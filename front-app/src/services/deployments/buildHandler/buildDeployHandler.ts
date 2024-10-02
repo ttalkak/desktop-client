@@ -22,7 +22,7 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
     }
 
     //1. compute.dockerImageName//Tag 있으면 db 임 =>  envs로 DB 컨테이너 띄워줌
-    if (compute.dockerImageName && compute.serviceType === "BACKEND") {
+    if (compute.dockerImageName && compute.serviceType === "DATABASE") {
       const { success, containerId, error } =
         await window.electronAPI.pullAndStartDatabaseContainer(
           compute.dockerImageName,

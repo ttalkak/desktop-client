@@ -1,6 +1,8 @@
 import { useAuthStore } from "../../stores/authStore";
 import useDeploymentStore from "../../stores/deploymentStore";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
+import { useAppStore } from "../../stores/appStatusStore";
+import { terminateAndRemoveContainersAndImages } from "./terminateAllDeployments";
 
 interface DockerEvent {
   Type: string;
@@ -17,6 +19,7 @@ interface DockerEvent {
 
 export const registerDockerEventHandlers = () => {
   const userId = useAuthStore.getState().userSettings?.userId;
+  const { setDockerStatus } = useAppStore.getState();
 
   if (!userId) {
     throw new Error("User ID not found. Please ensure user is logged in.");
@@ -69,15 +72,29 @@ export const registerDockerEventHandlers = () => {
     );
 
     const deployment = useDeploymentStore.getState().containers[event.Actor.ID];
-    const deploymentId = deployment.deploymentId;
-    if (!deploymentId) {
-      console.error(`No deployment found for container ID: ${event.Actor.ID}`);
-      return { error: true, message: "No deployment found for container" };
+
+    // deployment가 없으면 넘어감
+    if (!deployment) {
+      console.warn(
+        `Deployment not found for container ID: ${event.Actor.ID}, skipping.`
+      );
+      return {
+        status: "pending",
+        message: "Deployment not found, skipping event.",
+      };
     }
 
-    if (!deployment) {
-      console.error(`No details found for deployment ID: ${deploymentId}`);
-      return { error: true, message: "No details found for deployment" };
+    const deploymentId = deployment.deploymentId;
+
+    // deploymentId가 없으면 넘어감
+    if (!deploymentId) {
+      console.error(
+        `No deployment ID found for container ID: ${event.Actor.ID}, skipping.`
+      );
+      return {
+        status: "pending",
+        message: "No deployment ID found, skipping event.",
+      };
     }
 
     try {
@@ -91,14 +108,12 @@ export const registerDockerEventHandlers = () => {
             event.Actor.ID,
             "running"
           );
-
           break;
         case "stop":
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
             "stopped"
           );
-
           break;
         case "die":
           await dockerStateManager.updateContainerState(
@@ -148,6 +163,7 @@ export const registerDockerEventHandlers = () => {
 
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
-    // You might want to update some global error state here
+    setDockerStatus("unknown");
+    terminateAndRemoveContainersAndImages();
   });
 };

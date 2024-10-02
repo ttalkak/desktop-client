@@ -57,52 +57,54 @@ async function completeDeployment(
   useDockerStore.getState().addDockerImage(image);
 
   //여기서 dockerstore에 저장됨
-  const containerId = await createAndStartContainer(
+  const { success, containerId, error } = await createAndStartContainer(
     image,
     compute.inboundPort || DEFAULT_INBOUND_PORT,
     compute.outboundPort || DEFAULT_OUTBOUND_PORT,
     compute.envs
   );
 
-  if (!containerId) {
+  if (!success) {
     sendInstanceUpdate(
       compute.deploymentId,
       "ERROR",
       compute.outboundPort,
-      "dockerfile"
+      `${error}`
     );
     return;
   }
 
-  // Deployment 정보를 DeploymentStore에 추가
-  const deployment: Deployment = {
-    deploymentId: compute.deploymentId,
-    serviceType: compute.serviceType,
-    hasDockerFile: !!compute.hasDockerFile,
-    hasDockerImage: compute.hasDockerImage,
-    containerName: compute.containerName,
-    inboundPort: compute.inboundPort,
-    outboundPort: compute.outboundPort,
-    subdomainName: compute.subdomainName,
-    sourceCodeLink: compute.sourceCodeLink,
-    dockerRootDirectory: compute.dockerRootDirectory,
-    dockerFileScript: compute.dockerFileScript,
-    envs: compute.envs,
-    dockerImageName: compute.dockerImageName,
-    dockerImageTag: compute.dockerImageTag,
-  };
+  if (containerId) {
+    // Deployment 정보를 DeploymentStore에 추가
+    const deployment: Deployment = {
+      deploymentId: compute.deploymentId,
+      serviceType: compute.serviceType,
+      hasDockerFile: !!compute.hasDockerFile,
+      hasDockerImage: compute.hasDockerImage,
+      containerName: compute.containerName,
+      inboundPort: compute.inboundPort,
+      outboundPort: compute.outboundPort,
+      subdomainName: compute.subdomainName,
+      sourceCodeLink: compute.sourceCodeLink,
+      dockerRootDirectory: compute.dockerRootDirectory,
+      dockerFileScript: compute.dockerFileScript,
+      envs: compute.envs,
+      dockerImageName: compute.dockerImageName,
+      dockerImageTag: compute.dockerImageTag,
+    };
 
-  useDeploymentStore.getState().addContainer(containerId, deployment);
+    useDeploymentStore.getState().addContainer(containerId, deployment);
 
-  sendInstanceUpdate(
-    compute.deploymentId,
-    "RUNNING",
-    compute.outboundPort,
-    "container 실행"
-  );
+    sendInstanceUpdate(
+      compute.deploymentId,
+      "RUNNING",
+      compute.outboundPort,
+      "container 실행"
+    );
 
-  window.electronAPI.startContainerStats([containerId]);
-  window.electronAPI.startLogStream(containerId);
-  startContainerStatsMonitoring();
-  await startPgrok(compute);
+    window.electronAPI.startContainerStats([containerId]);
+    window.electronAPI.startLogStream(containerId);
+    startContainerStatsMonitoring();
+    await startPgrok(compute);
+  }
 }
