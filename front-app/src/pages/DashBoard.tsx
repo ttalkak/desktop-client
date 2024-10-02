@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from "../stores/authStore";
 
 const DashBoard: React.FC = () => {
-  const userSettings = useAuthStore.getState().userSettings;
+  const userSettings = useAuthStore((state) => state.userSettings);
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
   const containerCount = dockerContainers.length;
@@ -32,13 +32,9 @@ const DashBoard: React.FC = () => {
             <TabsTrigger value="account">Containers</TabsTrigger>
             <TabsTrigger value="password">Images</TabsTrigger>
           </TabsList>
-          <p className="font-sans text-gray-600 text-sm">
-            {`${containerCount} / ${userSettings?.maxCompute || 0} (${
-              userSettings?.maxCompute
-                ? Math.round((containerCount / userSettings.maxCompute) * 100)
-                : 0
-            }%)`}
-          </p>
+          <div className="font-sans text-gray-600 text-sm pr-2.5">
+            {`${containerCount} / ${userSettings?.maxCompute || 0}`}
+          </div>
         </div>
         <div className="justify-center h-full">
           <TabsContent value="account">
