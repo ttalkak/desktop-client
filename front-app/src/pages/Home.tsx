@@ -6,8 +6,6 @@ import useDeploymentStore, { Deployment } from "../stores/deploymentStore";
 const Home: React.FC = () => {
   const containers = useDeploymentStore((state) => state.containers);
 
-  console.log(containers);
-
   const getUrl = (deployment: Deployment) => {
     let subdomain = deployment.subdomainName;
     if (!subdomain && deployment.serviceType === "BACKEND") {
