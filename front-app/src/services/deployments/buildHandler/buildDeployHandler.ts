@@ -40,11 +40,9 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
           inboundPort: compute.inboundPort,
           outboundPort: compute.outboundPort,
           subdomainName: compute.subdomainName,
-          subdomainKey: compute.subdomainKey,
           sourceCodeLink: compute.sourceCodeLink,
           dockerRootDirectory: compute.dockerRootDirectory,
           dockerFileScript: compute.dockerFileScript,
-          envs: compute.envs,
           dockerImageName: compute.dockerImageName,
           dockerImageTag: compute.dockerImageTag,
         };

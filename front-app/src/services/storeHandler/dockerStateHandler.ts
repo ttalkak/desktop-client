@@ -29,7 +29,7 @@ export const dockerStateManager = {
         `Store: ContainerID ${containerId} state updated to '${newState}'.`
       );
 
-      if ((newState = "error")) {
+      if (newState === "error") {
         sendInstanceUpdate(
           deploymentId,
           "ERROR",

@@ -50,10 +50,10 @@ export async function handleContainerCommand(
     case "STOP":
       {
         console.log(`Stopping container: ${containerId}`);
+        await dockerStateManager.updateContainerState(containerId, "stopped");
+        await window.electronAPI.stopContainerStats([containerId]);
         const { success } = await window.electronAPI.stopContainer(containerId);
         if (success) {
-          await dockerStateManager.updateContainerState(containerId, "stopped");
-          await window.electronAPI.stopContainerStats([containerId]);
           await window.electronAPI.stopPgrok(deploymentId);
         } else {
           await dockerStateManager.updateContainerState(containerId, "error");
