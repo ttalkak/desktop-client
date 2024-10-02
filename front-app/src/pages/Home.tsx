@@ -1,12 +1,14 @@
 import React from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
 import PaymentStatusItem from "../features/home/PaymentStatusItem";
-import useDeploymentStore from "../stores/deploymentStore";
+import useDeploymentStore, { Deployment } from "../stores/deploymentStore";
 
 const Home: React.FC = () => {
   const containers = useDeploymentStore((state) => state.containers);
 
-  const getUrl = (deployment: any) => {
+  console.log(containers);
+
+  const getUrl = (deployment: Deployment) => {
     let subdomain = deployment.subdomainName;
     if (!subdomain && deployment.serviceType === "BACKEND") {
       subdomain = `api_${deployment.deploymentId}`;
@@ -32,7 +34,6 @@ const Home: React.FC = () => {
           <table className="min-w-full table-auto bg-white border-gray-300 text-sm">
             <thead className="sticky z-10 top-0 text-sm bg-white-gradient">
               <tr className="border-b">
-                <th className="p-1 text-left">deploymentId</th>
                 <th className="p-1 text-left">Name</th>
                 <th className="p-1 text-left">URL</th>
               </tr>
@@ -40,9 +41,6 @@ const Home: React.FC = () => {
             <tbody>
               {Object.entries(containers).map(([containerId, deployment]) => (
                 <tr key={containerId} className="border-b">
-                  <td className="min-w-32 py-2 px-1.5 text-left">
-                    {deployment.deploymentId}
-                  </td>
                   <td className="min-w-32 text-left">
                     {deployment.subdomainName || deployment.deploymentId}
                   </td>

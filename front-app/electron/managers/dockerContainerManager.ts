@@ -9,8 +9,8 @@ function formatEnvs(envs: EnvVar[]): string[] {
 export const createContainerOptions = (
   name: string,
   containerName: string,
-  inboundPort: number = 80,
-  outboundPort: number = 8080,
+  inboundPort: number,
+  outboundPort: number,
   envs: EnvVar[] = []
 ): Docker.ContainerCreateOptions => {
   const formattedEnvs = formatEnvs(envs);

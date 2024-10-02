@@ -99,7 +99,6 @@ async function completeDeployment(
     inboundPort: compute.inboundPort,
     outboundPort: compute.outboundPort,
     subdomainName: compute.subdomainName,
-    subdomainKey: compute.subdomainKey,
     sourceCodeLink: compute.sourceCodeLink,
     dockerRootDirectory: compute.dockerRootDirectory,
     dockerFileScript: compute.dockerFileScript,
