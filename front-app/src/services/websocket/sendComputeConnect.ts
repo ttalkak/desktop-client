@@ -6,6 +6,7 @@ import {
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
 import { client } from "./stompClientUtils";
+import { getUsedPortsInRange } from "./../../features/port/parseInboundRule";
 
 interface Deployment {
   deploymentId: number;
@@ -24,6 +25,7 @@ interface ComputeConnectRequest {
   usedMemory: number;
   usedCPU: number;
   deployments: Deployment[]; // 배열로 수정
+  ports: number[];
 }
 
 export const sendComputeConnectMessage = async (
@@ -65,6 +67,7 @@ export const sendComputeConnectMessage = async (
       usedMemory: totalUsedMemory || 0,
       usedCPU: usedCPU || 0,
       deployments: deployments, // 배열로 전달
+      ports: getUsedPortsInRange() || [],
     };
 
     client?.publish({
