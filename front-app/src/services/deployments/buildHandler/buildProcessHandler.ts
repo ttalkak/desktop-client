@@ -20,21 +20,15 @@ export async function buildAndDeploy(
   dockerfilePath: string | null
 ) {
   // Docker 이미지 빌드
+
+  const imageName = compute.dockerImageName
+    ? compute.dockerImageName
+    : compute.subdomainName;
+
+  const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
+
   if (dockerfilePath) {
-    sendInstanceUpdate(
-      compute.deploymentId,
-      "PENDING",
-      compute.outboundPort,
-      "이미지 생성 시작.."
-    );
-
-    const imageName = compute.dockerImageName
-      ? compute.dockerImageName
-      : compute.subdomainName;
-
-    const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
-
-    const { success, image } = await handleBuildImage(
+    const { image } = await handleBuildImage(
       contextPath,
       dockerfilePath,
       imageName,
@@ -49,15 +43,6 @@ export async function buildAndDeploy(
         "이미지 생성에 실패했습니다..dockerfile을 확인하세요"
       );
       return;
-    }
-
-    if (success) {
-      sendInstanceUpdate(
-        compute.deploymentId,
-        "PENDING",
-        compute.outboundPort,
-        "이미지 생성 성공"
-      );
     }
     // 도커 이미지 추가 및 컨테이너 생성 및 시작
     await completeDeployment(compute, image);

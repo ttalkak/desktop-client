@@ -3,7 +3,25 @@ import Docker from "dockerode";
 
 // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
 function formatEnvs(envs: EnvVar[]): string[] {
-  return envs.map(({ key, value }) => `${key}=${value}`);
+  return envs
+    .filter(({ key }) => key !== "PORT") // PORT는 별도로 처리하고, 나머지를 환경 변수로 변환
+    .map(({ key, value }) => `${key}=${value}`);
+}
+
+// 특정 포트는 ExposedPorts와 PortBindings에 추가
+function getPortBindings(envs: EnvVar[]): {
+  [port: string]: { HostPort: string }[];
+} {
+  const portBindings: { [port: string]: { HostPort: string }[] } = {};
+
+  envs
+    .filter(({ key }) => key === "PORT") // PORT key에 해당하는 값만 처리
+    .forEach(({ value }) => {
+      const port = value;
+      portBindings[`${port}/tcp`] = [{ HostPort: port }]; // 동일한 포트로 노출
+    });
+
+  return portBindings;
 }
 
 export const createContainerOptions = (
@@ -13,25 +31,26 @@ export const createContainerOptions = (
   outboundPort: number,
   envs: EnvVar[] = []
 ): Docker.ContainerCreateOptions => {
-  const formattedEnvs = formatEnvs(envs);
+  const formattedEnvs = formatEnvs(envs); // PORT가 아닌 환경 변수 처리
+  const portBindings = getPortBindings(envs); // PORT에 대한 노출 포트 처리
 
   return {
     Image: name,
     name: containerName,
-    ExposedPorts: inboundPort
-      ? {
-          [`${inboundPort}/tcp`]: {},
-        }
-      : {},
-    HostConfig: {
-      PortBindings:
-        inboundPort && outboundPort
-          ? {
-              [`${inboundPort}/tcp`]: [{ HostPort: outboundPort.toString() }],
-            }
-          : {},
+    ExposedPorts: {
+      [`${inboundPort}/tcp`]: {}, // 기본 inbound 포트
+      ...Object.keys(portBindings).reduce((acc, port) => {
+        acc[port] = {}; // PORT에 대한 추가 노출 포트 설정
+        return acc;
+      }, {} as Record<string, object>), // 빈 객체 타입을 Record<string, object>로 정의
     },
-    Env: formattedEnvs.length > 0 ? formattedEnvs : undefined,
+    HostConfig: {
+      PortBindings: {
+        [`${inboundPort}/tcp`]: [{ HostPort: outboundPort.toString() }],
+        ...portBindings, // PORT 값에 따른 PortBindings 추가
+      },
+    },
+    Env: formattedEnvs.length > 0 ? formattedEnvs : undefined, // PORT 외 나머지 환경 변수 전달
     Healthcheck: {
       Test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
       Interval: 30000000000,
