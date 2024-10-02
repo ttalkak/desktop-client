@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { axiosInstance } from "../../axios/constants";
 import { useAppStore } from "./../../stores/appStatusStore";
+import { useAuthStore } from "../../stores/authStore";
 
 interface SettingModalProps {
   isOpen: boolean;
@@ -11,52 +12,53 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const modalRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [errorMessages, setErrorMessages] = useState({
+    projectWarning: "",
+    rangeWarning: "",
+    cpuWarning: "",
+    memoryWarning: "",
+  });
 
+  const userSettings = useAuthStore((state) => state.userSettings);
+  const setUserSettings = useAuthStore((state) => state.setUserSettings);
+
+  const [maxCPU, setMaxCPU] = useState<string>("0");
+  const [maxMemory, setMaxMemory] = useState<string>("0");
   const [maxCompute, setMaxCompute] = useState<string>("0");
   const [portRange, setPortRange] = useState({ min: "0", max: "0" });
 
-  const [initialMaxCompute, setInitialMaxCompute] = useState<number>(0);
-  const [initialPortRange, setInitialPortRange] = useState({
-    min: 0,
-    max: 0,
-  });
-
-  const [rangeWarning, setRangeWarning] = useState<string>("");
-  const [portError, setPortError] = useState<string>("");
-
   useEffect(() => {
-    const userSettings = sessionStorage.getItem("userSettings");
-
     if (userSettings) {
-      const parsedSettings = JSON.parse(userSettings);
-
-      setMaxCompute(String(parsedSettings.maxCompute));
+      setMaxCPU(String(userSettings.maxCPU));
+      setMaxMemory(String(userSettings.maxMemory));
+      setMaxCompute(String(userSettings.maxCompute));
       setPortRange({
-        min: String(parsedSettings.availablePortStart),
-        max: String(parsedSettings.availablePortEnd),
-      });
-
-      setInitialMaxCompute(parsedSettings.maxCompute);
-      setInitialPortRange({
-        min: parsedSettings.availablePortStart,
-        max: parsedSettings.availablePortEnd,
+        min: String(userSettings.availablePortStart),
+        max: String(userSettings.availablePortEnd),
       });
     }
-  }, [isOpen]);
+  }, [userSettings, isOpen]);
+
+  const updateErrorMessages = (
+    field: keyof typeof errorMessages,
+    message: string
+  ) => {
+    setErrorMessages((prev) => ({ ...prev, [field]: message }));
+  };
 
   const handleMaxProjectsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (isNaN(Number(value))) {
-      setRangeWarning("");
-    } else {
+    if (!isNaN(Number(value))) {
       setMaxCompute(value);
 
-      // 입력된 숫자가 1 미만이거나 10을 초과하는 경우
       const numericValue = Number(value);
       if (numericValue < 1 || numericValue > 10) {
-        setRangeWarning("최대 10까지 지정할 수 있습니다.");
+        updateErrorMessages(
+          "projectWarning",
+          "최대 10까지 지정할 수 있습니다."
+        );
       } else {
-        setRangeWarning("");
+        updateErrorMessages("projectWarning", "");
       }
     }
   };
@@ -66,40 +68,86 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     field: "min" | "max"
   ) => {
     const value = e.target.value;
-    if (isNaN(Number(value))) {
-    } else {
+    if (!isNaN(Number(value))) {
       const newPortRange = { ...portRange, [field]: value };
       setPortRange(newPortRange);
 
-      // min 값이 max 값보다 큰 경우 에러 처리
       if (Number(newPortRange.min) > Number(newPortRange.max)) {
-        setPortError("시작값이 종료값보다 클 수 없습니다.");
+        updateErrorMessages(
+          "rangeWarning",
+          "시작값은 종료값보다 클 수 없습니다."
+        );
       } else {
-        setPortError("");
+        updateErrorMessages("rangeWarning", "");
+      }
+    }
+  };
+
+  const handleMaxCPUChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!isNaN(Number(value))) {
+      setMaxCPU(value);
+
+      const numericValue = Number(value);
+      if (numericValue < 1 || numericValue > 100) {
+        updateErrorMessages("cpuWarning", "최대 100까지 지정할 수 있습니다.");
+      } else {
+        updateErrorMessages("cpuWarning", "");
+      }
+    }
+  };
+
+  const handleMaxMemoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!isNaN(Number(value))) {
+      setMaxMemory(value);
+
+      const numericValue = Number(value);
+      if (numericValue < 1 || numericValue > 100) {
+        updateErrorMessages(
+          "memoryWarning",
+          "최대 100까지 지정할 수 있습니다."
+        );
+      } else {
+        updateErrorMessages("memoryWarning", "");
       }
     }
   };
 
   const handleSave = async () => {
-    if (rangeWarning || portError) return;
+    const { projectWarning, rangeWarning, cpuWarning, memoryWarning } =
+      errorMessages;
+    if (projectWarning || rangeWarning || cpuWarning || memoryWarning) return;
 
-    console.log(maxCompute, portRange);
-
-    // 변경된 값이 있는지 확인
-    const isMaxProjectsChanged = Number(maxCompute) !== initialMaxCompute;
+    // 기존 값과 변경된 값 비교
+    const isMaxCPUChanged = Number(maxCPU) !== userSettings?.maxCPU;
+    const isMaxMemoryChanged = Number(maxMemory) !== userSettings?.maxMemory;
+    const isMaxProjectsChanged =
+      Number(maxCompute) !== userSettings?.maxCompute;
     const isPortRangeChanged =
-      Number(portRange.min) !== initialPortRange.min ||
-      Number(portRange.max) !== initialPortRange.max;
+      Number(portRange.min) !== userSettings?.availablePortStart ||
+      Number(portRange.max) !== userSettings?.availablePortEnd;
 
-    // 변경된 값이 없으면 종료
-    if (!isMaxProjectsChanged && !isPortRangeChanged) {
+    if (
+      !isMaxCPUChanged &&
+      !isMaxMemoryChanged &&
+      !isMaxProjectsChanged &&
+      !isPortRangeChanged
+    ) {
       console.log("변경사항이 없습니다.");
       setIsEditing(false);
       return;
     }
 
+    if (!userSettings || !userSettings.userId) {
+      console.error("userSettings가 유효하지 않습니다.");
+      return;
+    }
+
     try {
       const response = await axiosInstance.post("/compute/status", {
+        maxCPU: Number(maxCPU),
+        maxMemory: Number(maxMemory),
         maxCompute: Number(maxCompute),
         availablePortStart: Number(portRange.min),
         availablePortEnd: Number(portRange.max),
@@ -109,19 +157,17 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
         alert("설정이 저장되었습니다.");
 
         const updatedSettings = {
+          ...userSettings,
+          maxCPU: Number(maxCPU),
+          maxMemory: Number(maxMemory),
           maxCompute: Number(maxCompute),
           availablePortStart: Number(portRange.min),
           availablePortEnd: Number(portRange.max),
         };
 
-        sessionStorage.setItem("userSettings", JSON.stringify(updatedSettings));
-
-        setInitialMaxCompute(Number(maxCompute));
-        setInitialPortRange({
-          min: Number(portRange.min),
-          max: Number(portRange.max),
-        });
+        setUserSettings(updatedSettings);
         setIsEditing(false);
+        onClose("modal");
       }
     } catch (error) {
       console.error("설정을 저장하는 중 오류가 발생했습니다.", error);
@@ -136,8 +182,12 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
         !modalRef.current.contains(event.target as Node)
       ) {
         setIsEditing(false);
-        setRangeWarning("");
-        setPortError("");
+        setErrorMessages({
+          projectWarning: "",
+          rangeWarning: "",
+          cpuWarning: "",
+          memoryWarning: "",
+        });
         onClose("modal");
       }
     };
@@ -162,7 +212,7 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     >
       <form>
         <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">컨테이너 수</label>
+          <label className="text-sm mb-2">최대 컨테이너 수</label>
           <div className="flex items-center space-x-2">
             <input
               type="text"
@@ -174,13 +224,51 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
               }`}
             />
           </div>
-          {rangeWarning && (
-            <p className="text-red-500 text-sm pt-1 pb-1.5">{rangeWarning}</p>
+          {errorMessages.projectWarning && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">
+              {errorMessages.projectWarning}
+            </p>
           )}
         </div>
 
         <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">포트 대역</label>
+          <label className="text-sm mb-2">최대 CPU 사용량(%)</label>
+          <input
+            type="text"
+            value={maxCPU}
+            onChange={handleMaxCPUChange}
+            disabled={!isEditing}
+            className={`border p-1 rounded w-16 text-center w-full ${
+              !isEditing ? "text-gray-400" : ""
+            }`}
+          />
+          {errorMessages.cpuWarning && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">
+              {errorMessages.cpuWarning}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col mb-2">
+          <label className="text-sm mb-2">최대 메모리 사용량(GB)</label>
+          <input
+            type="text"
+            value={maxMemory}
+            onChange={handleMaxMemoryChange}
+            disabled={!isEditing}
+            className={`border p-1 rounded w-16 text-center w-full ${
+              !isEditing ? "text-gray-400" : ""
+            }`}
+          />
+          {errorMessages.memoryWarning && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">
+              {errorMessages.memoryWarning}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col mb-2">
+          <label className="text-sm mb-2">허용 포트 대역</label>
           <div className="flex items-center space-x-2 justify-between">
             <input
               type="text"
@@ -202,8 +290,10 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
               }`}
             />
           </div>
-          {portError && (
-            <p className="text-red-500 text-sm pt-1 pb-1.5">{portError}</p>
+          {errorMessages.rangeWarning && (
+            <p className="text-red-500 text-sm pt-1 pb-1.5">
+              {errorMessages.rangeWarning}
+            </p>
           )}
         </div>
 
