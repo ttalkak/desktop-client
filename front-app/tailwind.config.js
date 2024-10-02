@@ -26,6 +26,7 @@ export default {
         "color-13": "#3385C1",
         "color-14": "rgba(255, 255, 255, 0.75)",
         "color-15": "#7FC0EF",
+        "color-16": "#F9F9F9",
 
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

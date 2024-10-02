@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export interface SettingState {
   userId: string;
+  maxCPU: number;
+  maxMemory: number;
   maxCompute: number;
   availablePortStart: number;
   availablePortEnd: number;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { axiosInstance } from "../../axios/constants";
+import { useAppStore } from "./../../stores/appStatusStore";
 
 interface SettingModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface SettingModalProps {
 }
 
 const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
+  const serviceStatus = useAppStore((state) => state.serviceStatus);
   const modalRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -209,10 +211,14 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
           <button
             type="button"
             onClick={() => {
-              if (isEditing) {
-                handleSave();
+              if (serviceStatus === "stopped") {
+                if (isEditing) {
+                  handleSave();
+                } else {
+                  setIsEditing(true);
+                }
               } else {
-                setIsEditing(true);
+                alert("서비스 실행 중에는 설정을 변경할 수 없습니다");
               }
             }}
             className="text-red-500 mt-2"
