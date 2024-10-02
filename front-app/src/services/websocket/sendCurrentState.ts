@@ -4,7 +4,7 @@ import {
   getTotalMemoryUsage,
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
-import { useDeploymentStore } from "../../stores/deploymentStore";
+import useDeploymentStore from "../../stores/deploymentStore";
 
 export const sendCurrentState = async (userId: string) => {
   try {
@@ -17,9 +17,9 @@ export const sendCurrentState = async (userId: string) => {
 
     const deployments = [];
     for (const [containerId, stats] of globalStats.entries()) {
-      const deploymentId = useDeploymentStore
-        .getState()
-        .getDeploymentByContainer(containerId);
+      const deployment = useDeploymentStore.getState().containers[containerId];
+      const deploymentId = deployment.deploymentId;
+
       if (deploymentId !== undefined) {
         deployments.push({
           deploymentId: deploymentId,

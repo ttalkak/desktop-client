@@ -119,6 +119,8 @@ async function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
+  ipcMain.setMaxListeners(20);
+
   setMainWindow(win);
 
   win.on("close", (event) => {

@@ -1,6 +1,5 @@
 import { useAuthStore } from "../../stores/authStore";
-import { useDeploymentDetailsStore } from "../../stores/deploymentDetailsStore";
-import { useDeploymentStore } from "../../stores/deploymentStore";
+import useDeploymentStore from "../../stores/deploymentStore";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 
 interface DockerEvent {
@@ -18,10 +17,6 @@ interface DockerEvent {
 
 export const registerDockerEventHandlers = () => {
   const userId = useAuthStore.getState().userSettings?.userId;
-  const getDeploymentByContainer =
-    useDeploymentStore.getState().getDeploymentByContainer;
-  const getDeploymentDetails =
-    useDeploymentDetailsStore.getState().getDeploymentDetails;
 
   if (!userId) {
     throw new Error("User ID not found. Please ensure user is logged in.");
@@ -73,14 +68,14 @@ export const registerDockerEventHandlers = () => {
       `Container event: ${event.Action} for container ${event.Actor.ID}`
     );
 
-    const deploymentId = getDeploymentByContainer(event.Actor.ID);
+    const deployment = useDeploymentStore.getState().containers[event.Actor.ID];
+    const deploymentId = deployment.deploymentId;
     if (!deploymentId) {
       console.error(`No deployment found for container ID: ${event.Actor.ID}`);
       return { error: true, message: "No deployment found for container" };
     }
 
-    const deploymentDetails = getDeploymentDetails(deploymentId);
-    if (!deploymentDetails) {
+    if (!deployment) {
       console.error(`No details found for deployment ID: ${deploymentId}`);
       return { error: true, message: "No details found for deployment" };
     }
@@ -96,14 +91,14 @@ export const registerDockerEventHandlers = () => {
             event.Actor.ID,
             "running"
           );
+
           break;
         case "stop":
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
             "stopped"
           );
-          window.electronAPI.stopContainerStats([event.Actor.ID]);
-          window.electronAPI.stopPgrok(deploymentId);
+
           break;
         case "die":
           await dockerStateManager.updateContainerState(
@@ -116,20 +111,6 @@ export const registerDockerEventHandlers = () => {
           await dockerStateManager.updateContainerState(
             event.Actor.ID,
             "deleted"
-          );
-          window.electronAPI.stopContainerStats([event.Actor.ID]);
-          window.electronAPI.stopPgrok(deploymentId);
-          break;
-        case "pause":
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "paused"
-          );
-          break;
-        case "unpause":
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "running"
           );
           break;
         default:

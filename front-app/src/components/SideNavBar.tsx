@@ -3,20 +3,13 @@ import { Link, useLocation } from "react-router-dom";
 import { FaCircle } from "react-icons/fa";
 import { startService } from "../services/startService";
 import { useAppStore } from "../stores/appStatusStore";
-import { useCpuStore } from "../stores/appStatusStore";
 import { useAuthStore } from "../stores/authStore";
-import { useDockerStore } from "../stores/dockerStore";
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
   const websocketStatus = useAppStore((state) => state.websocketStatus);
   const serviceStatus = useAppStore((state) => state.serviceStatus);
   const setDockerStatus = useAppStore((state) => state.setDockerStatus);
-  const setDockerImages = useDockerStore((state) => state.setDockerImages);
-  const setDockerContainers = useDockerStore(
-    (state) => state.setDockerContainers
-  );
-  const setCpuStore = useCpuStore((state) => state.setContainerCpuUsages);
 
   // 로그인 상태와 사용자 설정 가져오기
   const { accessToken } = useAuthStore();
@@ -69,9 +62,6 @@ const SideNavBar = () => {
       if (accessToken) {
         // 로그인 상태가 확인되면 처리
         await dockerCheckHandler();
-        setDockerImages([]);
-        setDockerContainers([]);
-        setCpuStore([]);
       }
     };
 

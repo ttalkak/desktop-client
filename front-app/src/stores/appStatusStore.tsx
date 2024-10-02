@@ -24,7 +24,7 @@ export const useAppStore = create<AppState>()(
       setServiceStatus: (status) => set({ serviceStatus: status }),
     }),
     {
-      name: "appStatusStorage",
+      name: "appStatus",
       storage: createJSONStorage(() => sessionStorage),
     }
   )
@@ -75,7 +75,7 @@ export const useCpuStore = create<CpuState>()(
         })),
     }),
     {
-      name: "cpuUsageStorage",
+      name: "cpuUsage",
       storage: createJSONStorage(() => sessionStorage),
     }
   )

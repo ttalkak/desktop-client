@@ -7,17 +7,16 @@ import {
   stopContainerStatsMonitoring,
   stopPeriodicContainerCheck,
 } from "./monitoring/healthCheckPingUtils";
-import { useDeploymentStore } from "../stores/deploymentStore";
-import { useDeploymentDetailsStore } from "../stores/deploymentDetailsStore";
+import useDeploymentStore from "../stores/deploymentStore";
 
 // 전체 종료 함수
 export const stopAllTasks = async (): Promise<void> => {
   const clearImages = useDockerStore.getState().clearDockerImages;
   const clearContainer = useDockerStore.getState().clearDockerContainers;
   const setServiceStatus = useAppStore.getState().setServiceStatus;
-  const clearDeployments = useDeploymentStore.getState().clearAllDeployments;
-  const clearAllDeploymentDetails =
-    useDeploymentDetailsStore.getState().clearAllDeploymentDetails;
+  const clearDeployments = useDeploymentStore(
+    (state) => state.clearAllContainers
+  );
 
   try {
     console.log("1. Starting task termination...");
@@ -49,7 +48,6 @@ export const stopAllTasks = async (): Promise<void> => {
 
     // 6. store 초기화
     clearDeployments();
-    clearAllDeploymentDetails();
     clearImages();
     clearContainer();
     console.log("9. Cleared Docker images and containers from store.");
