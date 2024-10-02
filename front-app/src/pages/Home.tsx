@@ -1,12 +1,12 @@
 import React from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
 import PaymentStatusItem from "../features/home/PaymentStatusItem";
-import useDeploymentStore from "../stores/deploymentStore";
+import useDeploymentStore, { Deployment } from "../stores/deploymentStore";
 
 const Home: React.FC = () => {
   const containers = useDeploymentStore((state) => state.containers);
 
-  const getUrl = (deployment: any) => {
+  const getUrl = (deployment: Deployment) => {
     let subdomain = deployment.subdomainName;
     if (!subdomain && deployment.serviceType === "BACKEND") {
       subdomain = `api_${deployment.deploymentId}`;
