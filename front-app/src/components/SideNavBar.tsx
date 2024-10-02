@@ -4,6 +4,8 @@ import { FaCircle } from "react-icons/fa";
 import { startService } from "../services/startService";
 import { useAppStore } from "../stores/appStatusStore";
 import { useAuthStore } from "../stores/authStore";
+import { stopAllTasks } from "../services/stopAllFunction";
+import { ImSpinner8 } from "react-icons/im";
 
 const SideNavBar = () => {
   const dockerStatus = useAppStore((state) => state.dockerStatus);
@@ -84,46 +86,57 @@ const SideNavBar = () => {
 
         {serviceStatus === "running" ? (
           <button
-            onClick={() => {}}
-            className={`bg-color-5 rounded text-white py-1 mt-4 mb-2 hover:bg-color-4`}
-            disabled={!isLoggedIn}
+            onClick={stopAllTasks}
+            className={`bg-color-15 rounded py-1 mt-4 flex items-center justify-center`}
           >
-            Running...
+            <div className="ml-1.5 text-white">stop</div>
           </button>
         ) : (
           <button
             onClick={startService}
-            className={`bg-color-12 rounded text-white py-1 mt-4 mb-2 hover:bg-color-13`}
+            className={`bg-color-12 rounded text-white py-1 mt-4 hover:bg-color-13`}
             disabled={!isLoggedIn}
           >
             start
           </button>
         )}
 
-        <div className="flex justify-end">
-          <FaCircle
-            className={`text-tiny mr-1 ${
-              dockerStatusColor[
-                dockerStatus as "running" | "not running" | "unknown"
-              ]
-            }`}
-          />
+        <div className="mt-1 flex justify-between flex-row-reverse items-center h-6">
+          <div className="flex justify-end">
+            <FaCircle
+              className={`text-tiny mr-1 ${
+                dockerStatusColor[
+                  dockerStatus as "running" | "not running" | "unknown"
+                ]
+              }`}
+            />
 
-          <FaCircle
-            className={`text-tiny mr-1 ${
-              websocketStatusColor[
-                websocketStatus as "connected" | "connecting" | "disconnected"
-              ]
-            }`}
-          />
+            <FaCircle
+              className={`text-tiny mr-1 ${
+                websocketStatusColor[
+                  websocketStatus as "connected" | "connecting" | "disconnected"
+                ]
+              }`}
+            />
 
-          <FaCircle
-            className={`text-tiny mr-1 ${
-              serviceStatusColor[
-                serviceStatus as "running" | "loading" | "stopped"
-              ]
-            }`}
-          />
+            <FaCircle
+              className={`text-tiny mr-1 ${
+                serviceStatusColor[
+                  serviceStatus as "running" | "loading" | "stopped"
+                ]
+              }`}
+            />
+          </div>
+          {serviceStatus === "running" && (
+            <div className="flex items-center text-sm">
+              <ImSpinner8
+                className="animate-spin-slow mr-1.5 mt-0.5"
+                color="#757575"
+                size={10}
+              />
+              <div>running</div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col mt-6">

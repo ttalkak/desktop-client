@@ -22,8 +22,8 @@ const SignUp = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (username.length > 0 && username.length < 8) {
-      setUsernameError("아이디는 8자 이상이어야 합니다");
+    if (username.length > 0 && username.length < 4) {
+      setUsernameError("아이디는 4자 이상이어야 합니다");
     } else {
       setUsernameError(null);
     }
