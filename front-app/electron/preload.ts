@@ -92,12 +92,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ),
 
   // Container Management
+
+  createContainer: (options: ContainerCreateOptions) =>
+    ipcRenderer.invoke("create-container", options),
+
+  startContainer: (containerId: string) =>
+    ipcRenderer.invoke("start-container", containerId),
+
   createContainerOptions: (
     name: string,
     containerName: string,
     inboundPort: number,
     outboundPort: number,
-    envs: EnvVar[]
+    envs: EnvVar[],
+    healthCheckCommand: string[]
   ) =>
     ipcRenderer.invoke(
       "create-container-options",
@@ -105,15 +113,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
       containerName,
       inboundPort,
       outboundPort,
-      envs
+      envs,
+      healthCheckCommand
     ),
-
-  createContainer: (options: ContainerCreateOptions) =>
-    ipcRenderer.invoke("create-container", options),
   createAndStartContainer: (options: ContainerCreateOptions) =>
     ipcRenderer.invoke("create-and-start-container", options),
-  startContainer: (containerId: string) =>
-    ipcRenderer.invoke("start-container", containerId),
+
   stopContainer: (containerId: string) =>
     ipcRenderer.invoke("stop-container", containerId),
   removeContainer: (containerId: string, options?: ContainerRemoveOptions) =>

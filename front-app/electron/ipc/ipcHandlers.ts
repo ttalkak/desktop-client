@@ -21,10 +21,7 @@ import {
 } from "../dockerManager";
 
 import Docker from "dockerode";
-import {
-  pullDatabaseImage,
-  pullAndStartDatabaseContainer,
-} from "../managers/dockerDBManager";
+import { pullAndStartDatabaseContainer } from "../managers/dockerDBManager";
 import { envFileMaker } from "../managers/filemanager/envFileMaker";
 import { downloadAndUnzip } from "../managers/filemanager/downloadManager";
 import { getProjectSourceDirectory } from "../managers/filemanager/downloadManager";
@@ -161,15 +158,19 @@ export function registerIpcHandlers() {
       _event,
       repoTag: string,
       containerName: string,
-      inboundPort?: number,
-      outboundPort?: number
+      inboundPort: number,
+      outboundPort: number,
+      envs: EnvVar[],
+      healthCheckCommand: string[]
     ) => {
       try {
         return createContainerOptions(
           repoTag,
           containerName,
           inboundPort,
-          outboundPort
+          outboundPort,
+          envs,
+          healthCheckCommand
         );
       } catch (error) {
         console.error(`Error creating container options:`, error);
@@ -250,7 +251,6 @@ export function registerIpcHandlers() {
       await pullDockerImage(imageName);
       return { success: true };
     } catch (error) {
-      console.error(`Failed to pull Docker image ${imageName}:`, error);
       return { success: false, error: (error as Error).message };
     }
   });
@@ -279,14 +279,6 @@ export function registerIpcHandlers() {
       return { success: false, message: (error as Error).message };
     }
   });
-
-  // DB Docker 이미지를 pull 받는 핸들러
-  ipcMain.handle(
-    "pull-database-image",
-    async (_event, databaseType: string) => {
-      return await pullDatabaseImage(databaseType);
-    }
-  );
 
   ipcMain.handle(
     "pullAndStartDatabaseContainer",

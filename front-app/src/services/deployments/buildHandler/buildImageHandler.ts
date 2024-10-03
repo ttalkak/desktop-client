@@ -44,7 +44,8 @@ export const createAndStartContainer = async (
   dockerImage: DockerImage,
   inboundPort: number,
   outboundPort: number,
-  envs: EnvVar[]
+  envs: EnvVar[],
+  healthCheckCommand: string[]
 ): Promise<{ success: boolean; containerId?: string; error?: string }> => {
   try {
     console.log("Starting createAndStartContainer function");
@@ -68,7 +69,8 @@ export const createAndStartContainer = async (
       containerName,
       inboundPort,
       outboundPort,
-      envs
+      envs,
+      healthCheckCommand
     );
     console.log("Created container options:", containerOptions);
 

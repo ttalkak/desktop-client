@@ -101,7 +101,8 @@ declare global {
       containerName: string,
       inboundPort: number,
       outboundPort: number,
-      envs: EnvVar[]
+      envs: EnvVar[],
+      healthCheckCommand: string[]
     ) => Promise<ContainerCreateOptions>;
 
     createContainer: (options: Dockerode.ContainerCreateOptions) => Promise<{

@@ -1,51 +1,64 @@
 import { docker } from "./dockerUtils";
-import { createContainer, startContainer } from "./dockerContainerManager";
-import { createContainerOptions } from "./dockerContainerManager";
+import {
+  createContainer,
+  startContainer,
+  createContainerOptions,
+} from "./dockerContainerManager";
 
 type EnvVar = { key: string; value: string };
 
 interface DatabaseConfig {
   imageName: string;
   defaultPort: number;
+  healthCheckCommand: string[]; // 헬스 체크 명령어 추가
 }
 
-// DB 타입에 따른 이미지 이름과 기본 포트를 반환하는 함수
 function getDatabaseConfig(databaseType: string): DatabaseConfig {
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
-      return { imageName: "mysql", defaultPort: 3306 };
+      return {
+        imageName: "mysql",
+        defaultPort: 3306,
+        healthCheckCommand: [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -P 3306 || exit 1",
+        ],
+      };
     case "POSTGRES":
-      return { imageName: "postgres", defaultPort: 5432 };
+      return {
+        imageName: "postgres",
+        defaultPort: 5432,
+        healthCheckCommand: [
+          "CMD-SHELL",
+          "pg_isready -h localhost -p 5432 || exit 1",
+        ],
+      };
     case "REDIS":
-      return { imageName: "redis", defaultPort: 6379 };
-    case "MONGODB":
-      return { imageName: "mongo", defaultPort: 27017 };
+      return {
+        imageName: "redis",
+        defaultPort: 6379,
+        healthCheckCommand: ["CMD-SHELL", "redis-cli -p 6379 ping || exit 1"],
+      };
+    case "MONGO":
+      return {
+        imageName: "mongo",
+        defaultPort: 27017,
+        healthCheckCommand: [
+          "CMD-SHELL",
+          "mongo --eval 'db.stats()' --port 27017 || exit 1",
+        ],
+      };
     case "MARIADB":
-      return { imageName: "mariadb:latest", defaultPort: 3306 };
+      return {
+        imageName: "mariadb",
+        defaultPort: 3306,
+        healthCheckCommand: [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -P 3306 || exit 1",
+        ],
+      };
     default:
       throw new Error(`Unsupported database type: ${databaseType}`);
-  }
-}
-
-// DB 타입을 입력받아 해당 Docker 이미지를 pull하는 함수
-export async function pullDatabaseImage(
-  databaseType: string
-): Promise<{ success: boolean; tag?: string; error?: string }> {
-  try {
-    const { imageName } = getDatabaseConfig(databaseType);
-    console.log(`Pulling Docker image for ${databaseType}: ${imageName}`);
-
-    // 이미지 풀
-    await docker.pull(imageName);
-
-    // 이미지 태그 반환
-    const imageInfo = await docker.getImage(imageName).inspect();
-    const tag = imageInfo.RepoTags[0]; // 첫 번째 태그 반환 (예: mysql:latest)
-
-    return { success: true, tag };
-  } catch (error) {
-    console.error(`Failed to pull Docker image for ${databaseType}: ${error}`);
-    return { success: false, error: (error as Error).message };
   }
 }
 
@@ -57,25 +70,40 @@ export async function pullAndStartDatabaseContainer(
   envs: EnvVar[]
 ): Promise<{ success: boolean; containerId?: string; error?: string }> {
   try {
-    const { imageName, defaultPort } = getDatabaseConfig(databaseType);
-    console.log(`Pulling Docker image for ${databaseType}: ${imageName}`);
+    // 기본 포트 가져오기
+    const { imageName, defaultPort, healthCheckCommand } =
+      getDatabaseConfig(databaseType);
+    console.log(imageName);
 
-    await pullDatabaseImage(databaseType);
-    console.log(`Successfully pulled Docker image for ${databaseType}`);
+    await docker.pull(imageName, {});
+    // 공통 로직 호출
 
+    // 이미지 태그 반환
+    const imageInfo = await docker.getImage(imageName).inspect();
+    const tag = imageInfo.RepoTags[0]; // 첫 번째 태그 반환 (예: mysql:latest)
+
+    console.log("Docker image pulled:", tag);
+    // 컨테이너 옵션 생성
     const options = createContainerOptions(
-      imageName,
+      tag,
       containerName,
       defaultPort,
-      outboundPort || defaultPort,
-      envs
+      outboundPort || defaultPort, // 아웃바운드 포트가 없으면 기본 포트 사용
+      envs,
+      healthCheckCommand
     );
 
-    const { success, containerId, error } = await createContainer(options);
-    if (!success || !containerId) {
-      throw new Error(`Error creating container: ${error}`);
+    // 컨테이너 생성
+    const {
+      success: createSuccess,
+      containerId,
+      error: createError,
+    } = await createContainer(options);
+    if (!createSuccess || !containerId) {
+      throw new Error(`Error creating container: ${createError}`);
     }
 
+    // 컨테이너 시작
     const startResult = await startContainer(containerId);
     if (!startResult.success) {
       throw new Error(`Error starting container: ${startResult.error}`);
@@ -85,7 +113,8 @@ export async function pullAndStartDatabaseContainer(
     return { success: true, containerId };
   } catch (error) {
     console.error(
-      `Failed to pull Docker image and start container for ${databaseType}: ${error}`
+      `Failed to pull Docker image and start container for ${databaseType}:`,
+      error
     );
     return { success: false, error: (error as Error).message };
   }

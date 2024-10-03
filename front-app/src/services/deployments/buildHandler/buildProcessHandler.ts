@@ -56,12 +56,28 @@ async function completeDeployment(
 ) {
   useDockerStore.getState().addDockerImage(image);
 
-  //여기서 dockerstore에 저장됨
+  // 헬스 체크 명령어 설정
+  let healthCheckCommand: string[] = [];
+
+  if (compute.serviceType === "FRONTEND") {
+    healthCheckCommand = [
+      "CMD-SHELL",
+      `curl -f http://localhost:${compute.outboundPort}/ || exit 1`,
+    ];
+  } else if (compute.serviceType === "BACKEND") {
+    healthCheckCommand = [
+      "CMD-SHELL",
+      `curl -f http://localhost:${compute.outboundPort}/actuator/health || exit 1`,
+    ];
+  }
+
+  // dockerstore에 이미지 저장됨
   const { success, containerId, error } = await createAndStartContainer(
     image,
     compute.inboundPort || DEFAULT_INBOUND_PORT,
     compute.outboundPort || DEFAULT_OUTBOUND_PORT,
-    compute.envs
+    compute.envs,
+    healthCheckCommand // 동적으로 설정된 헬스 체크 명령어 전달
   );
 
   if (!success) {

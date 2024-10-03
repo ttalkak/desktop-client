@@ -43,7 +43,14 @@ const Home: React.FC = () => {
                     {deployment.subdomainName || deployment.deploymentId}
                   </td>
                   <td className="min-w-md text-left break-words">
-                    {getUrl(deployment)}
+                    <a
+                      href={`${getUrl(deployment)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {" "}
+                      {getUrl(deployment)}
+                    </a>
                   </td>
                 </tr>
               ))}

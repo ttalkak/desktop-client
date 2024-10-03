@@ -25,17 +25,18 @@ function getPortBindings(envs: EnvVar[]): {
 }
 
 export const createContainerOptions = (
-  name: string,
+  imageName: string,
   containerName: string,
   inboundPort: number,
   outboundPort: number,
-  envs: EnvVar[] = []
+  envs: EnvVar[] = [],
+  healthCheckCommand: string[]
 ): Docker.ContainerCreateOptions => {
   const formattedEnvs = formatEnvs(envs); // PORT가 아닌 환경 변수 처리
   const portBindings = getPortBindings(envs); // PORT에 대한 노출 포트 처리
 
   return {
-    Image: name,
+    Image: imageName,
     name: containerName,
     ExposedPorts: {
       [`${inboundPort}/tcp`]: {}, // 기본 inbound 포트
@@ -52,7 +53,7 @@ export const createContainerOptions = (
     },
     Env: formattedEnvs.length > 0 ? formattedEnvs : undefined, // PORT 외 나머지 환경 변수 전달
     Healthcheck: {
-      Test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
+      Test: healthCheckCommand,
       Interval: 30000000000,
       Timeout: 10000000000,
       Retries: 3,
