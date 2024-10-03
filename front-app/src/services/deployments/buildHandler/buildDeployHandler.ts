@@ -5,17 +5,21 @@ import {
   Deployment,
   useDeploymentStore,
 } from "../../../stores/deploymentStore.tsx";
+import { useDockerStore } from "../../../stores/dockerStore.tsx";
 
 export async function handleDockerBuild(compute: DeploymentCommand) {
   try {
     // 기존 deployment 확인 및 삭제
-    const store = useDeploymentStore.getState();
-    const existingContainerId = Object.entries(store.containers).find(
+    const deploymentstore = useDeploymentStore.getState();
+    const dockerstore = useDockerStore.getState();
+
+    const existingContainerId = Object.entries(deploymentstore.containers).find(
       ([_, deployment]) => deployment.deploymentId === compute.deploymentId
     )?.[0];
 
     if (existingContainerId) {
-      store.removeContainer(existingContainerId);
+      deploymentstore.removeContainer(existingContainerId);
+      dockerstore.removeDockerContainer(existingContainerId);
       console.log(
         `Removed existing deployment with ID: ${compute.deploymentId}`
       );
@@ -47,7 +51,7 @@ export async function handleDockerBuild(compute: DeploymentCommand) {
           dockerImageTag: compute.dockerImageTag,
         };
 
-        store.addContainer(containerId, deployment);
+        deploymentstore.addContainer(containerId, deployment);
         console.log("Backend build started");
       } else if (error) {
         sendInstanceUpdate(
