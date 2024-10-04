@@ -17,7 +17,7 @@ export const dockerFileMaker = async (
   const fileName = "Dockerfile"; // 파일 이름 정의
 
   // Dockerfile 경로 설정
-  const fullFilePath = path.join(directory, fileName);
+  const fullFilePath = path.join(dockerfilePath, fileName);
 
   try {
     // 파일이 이미 존재하는지 확인
