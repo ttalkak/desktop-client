@@ -279,7 +279,12 @@ declare global {
       inboundPort: number,
       outboundPort: number,
       envs: Array<{ key: string; value: string }>
-    ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
+    ) => Promise<{
+      success: boolean;
+      image: DockerImage;
+      container: DockerContainer;
+      error?: string;
+    }>;
   }
 
   interface Window {

@@ -24,10 +24,7 @@ export interface DeploymentStore {
   addContainer: (containerId: string, deployment: Deployment) => void;
   removeContainer: (containerId: string) => void;
   clearAllContainers: () => void;
-  getContainersByDeployment: (deploymentId: number) => string[];
-  getContainerIdByDeploymentIdWithoutDockerImage: (
-    deploymentId: number
-  ) => string | null;
+  getContainersByDeployment: (deploymentId: number) => string | null;
 }
 
 export const useDeploymentStore = create<DeploymentStore>()(
@@ -57,23 +54,11 @@ export const useDeploymentStore = create<DeploymentStore>()(
 
       getContainersByDeployment: (deploymentId: number) => {
         const state = get();
-        return Object.entries(state.containers)
-          .filter(([_, deployment]) => deployment.deploymentId === deploymentId)
-          .map(([containerId, _]) => containerId);
-      },
-
-      getContainerIdByDeploymentIdWithoutDockerImage: (
-        deploymentId: number
-      ) => {
-        const state = get();
-        const entry = Object.entries(state.containers).find(
-          ([_, deployment]) =>
-            deployment.deploymentId === deploymentId &&
-            (deployment.dockerImageName === null ||
-              deployment.dockerImageName === undefined ||
-              deployment.dockerImageName === "")
+        const containerEntry = Object.entries(state.containers).find(
+          ([_, deployment]) => deployment.deploymentId === deploymentId
         );
-        return entry ? entry[0] : null;
+
+        return containerEntry ? containerEntry[0] : null; // containerId를 반환하거나 null 반환
       },
     }),
     {

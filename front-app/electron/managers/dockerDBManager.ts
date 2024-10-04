@@ -4,6 +4,7 @@ import {
   startContainer,
   createContainerOptions,
 } from "./dockerContainerManager";
+import { ContainerInfo } from "dockerode";
 
 type EnvVar = { key: string; value: string };
 
@@ -63,36 +64,51 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
 }
 
 /// Docker 이미지를 pull하는 Promise 기반 함수
-async function pullDatabseImage(imageName: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+async function pullDatabseImage(imageName: string): Promise<{
+  success: boolean;
+  image?: DockerImage;
+  error?: string;
+}> {
+  return new Promise((resolve) => {
     docker.pull(imageName, {}, (err, stream) => {
-      if (err) {
-        return reject(err);
-      }
-
-      // stream이 undefined인지 확인
-      if (!stream) {
-        return reject(
-          new Error(`Failed to retrieve stream for image: ${imageName}`)
+      if (err || !stream) {
+        console.error(
+          `Error pulling image: ${err?.message || "Stream not available"}`
         );
+        return resolve({
+          success: false,
+          error: err?.message || "Stream not available",
+        });
       }
 
-      docker.modem.followProgress(stream, onFinished, onProgress);
-
-      function onFinished(err: any) {
-        if (err) return reject(err);
+      docker.modem.followProgress(stream, () => {
         console.log(`Docker image ${imageName} pulled successfully.`);
-        resolve();
-      }
 
-      function onProgress(event: any) {
-        console.log(event.status); // 'Downloading', 'Extracting', 'Complete' 등의 진행 상태 출력
-      }
+        // listImages()를 사용하여 이미지 목록 가져오기
+        docker.listImages((err, images) => {
+          if (err) {
+            console.error(`Error listing images: ${err.message}`);
+            return resolve({ success: false, error: err.message });
+          }
+
+          // 방금 pull한 이미지 찾기
+          const pulledImage = images?.find(
+            (image) => image.RepoTags && image.RepoTags.includes(imageName)
+          );
+
+          if (pulledImage) {
+            resolve({ success: true, image: pulledImage }); // 성공 시 이미지 반환
+          } else {
+            console.error(`Pulled image not found in list: ${imageName}`);
+            resolve({ success: false, error: `Image not found` });
+          }
+        });
+      });
     });
   });
 }
 
-// Docker 이미지를 pull하고 컨테이너를 생성 및 시작하는 함수
+//db image pull 후 dbcontainer 생성
 export async function pullAndStartDatabaseContainer(
   databaseType: string,
   imageName: string,
@@ -100,13 +116,29 @@ export async function pullAndStartDatabaseContainer(
   inboundPort: number,
   outboundPort: number,
   envs: EnvVar[]
-): Promise<{ success: boolean; containerId?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  image?: DockerImage;
+  container?: DockerContainer;
+  error?: string;
+}> {
   try {
     // 기본 포트 및 healthCheckCommand 가져오기
     const { defaultPort, healthCheckCommand } = getDatabaseConfig(databaseType);
 
-    console.log(`Pulling Docker image: ${imageName}`);
-    await pullDatabseImage(imageName); // 이미지 풀링
+    // Docker 이미지 풀링
+    const {
+      success,
+      image,
+      error: pullError,
+    } = await pullDatabseImage(imageName);
+
+    if (!success || !image) {
+      return {
+        success: false,
+        error: pullError || `Failed to pull image: ${imageName}`,
+      };
+    }
 
     // 컨테이너 옵션 생성
     const options = createContainerOptions(
@@ -125,17 +157,36 @@ export async function pullAndStartDatabaseContainer(
       error: createError,
     } = await createContainer(options);
     if (!createSuccess || !containerId) {
-      throw new Error(`Error creating container: ${createError}`);
+      return {
+        success: false,
+        error: `Error creating container: ${createError}`,
+      };
     }
 
     // 컨테이너 시작
     const startResult = await startContainer(containerId);
     if (!startResult.success) {
-      throw new Error(`Error starting container: ${startResult.error}`);
+      return {
+        success: false,
+        error: `Failed to start container with ID: ${containerId}`,
+      };
+    }
+
+    // 컨테이너 정보 가져오기
+    const existingContainers = await docker.listContainers({ all: true });
+    const container = existingContainers.find(
+      (container) => container.Id === containerId // 수정: 할당 대신 비교
+    );
+
+    if (!container) {
+      return {
+        success: false,
+        error: `Container with ID ${containerId} not found.`,
+      };
     }
 
     console.log(`Container ${containerId} started successfully.`);
-    return { success: true, containerId };
+    return { success: true, image, container };
   } catch (error) {
     console.error(
       `Failed to pull Docker image and start container for ${databaseType}:`,

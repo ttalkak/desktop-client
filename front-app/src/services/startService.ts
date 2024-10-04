@@ -3,6 +3,8 @@ import { checkDockerStatus } from "./deployments/dockerUtils";
 import { startDocker } from "./deployments/dockerUtils";
 import { registerDockerEventHandlers } from "./deployments/dockerEventListner";
 import { connectWebSocket } from "./stompService";
+//위치 고민해보기
+import { startContainerStatsMonitoring } from "./monitoring/healthCheckPingUtils";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -34,6 +36,7 @@ export const startService = async () => {
     console.log("6. ServiceUtil: WebSocket connected");
 
     setServiceStatus("running");
+    startContainerStatsMonitoring();
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);
     setServiceStatus("stopped");

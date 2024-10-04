@@ -1,13 +1,56 @@
 import { useDockerStore } from "../../../stores/dockerStore.tsx";
 import { handleBuildImage } from "./buildImageHandler.ts";
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
-import { startContainerStatsMonitoring } from "../../monitoring/healthCheckPingUtils.ts";
 import { startPgrok } from "../pgrokHandler.ts";
 import { createAndStartContainer } from "./buildImageHandler.ts";
 import {
   useDeploymentStore,
   Deployment,
 } from "../../../stores/deploymentStore.tsx";
+
+// 공통 빌드 및 배포 처리 함수
+export async function buildAndDeploy(
+  compute: DeploymentCommand,
+  contextPath: string,
+  dockerfilePath: string | null
+) {
+  // 1. Docker 이미지 빌드
+  const { addDockerImage } = useDockerStore.getState();
+
+  const imageName = compute.dockerImageName
+    ? compute.dockerImageName
+    : compute.subdomainName;
+
+  const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
+
+  if (dockerfilePath && imageName) {
+    const { image } = await handleBuildImage(
+      contextPath,
+      dockerfilePath,
+      imageName,
+      tagName
+    );
+
+    // 이미지 빌드시 리스트에 추가
+    if (image) {
+      addDockerImage(image);
+    }
+
+    // 이미지 생성 실패시 생성 실패 알림
+    if (!image) {
+      sendInstanceUpdate(
+        compute.serviceType,
+        compute.deploymentId,
+        "ERROR",
+        compute.outboundPort,
+        "이미지 생성에 실패했습니다. dockerfile을 확인하세요."
+      );
+      return;
+    }
+    // 도커 이미지 추가 및 컨테이너 생성 및 시작
+    await completeDeployment(compute, image);
+  }
+}
 
 // 공통 처리 함수: 배포 완료 및 상태 업데이트
 async function completeDeployment(
@@ -63,55 +106,18 @@ async function completeDeployment(
       dockerImageTag: compute.dockerImageTag,
     };
 
-    //deployment에 저장
+    //Store 저장 및 성공 상태 반환
     useDeploymentStore.getState().addContainer(container.Id, deployment);
     useDockerStore.getState().addDockerContainer(container);
+    sendInstanceUpdate(
+      compute.serviceType,
+      compute.deploymentId,
+      "RUNNING",
+      compute.outboundPort,
+      "container 빌드 성공"
+    );
     window.electronAPI.startContainerStats([container.Id]);
     window.electronAPI.startLogStream(container.Id);
     await startPgrok(compute);
-  }
-}
-
-// 공통 빌드 및 배포 처리 함수
-export async function buildAndDeploy(
-  compute: DeploymentCommand,
-  contextPath: string,
-  dockerfilePath: string | null
-) {
-  // 1. Docker 이미지 빌드
-  const { addDockerImage } = useDockerStore.getState();
-
-  const imageName = compute.dockerImageName
-    ? compute.dockerImageName
-    : compute.subdomainName;
-
-  const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
-
-  if (dockerfilePath && imageName) {
-    const { image } = await handleBuildImage(
-      contextPath,
-      dockerfilePath,
-      imageName,
-      tagName
-    );
-
-    // 이미지 빌드시 리스트에 추가
-    if (image) {
-      addDockerImage(image);
-    }
-
-    // 이미지 생성 실패시 생성 실패 알림
-    if (!image) {
-      sendInstanceUpdate(
-        compute.serviceType,
-        compute.deploymentId,
-        "ERROR",
-        compute.outboundPort,
-        "이미지 생성에 실패했습니다. dockerfile을 확인하세요."
-      );
-      return;
-    }
-    // 도커 이미지 추가 및 컨테이너 생성 및 시작
-    await completeDeployment(compute, image);
   }
 }

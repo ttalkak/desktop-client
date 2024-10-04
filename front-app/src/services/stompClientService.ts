@@ -32,7 +32,6 @@ export function setupClientHandlers(userId: string): void {
       async (message: Message) => {
         const compute = JSON.parse(message.body);
         console.log("생성요청 도착", compute);
-        // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
         await handleDockerBuild(compute);
       }
     );
@@ -43,7 +42,6 @@ export function setupClientHandlers(userId: string): void {
       async (message: Message) => {
         const dbCreate = JSON.parse(message.body);
         console.log(`db ${dbCreate} 생성요청 도착`, dbCreate);
-        // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
         await handleDatabaseBuild(dbCreate);
       }
     );
@@ -53,8 +51,10 @@ export function setupClientHandlers(userId: string): void {
       `/sub/compute-update/${userId}`,
       async (message: Message) => {
         try {
-          const { deploymentId, command } = JSON.parse(message.body);
-          handleContainerCommand(deploymentId, command); // 컨테이너 명령 처리
+          const { serviceType, deploymentId, command } = JSON.parse(
+            message.body
+          );
+          handleContainerCommand(serviceType, deploymentId, command); // 컨테이너 명령 처리
         } catch (error) {
           console.error("Error processing compute update message:", error);
         }
@@ -70,7 +70,7 @@ export function setupClientHandlers(userId: string): void {
 
     // WebSocket 연결 해제 처리
     client.onDisconnect = () => {
-      alert("배정 연결이 해제 되었습니다. 재시도 해주세요");
+      alert("연결이 해제 되었습니다. 재시도 해주세요");
       console.log("Websocket Disconnected....");
       setWebsocketStatus("disconnected");
       stopContainerStatsMonitoring();

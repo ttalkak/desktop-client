@@ -80,14 +80,11 @@ export const createAndStartContainer = async (
     if (!success) {
       return { success: false, container: undefined };
     }
-
     return { success: true, container: createdContainer };
   } catch (error) {
-    console.error("Error in createAndStartContainer:", error);
     return {
       success: false,
-      container: undefined,
-      error: "컨테이너 생성 실패",
+      error: "container 실행 실패",
     };
   }
 };

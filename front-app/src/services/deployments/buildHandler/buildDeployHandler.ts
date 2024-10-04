@@ -1,4 +1,3 @@
-import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
 import { prepareDeploymentContext } from "./deploymentUtils.ts";
 import { buildAndDeploy } from "./buildProcessHandler.ts";
 import { useDeploymentStore } from "../../../stores/deploymentStore.tsx";

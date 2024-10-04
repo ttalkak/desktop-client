@@ -3,31 +3,45 @@ import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 
 export async function handleContainerCommand(
-  deploymentId: number,
+  serviceType: string,
+  Id: number,
   command: string
 ) {
-  console.log(`Received command: ${command} for deploymentId: ${deploymentId}`);
+  switch (serviceType) {
+    case "FRONTEND":
+    case "BACKEND": {
+      break;
+    }
+
+    case "DATABASE": {
+      break;
+    }
+    default: {
+      // 다른 경우 처리
+      console.log("Unknown service type");
+      break;
+    }
+  }
 
   const containerId = useDeploymentStore
     .getState()
-    .getContainerIdByDeploymentIdWithoutDockerImage(deploymentId);
+    .getContainersByDeployment(Id);
 
   if (containerId === null) {
-    console.error(`No container found for deploymentId: ${deploymentId}`);
+    console.error(`No container found for deploymentId: ${Id}`);
+
     return;
   }
 
   const deployment = useDeploymentStore.getState().containers[containerId];
 
   if (!containerId) {
-    console.error(`No container found for deploymentId: ${deploymentId}`);
+    console.error(`No container found for deploymentId: ${Id}`);
     return;
   }
 
   if (!deployment) {
-    console.error(
-      `No deployment details found for deploymentId: ${deploymentId}`
-    );
+    console.error(`No deployment details found for deploymentId: ${Id}`);
     return;
   }
 
@@ -54,7 +68,7 @@ export async function handleContainerCommand(
         await window.electronAPI.stopContainerStats([containerId]);
         const { success } = await window.electronAPI.stopContainer(containerId);
         if (success) {
-          await window.electronAPI.stopPgrok(deploymentId);
+          await window.electronAPI.stopPgrok(Id);
         } else {
           await dockerStateManager.updateContainerState(containerId, "error");
         }
@@ -84,23 +98,18 @@ export async function handleContainerCommand(
         );
         if (success) {
           window.electronAPI.stopContainerStats([containerId]);
-          window.electronAPI.stopPgrok(deploymentId);
+          window.electronAPI.stopPgrok(Id);
           sendInstanceUpdate(
             deployment.serviceType,
-            deploymentId,
+            Id,
             "DELETED",
             deployment.outboundPort,
             `successfully deleted`
           );
           dockerStateManager.removeContainer(containerId);
           useDeploymentStore.getState().removeContainer(containerId);
-        } else {
-          console.error(`${deploymentId} delete failed`);
         }
       }
-      break;
-
-    case "REBUILD":
       break;
 
     default:

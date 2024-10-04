@@ -5,14 +5,6 @@ export const PGROK_URL = "pgrok.ttalkak.com:2222";
 // pgrok 실행 함수
 export async function startPgrok(compute: DeploymentCommand) {
   try {
-    sendInstanceUpdate(
-      compute.serviceType,
-      compute.deploymentId,
-      "RUNNING",
-      compute.outboundPort,
-      "port matching 시작.."
-    );
-
     const message = await window.electronAPI.runPgrok(
       PGROK_URL,
       `http://localhost:${compute.outboundPort}`,
@@ -27,7 +19,7 @@ export async function startPgrok(compute: DeploymentCommand) {
       compute.deploymentId,
       "RUNNING",
       compute.outboundPort,
-      "배포 완료"
+      `${compute.subdomainName} 배포 완료`
     );
   } catch (error) {
     console.error(`Failed to start pgrok: ${error}`);
