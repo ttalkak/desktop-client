@@ -75,7 +75,6 @@ export async function buildDockerImage(
     .relative(contextPath, dockerfilePath)
     .replace(/\\/g, "/");
   console.log("docker relativePath:", relativeDockerfilePath);
-  console.log("docker contextPath", contextPath);
 
   // Docker 이미지를 빌드
   const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {

@@ -17,23 +17,25 @@ export const dockerFileMaker = async (
   const fileName = "Dockerfile"; // 파일 이름 정의
 
   // Dockerfile 경로 설정
-  const fullFilePath = path.join(dockerfilePath, fileName);
+  const fullFilePath = path.join(directory, fileName);
 
   try {
     // 파일이 이미 존재하는지 확인
-    if (fs.existsSync(fullFilePath)) {
-      console.log(`Dockerfile already exists at ${fullFilePath}`);
+    if (fs.existsSync(dockerfilePath)) {
+      console.log(`Dockerfile already exists at ${dockerfilePath}`);
       return {
         success: false,
         message: "Dockerfile already exists",
         contextPath: directory,
         dockerFilePath: fullFilePath,
-      }; // 이미 파일이 존재하는 경우 반환
+      };
     }
 
     // 디렉토리가 존재하는지 확인하고 없으면 생성 (비동기식)
-    if (!fs.existsSync(directory)) {
-      console.log(`Directory does not exist. Creating directory: ${directory}`);
+    if (!fs.existsSync(dockerfilePath)) {
+      console.log(
+        `Directory does not exist. Creating directory: ${dockerfilePath}`
+      );
       await fs.promises.mkdir(directory, { recursive: true }); // 디렉토리 생성
     }
 

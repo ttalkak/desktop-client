@@ -108,13 +108,13 @@ export async function downloadAndUnzip(
 
     // 18. Find the Dockerfile path and check if it exists
     const { found, dockerfilePath } = await findDockerfile(dockerDir);
-
     if (!found) {
+      dockerDir = path.join(dockerDir, "Dockerfile").replace(/\\/g, "/"); // Dockerfile 경로 추가 및 슬래시 표준화
       console.log(
         `19. Dockerfile not found. Using default Dockerfile path: ${dockerDir}`
       );
     } else {
-      dockerDir = dockerfilePath;
+      dockerDir = path.join(dockerfilePath).replace(/\\/g, "/"); // Dockerfile 경로 표준화
       console.log(`20. Dockerfile found: ${dockerDir}`);
     }
 
