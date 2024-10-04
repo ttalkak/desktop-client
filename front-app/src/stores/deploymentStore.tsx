@@ -10,14 +10,13 @@ export interface Deployment {
   inboundPort: number;
   outboundPort: number;
   subdomainName: string;
-  subdomainKey?: string;
+  // subdomainKey: string;
   sourceCodeLink: string;
-  dockerRootDirectory?: string;
-  dockerFileScript?: string;
+  dockerRootDirectory: string;
+  dockerFileScript: string;
   envs?: EnvironmentVariable[];
-  dockerImageName?: string | null;
-  dockerImageTag?: string | null;
-  deploymentUrl?: string;
+  dockerImageName: string | null;
+  dockerImageTag: string | null;
 }
 
 export interface DeploymentStore {

@@ -31,6 +31,7 @@ export const dockerStateManager = {
 
       if (newState === "error") {
         sendInstanceUpdate(
+          deployment.serviceType,
           deploymentId,
           "ERROR",
           compute?.outboundPort,

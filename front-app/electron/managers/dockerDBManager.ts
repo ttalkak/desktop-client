@@ -39,7 +39,7 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
         defaultPort: 6379,
         healthCheckCommand: ["CMD-SHELL", "redis-cli -p 6379 ping || exit 1"],
       };
-    case "MONGO":
+    case "MONGODB":
       return {
         imageName: "mongo",
         defaultPort: 27017,
@@ -62,32 +62,57 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
   }
 }
 
-// DB 타입을 입력받아 Docker 이미지를 pull하고 컨테이너를 시작하는 함수
+/// Docker 이미지를 pull하는 Promise 기반 함수
+async function pullDatabseImage(imageName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    docker.pull(imageName, {}, (err, stream) => {
+      if (err) {
+        return reject(err);
+      }
+
+      // stream이 undefined인지 확인
+      if (!stream) {
+        return reject(
+          new Error(`Failed to retrieve stream for image: ${imageName}`)
+        );
+      }
+
+      docker.modem.followProgress(stream, onFinished, onProgress);
+
+      function onFinished(err: any) {
+        if (err) return reject(err);
+        console.log(`Docker image ${imageName} pulled successfully.`);
+        resolve();
+      }
+
+      function onProgress(event: any) {
+        console.log(event.status); // 'Downloading', 'Extracting', 'Complete' 등의 진행 상태 출력
+      }
+    });
+  });
+}
+
+// Docker 이미지를 pull하고 컨테이너를 생성 및 시작하는 함수
 export async function pullAndStartDatabaseContainer(
   databaseType: string,
+  imageName: string,
   containerName: string,
+  inboundPort: number,
   outboundPort: number,
   envs: EnvVar[]
 ): Promise<{ success: boolean; containerId?: string; error?: string }> {
   try {
-    // 기본 포트 가져오기
-    const { imageName, defaultPort, healthCheckCommand } =
-      getDatabaseConfig(databaseType);
-    console.log(imageName);
+    // 기본 포트 및 healthCheckCommand 가져오기
+    const { defaultPort, healthCheckCommand } = getDatabaseConfig(databaseType);
 
-    await docker.pull(imageName, {});
-    // 공통 로직 호출
+    console.log(`Pulling Docker image: ${imageName}`);
+    await pullDatabseImage(imageName); // 이미지 풀링
 
-    // 이미지 태그 반환
-    const imageInfo = await docker.getImage(imageName).inspect();
-    const tag = imageInfo.RepoTags[0]; // 첫 번째 태그 반환 (예: mysql:latest)
-
-    console.log("Docker image pulled:", tag);
     // 컨테이너 옵션 생성
     const options = createContainerOptions(
-      tag,
+      imageName,
       containerName,
-      defaultPort,
+      inboundPort || defaultPort,
       outboundPort || defaultPort, // 아웃바운드 포트가 없으면 기본 포트 사용
       envs,
       healthCheckCommand

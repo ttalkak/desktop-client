@@ -20,14 +20,13 @@ export async function buildAndDeploy(
   dockerfilePath: string | null
 ) {
   // Docker 이미지 빌드
-
   const imageName = compute.dockerImageName
     ? compute.dockerImageName
     : compute.subdomainName;
 
   const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
 
-  if (dockerfilePath) {
+  if (dockerfilePath && imageName) {
     const { image } = await handleBuildImage(
       contextPath,
       dockerfilePath,
@@ -37,6 +36,7 @@ export async function buildAndDeploy(
 
     if (!image) {
       sendInstanceUpdate(
+        compute.serviceType,
         compute.deploymentId,
         "ERROR",
         compute.outboundPort,
@@ -82,6 +82,7 @@ async function completeDeployment(
 
   if (!success) {
     sendInstanceUpdate(
+      compute.serviceType,
       compute.deploymentId,
       "ERROR",
       compute.outboundPort,
@@ -112,6 +113,7 @@ async function completeDeployment(
     useDeploymentStore.getState().addContainer(containerId, deployment);
 
     sendInstanceUpdate(
+      compute.serviceType,
       compute.deploymentId,
       "RUNNING",
       compute.outboundPort,

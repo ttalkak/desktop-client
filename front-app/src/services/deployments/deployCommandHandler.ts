@@ -86,6 +86,7 @@ export async function handleContainerCommand(
           window.electronAPI.stopContainerStats([containerId]);
           window.electronAPI.stopPgrok(deploymentId);
           sendInstanceUpdate(
+            deployment.serviceType,
             deploymentId,
             "DELETED",
             deployment.outboundPort,

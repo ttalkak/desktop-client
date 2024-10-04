@@ -20,7 +20,7 @@ async function runPgrok(
   forwardAddr: string,
   token: string,
   deploymentId: number,
-  domain: string
+  domain?: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
   const pgrokExePath = path.join(ttalkakDirectory, "pgrok.exe");
@@ -29,7 +29,11 @@ async function runPgrok(
     throw new Error("pgrok.exe not found. Please download it first.");
   }
 
-  const command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token} --deployment-id ${deploymentId} --domain ${domain}.ttalkak.com`;
+  let command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token} --deployment-id ${deploymentId} --domain ${domain}.ttalkak.com`;
+
+  if (!domain) {
+    command = `pgrok.exe tcp --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token}`;
+  }
 
   // 명령 프롬프트를 사용하여 pgrok 실행
   const child = execFile(

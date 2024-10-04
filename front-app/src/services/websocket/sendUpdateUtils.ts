@@ -1,13 +1,16 @@
 import { useAuthStore } from "../../stores/authStore";
 import { client } from "./stompClientUtils";
 
+//Deployment 상태 업데이트
 export function sendInstanceUpdate(
+  serviceType: string,
   deploymentId: number,
   status: string,
   port?: number,
   details?: string
 ) {
   const message = {
+    serviceType: serviceType,
     status: status.toUpperCase(),
     port: port,
     message: details || "",

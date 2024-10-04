@@ -285,13 +285,17 @@ export function registerIpcHandlers() {
     async (
       _,
       databaseType: string,
+      imageName: string,
       containerName: string,
+      inboundPort: number,
       outboundPort: number,
       envs: Array<{ key: string; value: string }>
     ) => {
       return await pullAndStartDatabaseContainer(
         databaseType,
+        imageName,
         containerName,
+        inboundPort,
         outboundPort,
         envs
       );

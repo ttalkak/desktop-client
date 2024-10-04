@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   pullAndStartDatabaseContainer: (
     databaseType: string,
+    imageName: string,
     containerName: string,
     inboundPort: number,
     outboundPort: number,
@@ -67,6 +68,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke(
       "pullAndStartDatabaseContainer",
       databaseType,
+      imageName,
       containerName,
       inboundPort,
       outboundPort,

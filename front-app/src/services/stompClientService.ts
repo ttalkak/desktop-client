@@ -10,6 +10,7 @@ import { client } from "./websocket/stompClientUtils";
 import { sendComputeConnectMessage } from "./websocket/sendComputeConnect";
 import { useAppStore } from "../stores/appStatusStore";
 import { handleDockerBuild } from "./deployments/buildHandler/buildDeployHandler";
+import { handleDatabaseBuild } from "./deployments/buildHandler/buildDatabaseHandler";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -25,29 +26,29 @@ export function setupClientHandlers(userId: string): void {
     startSendingCurrentState(userId); // 배포 상태 PING 전송 시작
     setServiceStatus("running");
 
-    // compute-create 구독
+    // compute-create 구독/Frontend & Backend 배포
     client.subscribe(
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
-        const computes = JSON.parse(message.body);
-
-        // 첫 번째 요소를 배열 끝으로 이동시키는 로직
-        const firstCompute = computes.shift(); // 첫 번째 요소 제거
-        computes.push(firstCompute); // 첫 번째 요소를 배열 끝에 추가
-
-        // 배열의 모든 요소 처리 (첫 번째 요소가 마지막에 처리됨)
-        for (const compute of computes) {
-          console.log(
-            `Processing compute-create: ${JSON.stringify(compute, null, 2)}`
-          );
-
-          // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
-          await handleDockerBuild(compute);
-        }
+        const compute = JSON.parse(message.body);
+        console.log("생성요청 도착", compute);
+        // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
+        await handleDockerBuild(compute);
       }
     );
 
-    // compute-update 구독
+    //database-create 구독 / database 배포
+    client.subscribe(
+      `/sub/database-create/${userId}`,
+      async (message: Message) => {
+        const dbCreate = JSON.parse(message.body);
+        console.log(`db ${dbCreate} 생성요청 도착`, dbCreate);
+        // `handleDockerBuild` 내부에서 FRONTEND와 BACKEND 처리
+        await handleDatabaseBuild(dbCreate);
+      }
+    );
+
+    // compute-update 구독 / command 처리
     client.subscribe(
       `/sub/compute-update/${userId}`,
       async (message: Message) => {
@@ -69,7 +70,8 @@ export function setupClientHandlers(userId: string): void {
 
     // WebSocket 연결 해제 처리
     client.onDisconnect = () => {
-      console.log("Disconnected");
+      alert("배정 연결이 해제 되었습니다. 재시도 해주세요");
+      console.log("Websocket Disconnected....");
       setWebsocketStatus("disconnected");
       stopContainerStatsMonitoring();
       stopSendingCurrentState();

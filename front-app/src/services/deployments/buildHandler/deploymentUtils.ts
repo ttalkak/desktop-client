@@ -36,6 +36,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       );
       if (!createResult.success) {
         sendInstanceUpdate(
+          compute.serviceType,
           compute.deploymentId,
           "ERROR",
           compute.outboundPort,
@@ -52,6 +53,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
     // Dockerfile이 없고, 스크립트도 없을 때
     case !found && !hasDockerFileScript: {
       sendInstanceUpdate(
+        compute.serviceType,
         compute.deploymentId,
         "ERROR",
         compute.outboundPort,

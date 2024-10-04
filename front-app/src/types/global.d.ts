@@ -215,8 +215,8 @@ declare global {
     dockerRootDirectory: string; // 선택적 필드에서 필수 필드로 변경
     dockerFileScript: string; // 선택적 필드에서 필수 필드로 변경
     envs: EnvironmentVariable[];
-    dockerImageName?: string | null; // 백엔드 db 설정 있을때
-    dockerImageTag?: string | null; // 백엔드 db 설정있을때
+    dockerImageName: string | null; // 백엔드 db 설정 있을때
+    dockerImageTag: string | null; // 백엔드 db 설정있을때
   }
 
   // pgrok Operations
@@ -227,7 +227,7 @@ declare global {
       forwardAddr: string,
       token: string,
       deploymentId: number,
-      subdomainName: string
+      subdomainName?: string
     ) => Promise<string>;
     onPgrokLog: (callback: LogCallback) => void;
     stopPgrok: (deploymentId: number) => Promise<string>;
@@ -274,7 +274,9 @@ declare global {
 
     pullAndStartDatabaseContainer: (
       databaseType: string,
+      imageName: string,
       containerName: string,
+      inboundPort: number,
       outboundPort: number,
       envs: Array<{ key: string; value: string }>
     ) => Promise<{ success: boolean; containerId?: string; error?: string }>;
