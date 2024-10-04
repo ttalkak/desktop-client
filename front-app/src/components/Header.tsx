@@ -21,6 +21,7 @@ const Header = () => {
   const accessToken = useAuthStore((state) => state.accessToken);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const clearTokens = useAuthStore((state) => state.clearTokens);
+  const [hoverInfo, setHoverInfo] = useState<string>("");
 
   const handleMinimize = () => {
     window.electronAPI.minimizeWindow();
@@ -113,6 +114,8 @@ const Header = () => {
 
   const logoutBtn =
     "bg-color-1 text-color-4 text-xs px-4 py-1.5 rounded mr-4 font-sans font-medium cursor-pointer button app-region-no-drag hover:bg-color-2";
+  const tooltip =
+    "absolute top-7 right-0 mb-1 bg-color-14 border text-xs rounded py-1 shadow-lg z-50";
 
   return (
     <div className="bg-white fixed top-0 left-0 w-full flex justify-between items-center border-b border-color-2 app-region-drag relative">
@@ -132,8 +135,17 @@ const Header = () => {
               <div
                 className="app-region-no-drag cursor-pointer"
                 onClick={() => toggleSettingModal("header")}
+                onMouseEnter={() => {
+                  setHoverInfo("setting");
+                }}
+                onMouseLeave={() => {
+                  setHoverInfo("");
+                }}
               >
-                <IoSettingsSharp size={24} color="#3A91D1" />
+                <IoSettingsSharp size={22} color="#3A91D1" className="mr-1" />
+                {hoverInfo === "setting" && (
+                  <div className={`${tooltip} w-16 text-center`}>고급 설정</div>
+                )}
               </div>
               <SettingModal
                 isOpen={isSettingModalOpen}

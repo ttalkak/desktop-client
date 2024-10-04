@@ -25,10 +25,10 @@ const CpuStatusItem = () => {
       <p className="font-sans font-bold text-lg">CPU 사용률</p>
       <p className="font-sans text-color-10 text-xs">배포 CPU 사용률</p>
       <div className="flex items-center mt-2">
-        <FiCpu className="text-2xl text-color-6 mr-2" />
-        <div className="w-full bg-gray-200 rounded-full h-3">
+        <FiCpu className="text-2xl text-color-15 mr-2" />
+        <div className="w-full bg-color-2 rounded-full h-2.5">
           <div
-            className={`bg-blue-500 h-3 ${
+            className={`bg-color-9 h-2.5 ${
               cpuUsage === 100 ? "rounded-full" : "rounded-l-full"
             }`}
             style={{ width: `${cpuUsage}%` }}

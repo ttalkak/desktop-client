@@ -7,7 +7,7 @@ const PaymentStatusItem = () => {
       <p className="font-sans text-color-10 text-xs">결산액</p>
       <div className="flex items-center mt-2">
         <p className="text-color-6">
-          <FaCoins />
+          <FaCoins color="#7FC0EF" />
         </p>
         <p className="text-lg pl-2">{}</p>
       </div>

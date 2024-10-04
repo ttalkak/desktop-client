@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { axiosInstance } from "../../axios/constants";
 import { useAppStore } from "./../../stores/appStatusStore";
 import { useAuthStore } from "../../stores/authStore";
+import { TbPercentage } from "react-icons/tb";
+import { RiFileInfoLine } from "react-icons/ri";
 
 interface SettingModalProps {
   isOpen: boolean;
@@ -26,6 +28,8 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
   const [maxMemory, setMaxMemory] = useState<string>("0");
   const [maxCompute, setMaxCompute] = useState<string>("0");
   const [portRange, setPortRange] = useState({ min: "0", max: "0" });
+
+  const [hoverInfo, setHoverInfo] = useState<string>("");
 
   useEffect(() => {
     if (userSettings) {
@@ -205,6 +209,9 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  const tooltip =
+    "absolute bottom-full mb-1 bg-white border text-xs rounded py-1 px-2 shadow-lg filter-none opacity-100 text-black z-50";
+
   return (
     <div
       ref={modalRef}
@@ -212,7 +219,27 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
     >
       <form>
         <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">최대 컨테이너 수</label>
+          <label className="text-sm mb-2 flex items-center">
+            컨테이너 수
+            <div className="relative">
+              <RiFileInfoLine
+                size={16}
+                color="#b5bfc4"
+                className="ml-1 cursor-pointer"
+                onMouseEnter={() => {
+                  setHoverInfo("project");
+                }}
+                onMouseLeave={() => {
+                  setHoverInfo("");
+                }}
+              />
+              {hoverInfo === "project" && (
+                <div className={`${tooltip} w-48`}>
+                  최대로 할당받을 수 있는 프로젝트 수 입니다.
+                </div>
+              )}
+            </div>
+          </label>
           <div className="flex items-center space-x-2">
             <input
               type="text"
@@ -231,8 +258,28 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
           )}
         </div>
 
-        <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">최대 CPU 사용량(%)</label>
+        <div className="flex flex-col mb-2 relative">
+          <label className="text-sm mb-2 flex items-center">
+            CPU 사용량
+            <div className="relative">
+              <RiFileInfoLine
+                size={16}
+                color="#b5bfc4"
+                className="ml-1 cursor-pointer"
+                onMouseEnter={() => {
+                  setHoverInfo("cpu");
+                }}
+                onMouseLeave={() => {
+                  setHoverInfo("");
+                }}
+              />
+              {hoverInfo === "cpu" && (
+                <div className={`${tooltip} w-48`}>
+                  최대로 허용할 CPU 사용량 입니다.
+                </div>
+              )}
+            </div>
+          </label>
           <input
             type="text"
             value={maxCPU}
@@ -242,6 +289,9 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
               !isEditing ? "text-gray-400" : ""
             }`}
           />
+          <div className="text-color-10 absolute top-9 right-3.5">
+            <TbPercentage />
+          </div>
           {errorMessages.cpuWarning && (
             <p className="text-red-500 text-sm pt-1 pb-1.5">
               {errorMessages.cpuWarning}
@@ -249,8 +299,28 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
           )}
         </div>
 
-        <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">최대 메모리 사용량(GB)</label>
+        <div className="flex flex-col mb-2 relative">
+          <label className="text-sm mb-2 flex items-center">
+            메모리 사용량
+            <div className="relative">
+              <RiFileInfoLine
+                size={16}
+                color="#b5bfc4"
+                className="ml-1 cursor-pointer"
+                onMouseEnter={() => {
+                  setHoverInfo("memory");
+                }}
+                onMouseLeave={() => {
+                  setHoverInfo("");
+                }}
+              />
+              {hoverInfo === "memory" && (
+                <div className={`${tooltip} w-48`}>
+                  최대로 허용할 메모리 용량 입니다.
+                </div>
+              )}
+            </div>
+          </label>
           <input
             type="text"
             value={maxMemory}
@@ -260,6 +330,7 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
               !isEditing ? "text-gray-400" : ""
             }`}
           />
+          <div className="text-color-10 absolute top-8 right-4">GB</div>
           {errorMessages.memoryWarning && (
             <p className="text-red-500 text-sm pt-1 pb-1.5">
               {errorMessages.memoryWarning}
@@ -268,7 +339,27 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="flex flex-col mb-2">
-          <label className="text-sm mb-2">허용 포트 대역</label>
+          <label className="text-sm mb-2 flex items-center">
+            포트 대역{" "}
+            <div className="relative">
+              <RiFileInfoLine
+                size={16}
+                color="#b5bfc4"
+                className="ml-1 cursor-pointer"
+                onMouseEnter={() => {
+                  setHoverInfo("port");
+                }}
+                onMouseLeave={() => {
+                  setHoverInfo("");
+                }}
+              />
+              {hoverInfo === "port" && (
+                <div className={`${tooltip} w-48`}>
+                  딸깍 프로젝트를 배포할 포트 대역 입니다.
+                </div>
+              )}
+            </div>
+          </label>
           <div className="flex items-center space-x-2 justify-between">
             <input
               type="text"
@@ -311,7 +402,11 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
                 alert("서비스 실행 중에는 설정을 변경할 수 없습니다");
               }
             }}
-            className="text-red-500 mt-2"
+            className={`mt-2 px-3.5 py-1 rounded text-sm ${
+              isEditing
+                ? "bg-color-13 text-white"
+                : "bg-[#eaf0f5] text-color-13"
+            }`}
           >
             {isEditing ? "저장" : "편집"}
           </button>
