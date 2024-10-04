@@ -22,7 +22,7 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
 
       await window.electronAPI.removeContainer(existingContainerId);
       await window.electronAPI.stopContainerStats([existingContainerId]);
-      databaseStore.deleteDatabase(existingContainerId);
+      databaseStore.removeContainer(existingContainerId);
       dockerStore.removeDockerContainer(existingContainerId);
       console.log(
         `Removed existing deployment with ID: ${dbCreate.databaseId} and containerId: ${existingContainerId}`
@@ -46,7 +46,7 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
 
     if (success && container.Id) {
       // dbstore에 데이터베이스 저장
-      databaseStore.addDatabase(container.Id, dbCreate); // 전체 dbCreate 객체 전달
+      databaseStore.addContainer(container.Id, dbCreate); // 전체 dbCreate 객체 전달
       dockerStore.addDockerImage(image);
       dockerStore.addDockerContainer(container);
       console.log("Database container started and stored in dbstore");

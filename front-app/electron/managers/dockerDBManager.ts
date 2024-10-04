@@ -4,7 +4,6 @@ import {
   startContainer,
   createContainerOptions,
 } from "./dockerContainerManager";
-import { ContainerInfo } from "dockerode";
 
 type EnvVar = { key: string; value: string };
 

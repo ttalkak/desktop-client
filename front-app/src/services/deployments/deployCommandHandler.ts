@@ -1,49 +1,39 @@
 import useDeploymentStore from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
+import { useDatabaseStore } from "../../stores/databaseStore";
 
 export async function handleContainerCommand(
   serviceType: string,
   Id: number,
   command: string
 ) {
+  let containerId: string | null = null;
+  let store;
+
+  // serviceType에 따라 적절한 store 선택 및 containerId 가져오기
   switch (serviceType) {
     case "FRONTEND":
-    case "BACKEND": {
-      break;
-    }
+    case "BACKEND":
+      store = useDeploymentStore.getState();
+      containerId = store.getContainerIdById(Id);
 
-    case "DATABASE": {
       break;
-    }
-    default: {
-      // 다른 경우 처리
-      console.log("Unknown service type");
+    case "DATABASE":
+      store = useDatabaseStore.getState();
+      containerId = store.getContainerIdById(Id);
       break;
-    }
+    default:
+      console.error(`Unknown service type: ${serviceType}`);
+      return;
   }
 
-  const containerId = useDeploymentStore
-    .getState()
-    .getContainersByDeployment(Id);
-
-  if (containerId === null) {
-    console.error(`No container found for deploymentId: ${Id}`);
-
+  if (!containerId) {
+    console.error(`No container found for ${serviceType} with Id: ${Id}`);
     return;
   }
 
   const deployment = useDeploymentStore.getState().containers[containerId];
-
-  if (!containerId) {
-    console.error(`No container found for deploymentId: ${Id}`);
-    return;
-  }
-
-  if (!deployment) {
-    console.error(`No deployment details found for deploymentId: ${Id}`);
-    return;
-  }
 
   switch (command) {
     case "START":
@@ -55,6 +45,13 @@ export async function handleContainerCommand(
         if (success) {
           await dockerStateManager.updateContainerState(containerId, "running");
           window.electronAPI.startContainerStats([containerId]);
+          sendInstanceUpdate(
+            deployment.serviceType,
+            Id,
+            "RUNNING",
+            deployment.outboundPort,
+            `start`
+          );
         } else {
           await dockerStateManager.updateContainerState(containerId, "error");
         }
@@ -69,6 +66,13 @@ export async function handleContainerCommand(
         const { success } = await window.electronAPI.stopContainer(containerId);
         if (success) {
           await window.electronAPI.stopPgrok(Id);
+          sendInstanceUpdate(
+            deployment.serviceType,
+            Id,
+            "STOPPED",
+            deployment.outboundPort,
+            `stopped`
+          );
         } else {
           await dockerStateManager.updateContainerState(containerId, "error");
         }
@@ -84,6 +88,13 @@ export async function handleContainerCommand(
         if (success) {
           await dockerStateManager.updateContainerState(containerId, "running");
           window.electronAPI.startContainerStats([containerId]);
+          sendInstanceUpdate(
+            deployment.serviceType,
+            Id,
+            "RUNNING",
+            deployment.outboundPort,
+            `restart`
+          );
         } else {
           await dockerStateManager.updateContainerState(containerId, "error");
         }
@@ -99,6 +110,7 @@ export async function handleContainerCommand(
         if (success) {
           window.electronAPI.stopContainerStats([containerId]);
           window.electronAPI.stopPgrok(Id);
+          store.removeContainer(Id);
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
@@ -107,7 +119,6 @@ export async function handleContainerCommand(
             `successfully deleted`
           );
           dockerStateManager.removeContainer(containerId);
-          useDeploymentStore.getState().removeContainer(containerId);
         }
       }
       break;

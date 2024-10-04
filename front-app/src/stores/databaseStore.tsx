@@ -14,7 +14,7 @@ export interface DatabaseCreateEvent {
   subdomainKey: string;
 }
 
-// 새로운 DatabaseState 인터페이스// envs 미 포함
+// 새로운 DatabaseState 인터페이스// envs 미 포함  COMMAND 처리시 ID type 충돌 오류로 Sting, number
 interface DatabaseState {
   containerMap: {
     [containerId: string]: {
@@ -28,9 +28,14 @@ interface DatabaseState {
       subdomainKey: string;
     };
   };
-  addDatabase: (containerId: string, dbCreate: DatabaseCreateEvent) => void; // 새로운 database 추가
-  deleteDatabase: (containerId: string) => void; // 특정 containerId 기준으로 database 삭제
-  clearDatabases: () => void; // 전체 삭제
+  addContainer: (
+    containerId: string | number,
+    dbCreate: DatabaseCreateEvent
+  ) => void; // 새로운 database 추가
+  removeContainer: (containerId: string | number) => void; // 특정 containerId 기준으로 database 삭제
+
+  clearAllContainers: () => void; // 전체 삭제
+  getContainerIdById: (databaseId: string | number) => string | null;
 }
 
 // sessionStorage 적용하여 상태 관리
@@ -40,7 +45,10 @@ export const useDatabaseStore = create<DatabaseState>()(
       containerMap: {}, // containerId를 key로 하여 필요한 필드만 저장
 
       // containerId와 필요한 데이터 필드들을 추가
-      addDatabase: (containerId: string, dbCreate: DatabaseCreateEvent) =>
+      addContainer: (
+        containerId: string | number,
+        dbCreate: DatabaseCreateEvent
+      ) =>
         set((state) => ({
           containerMap: {
             ...state.containerMap,
@@ -58,13 +66,22 @@ export const useDatabaseStore = create<DatabaseState>()(
         })),
 
       // 특정 containerId를 기준으로 database 삭제
-      deleteDatabase: (containerId: string) => {
+      removeContainer: (containerId: string | number) => {
         const { [containerId]: _, ...rest } = get().containerMap; // 해당 containerId 데이터 삭제
         set({ containerMap: rest });
       },
 
       // 모든 containerId 데이터 삭제
-      clearDatabases: () => set({ containerMap: {} }),
+      clearAllContainers: () => set({ containerMap: {} }),
+
+      // databaseId를 기준으로 containerId를 반환하는 함수 추가
+      getContainerIdById: (databaseId: string | number) => {
+        const containerMap = get().containerMap;
+        const containerEntry = Object.entries(containerMap).find(
+          ([_, value]) => value.databaseId === databaseId
+        );
+        return containerEntry ? containerEntry[0] : null; // containerId 반환 또는 null 반환
+      },
     }),
     {
       name: "container-storage", // sessionStorage에 저장될 키 이름
