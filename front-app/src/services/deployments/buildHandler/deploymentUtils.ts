@@ -9,19 +9,27 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       compute.dockerRootDirectory
     );
 
-  // 다운로드 실패 시 처리
+  // 다운로드 실패 시
   if (!success) {
     console.error("Download and unzip failed:", message);
+    sendInstanceUpdate(
+      compute.serviceType,
+      compute.deploymentId,
+      "ERROR",
+      compute.outboundPort,
+      "소스코드 다운로드 실패, 경로를 확인하세요"
+    );
     return { contextPath: null, dockerfilePath: null };
   }
 
+  //도커 파일
   let finalDockerfilePath = dockerfilePath;
 
   // Switch문으로 조건 나누기
   switch (true) {
     // Dockerfile이 있을 때
     case found: {
-      console.log("Dockerfile found");
+      console.log("Dockerfile found...start image build");
       break;
     }
 
@@ -70,10 +78,10 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
   return { contextPath, dockerfilePath: finalDockerfilePath };
 }
 
+//도커 스크립트 있는지 검증
 export function determineDeploymentType(compute: DeploymentCommand) {
-  const hasEnvs = compute.envs && compute.envs.length > 0;
   const hasDockerFileScript =
     compute.dockerFileScript && compute.dockerFileScript.trim() !== "";
 
-  return { hasEnvs, hasDockerFileScript };
+  return { hasDockerFileScript };
 }
