@@ -123,7 +123,7 @@ const SignUp = () => {
   const ipt =
     "shadow-inner border border-color-2 p-2 mb-2 w-full rounded text-sm";
   const haveMsg = "flex items-center";
-  const btn = `mt-6 rounded w-full bg-color-9 text-white py-2`;
+  const btn = `mt-6 rounded w-full bg-color-15 text-white py-2`;
   const errorMsg = "ml-2 text-color-8 text-sm";
 
   return (
