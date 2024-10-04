@@ -25,7 +25,7 @@ const Home: React.FC = () => {
 
       <div className="card w-full h-full mt-2.5">
         {Object.keys(containers).length === 0 ? (
-          <div className="text-center text-gray-500 py-10">
+          <div className="text-center text-gray-700 py-10">
             현재 배포중인 서비스가 없습니다.
           </div>
         ) : (
