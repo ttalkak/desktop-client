@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// Docker State
+//dockerImage, ContainerList
 interface DockerState {
   dockerImages: DockerImage[];
   dockerContainers: DockerContainer[];
