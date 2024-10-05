@@ -3,6 +3,7 @@ export {};
 
 // Docker Related Types
 declare global {
+  type OSType = "WINDOWS" | "MACOS" | "LINUX";
   // Docker Basic Types
   type DockerImage = Dockerode.ImageInfo;
   type DockerContainer = Dockerode.ContainerInfo;

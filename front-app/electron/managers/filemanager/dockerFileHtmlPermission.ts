@@ -20,8 +20,8 @@ export const dockerFileHtmlPermission = async (
 
     if (!htmlLine) {
       return {
-        success: false,
-        message: "HTML path not found in Dockerfile.",
+        success: true,
+        message: "HTML path not found in Dockerfile .  continue process",
         original: originalContent,
         modified: originalContent,
       };
@@ -32,8 +32,8 @@ export const dockerFileHtmlPermission = async (
 
     if (!htmlPath) {
       return {
-        success: false,
-        message: "Failed to extract HTML path.",
+        success: true,
+        message: "Failed to extract HTML path. continue process",
         original: originalContent,
         modified: originalContent,
       };

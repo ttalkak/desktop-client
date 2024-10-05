@@ -23,7 +23,14 @@ const ContainerList: React.FC = () => {
 
   const formatCreatedTime = (created: number) => {
     const date = new Date(created * 1000);
-    return date.toLocaleString();
+    const dateString = date.toLocaleDateString(); // 날짜만 추출
+    const timeString = date.toLocaleTimeString(); // 시간만 추출
+    return (
+      <>
+        <div>{dateString}</div>
+        <div>{timeString}</div>
+      </>
+    );
   };
 
   const renderPorts = (ports: Dockerode.Port[]) => {
@@ -39,6 +46,8 @@ const ContainerList: React.FC = () => {
       </ul>
     );
   };
+
+  const tableBody = "py-2 px-4 text-sm text-gray-900 align-middle text-center";
 
   if (dockerContainers.length === 0) {
     return (
@@ -56,63 +65,62 @@ const ContainerList: React.FC = () => {
   }
 
   return (
-    <div>
-      <table className="min-w-full bg-white border border-gray-300 mt-2">
-        <thead className="sticky z-10 top-0 text-sm bg-white-gradient">
-          <tr>
-            <th className="py-2 px-4 border-b">Name</th>
-            <th className="py-2 px-4 border-b">Image</th>
-            <th className="py-2 px-4 border-b">Created</th>
-            <th className="py-2 px-4 border-b">Ports</th>
-            <th className="py-2 px-4 border-b">State</th>
-            <th className="py-2 px-4 border-b">Logs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dockerContainers.map((container: DockerContainer) => {
-            const { Id, Names, Image, Created, State, Ports } = container;
-            const isSelected = selectedContainerId === Id;
+    <div className="flex flex-col h-[calc(100vh-200px)]">
+      <div className="overflow-hidden rounded-lg custom-scrollbar">
+        <table className="min-w-full divide-y divide-gray-300">
+          <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
+            <tr>
+              <th className="p-1">Name</th>
+              <th className="p-1">Image</th>
+              <th className="p-1">Created</th>
+              <th className="p-1">Ports</th>
+              <th className="p-1">State</th>
+              <th className="p-1">Logs</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
+            {dockerContainers.map((container: DockerContainer) => {
+              const { Id, Names, Image, Created, State, Ports } = container;
+              const isSelected = selectedContainerId === Id;
 
-            return (
-              <React.Fragment key={Id}>
-                <tr>
-                  <td className="py-2 px-4 border-b">{Names}</td>
-                  <td className="py-2 px-4 border-b" title={Image}>
-                    {shortenImageName(Image)}
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    {formatCreatedTime(Created)}
-                  </td>
-                  <td className="py-2 px-4 border-b">{renderPorts(Ports)}</td>
-                  <td className="py-2 px-4 border-b">
-                    <div>{State}</div>
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    <button
-                      onClick={() => handleContainerSelect(Id)}
-                      className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
-                      title="View Logs"
-                    >
-                      {isSelected ? (
-                        <MdKeyboardArrowUp className="text-gray-600" />
-                      ) : (
-                        <MdKeyboardArrowDown className="text-gray-600" />
-                      )}
-                    </button>
-                  </td>
-                </tr>
-                {isSelected && (
-                  <tr key={`${Id}-logs`}>
-                    <td colSpan={6} className="p-4 bg-gray-100 border-b">
-                      <ContainerLogs containerId={Id} />
+              return (
+                <React.Fragment key={Id}>
+                  <tr className="hover:bg-gray-50">
+                    <td className={tableBody}>{Names}</td>
+                    <td className={tableBody} title={Image}>
+                      {shortenImageName(Image)}
+                    </td>
+                    <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
+                      {formatCreatedTime(Created)}
+                    </td>
+                    <td className={tableBody}>{renderPorts(Ports)}</td>
+                    <td className={tableBody}>{State}</td>
+                    <td className={tableBody}>
+                      <button
+                        onClick={() => handleContainerSelect(Id)}
+                        className={`flex items-center justify-center p-2 hover:bg-gray-200 rounded`}
+                      >
+                        {isSelected ? (
+                          <MdKeyboardArrowUp className="text-gray-600" />
+                        ) : (
+                          <MdKeyboardArrowDown className="text-gray-600" />
+                        )}
+                      </button>
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                  {isSelected && (
+                    <tr>
+                      <td colSpan={6} className="p-4 bg-gray-100">
+                        <ContainerLogs containerId={Id} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

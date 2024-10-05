@@ -92,7 +92,7 @@ function registerIpcHandlers() {
       case "linux":
         return "LINUX";
       default:
-        return "Unknown";
+        return "UNKNOWN";
     }
   });
 }

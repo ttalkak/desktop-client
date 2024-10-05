@@ -174,7 +174,6 @@ export function registerIpcHandlers() {
         );
       } catch (error) {
         console.error(`Error creating container options:`, error);
-        throw error;
       }
     }
   );

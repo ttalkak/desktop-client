@@ -7,7 +7,6 @@ import {
 } from "../monitoring/healthCheckPingUtils";
 import { client } from "./stompClientUtils";
 import { getUsedPortsInRange } from "./../../features/port/parseInboundRule";
-
 interface Deployment {
   deploymentId: number;
   status: string;

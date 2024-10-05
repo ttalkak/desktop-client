@@ -25,26 +25,28 @@ const DashBoard: React.FC = () => {
   ]);
 
   return (
-    <div className="card h-full items-center">
-      <Tabs defaultValue="account">
-        <div className="flex justify-between w-full items-end">
-          <TabsList>
-            <TabsTrigger value="account">Containers</TabsTrigger>
-            <TabsTrigger value="password">Images</TabsTrigger>
-          </TabsList>
-          <div className="font-sans text-gray-600 text-sm pr-2.5">
-            {`${containerCount} / ${userSettings?.maxCompute || 0}`}
+    <div className="card h-full items-center overflow-hidden">
+      <div className="h-full w-full">
+        <Tabs defaultValue="account">
+          <div className="flex justify-between w-full items-end pb-2">
+            <TabsList>
+              <TabsTrigger value="account">Containers</TabsTrigger>
+              <TabsTrigger value="password">Images</TabsTrigger>
+            </TabsList>
+            <div className="font-sans text-gray-600 text-sm pr-2.5">
+              {`${containerCount} / ${userSettings?.maxCompute || 0}`}
+            </div>
           </div>
-        </div>
-        <div className="justify-center h-full">
-          <TabsContent value="account">
-            <ContainerList />
-          </TabsContent>
-          <TabsContent value="password">
-            <ImageList />
-          </TabsContent>
-        </div>
-      </Tabs>
+          <div className="justify-center h-full">
+            <TabsContent value="account">
+              <ContainerList />
+            </TabsContent>
+            <TabsContent value="password">
+              <ImageList />
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
     </div>
   );
 };

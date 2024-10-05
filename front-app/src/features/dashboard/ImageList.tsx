@@ -6,7 +6,15 @@ const ImageList: React.FC = () => {
 
   const formatCreatedTime = (created: number) => {
     const date = new Date(created * 1000);
-    return isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
+    if (isNaN(date.getTime())) return "Unknown";
+    const dateString = date.toLocaleDateString();
+    const timeString = date.toLocaleTimeString();
+    return (
+      <>
+        <div>{dateString}</div>
+        <div>{timeString}</div>
+      </>
+    );
   };
 
   const formatSize = (size: number) => {
@@ -15,6 +23,8 @@ const ImageList: React.FC = () => {
     const sizes = ["B", "KB", "MB", "GB", "TB"];
     return `${(size / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
   };
+
+  const tableBody = "py-2 px-4 text-sm text-gray-900 align-middle text-center";
 
   if (dockerImages.length === 0) {
     return (
@@ -30,34 +40,38 @@ const ImageList: React.FC = () => {
   }
 
   return (
-    <table className="w-full bg-white border border-gray-300 mt-2">
-      <thead>
-        <tr>
-          <th className="py-2 px-4 border-b">Repository</th>
-          <th className="py-2 px-4 border-b">Tag</th>
-          <th className="py-2 px-4 border-b">ID</th>
-          <th className="py-2 px-4 border-b">Created</th>
-          <th className="py-2 px-4 border-b">Size</th>
-        </tr>
-      </thead>
-      <tbody>
-        {dockerImages.map((image: DockerImage) => (
-          <tr key={image.Id}>
-            <td className="py-2 px-4 border-b">
-              {image.RepoTags?.[0]?.split(":")[0]}
-            </td>
-            <td className="py-2 px-4 border-b">
-              {image.RepoTags?.[0]?.split(":")[1]}
-            </td>
-            <td className="py-2 px-4 border-b">{image.Id.slice(7, 19)}</td>
-            <td className="py-2 px-4 border-b">
-              {formatCreatedTime(image.Created)}
-            </td>
-            <td className="py-2 px-4 border-b">{formatSize(image.Size)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="flex flex-col">
+      <div className="overflow-hidden rounded-lg custom-scrollbar">
+        <table className="min-w-full divide-y divide-gray-300">
+          <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
+            <tr>
+              <th className="p-1">Name</th>
+              <th className="p-1">Tag</th>
+              <th className="p-1">ID</th>
+              <th className="p-1">Created</th>
+              <th className="p-1">Size</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
+            {dockerImages.map((image: DockerImage) => (
+              <tr key={image.Id} className="hover:bg-gray-50">
+                <td className={tableBody}>
+                  {image.RepoTags?.[0]?.split(":")[0]}
+                </td>
+                <td className={tableBody}>
+                  {image.RepoTags?.[0]?.split(":")[1]}
+                </td>
+                <td className={tableBody}>{image.Id.slice(7, 19)}</td>
+                <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
+                  {formatCreatedTime(image.Created)}
+                </td>
+                <td className={tableBody}>{formatSize(image.Size)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
 

@@ -122,7 +122,7 @@ export function stopPeriodicContainerCheck() {
   }
 }
 
-// 컨테이너 모니터링을 업데이트하는 함수
+//도커 컨테이너의 ID를 주기적으로 가져옴
 export async function checkAndUpdateContainerMonitoring() {
   const dockerStore = useDockerStore.getState();
   const currentContainers = new Set(
