@@ -110,7 +110,6 @@ export async function handleContainerCommand(
         if (success) {
           window.electronAPI.stopContainerStats([containerId]);
           window.electronAPI.stopPgrok(Id);
-          store.removeContainer(Id);
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
@@ -119,6 +118,7 @@ export async function handleContainerCommand(
             `DELETED`
           );
           dockerStateManager.removeContainer(containerId);
+          store.removeContainer(containerId);
         }
       }
       break;
