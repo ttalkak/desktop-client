@@ -4,7 +4,7 @@ import { client } from "./stompClientUtils";
 //Deployment 상태 업데이트
 export function sendInstanceUpdate(
   serviceType: string,
-  deploymentId: number,
+  id: number,
   status: string,
   port?: number,
   details?: string
@@ -23,10 +23,10 @@ export function sendInstanceUpdate(
   };
 
   client?.publish({
-    destination: `/pub/compute/${deploymentId}/status`,
+    destination: `/pub/compute/${id}/status`,
     headers: headers,
     body: JSON.stringify(message),
   });
 
-  console.log(`Message sent for deploymentId ${deploymentId}:`, message);
+  console.log(`Message sent for deploymentId ${id}:`, message);
 }

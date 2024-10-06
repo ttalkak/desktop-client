@@ -5,9 +5,11 @@ import {
 } from "../monitoring/healthCheckPingUtils";
 import useDeploymentStore from "../../stores/deploymentStore";
 import { useDockerStore } from "../../stores/dockerStore";
+import { useDatabaseStore } from "../../stores/databaseStore";
 
 export const sendCurrentState = async (userId: string) => {
   const dockerStore = useDockerStore.getState();
+  const databaseStore = useDatabaseStore.getState(); // 제대로 선언됨
 
   try {
     const osType = await window.electronAPI.getOsType();
@@ -19,13 +21,33 @@ export const sendCurrentState = async (userId: string) => {
     const totalUsedMemory = totalSize + containerMemoryUsage;
 
     const deployments = [];
+
     for (const [containerId, stats] of globalStats.entries()) {
       const deployment = useDeploymentStore.getState().containers[containerId];
-      const deploymentId = deployment.deploymentId;
+      const deploymentId = deployment?.deploymentId; // deployment가 없는 경우 안전하게 처리
+
+      const database = databaseStore.containerMap[containerId];
+      const databaseId = database?.databaseId; // database가 없는 경우 안전하게 처리
 
       if (deploymentId !== undefined) {
         deployments.push({
-          deploymentId: deploymentId,
+          id: deploymentId,
+          serviceType: deployment.serviceType,
+          status: runningContainers.some((c) => c.Id === containerId)
+            ? "RUNNING"
+            : "STOPPED",
+          useMemory: stats.memory_usage,
+          useCPU: stats.cpu_usage,
+          runningTime: stats.running_time,
+          diskRead: stats.blkio_read,
+          diskWrite: stats.blkio_write,
+        });
+      }
+
+      if (databaseId !== undefined) {
+        deployments.push({
+          id: databaseId,
+          serviceType: database.serviceType,
           status: runningContainers.some((c) => c.Id === containerId)
             ? "RUNNING"
             : "STOPPED",

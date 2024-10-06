@@ -37,6 +37,8 @@ async function runPgrok(
     command = `pgrok.exe tcp --remote-addr ${remoteAddr} --forward-addr ${cleanedForwardAddr} --token ${token}`;
   }
 
+  console.log(command);
+
   // 명령 프롬프트를 사용하여 pgrok 실행
   const child = execFile(
     "cmd.exe",
