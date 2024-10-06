@@ -3,11 +3,14 @@ import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/dockerStore";
 import Dockerode from "dockerode";
+import { GoQuestion } from "react-icons/go";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(
     null
   );
+  const [isHelpTooltipVisible, setIsHelpTooltipVisible] =
+    useState<boolean>(false);
   const dockerContainers = useDockerStore((state) => state.dockerContainers);
 
   const handleContainerSelect = (containerId: string) => {
@@ -48,17 +51,35 @@ const ContainerList: React.FC = () => {
   };
 
   const tableBody = "py-2 px-4 text-sm text-gray-900 align-middle text-center";
+  const tooltip =
+    "absolute bottom-full mb-1 bg-white border text-xs rounded py-1 shadow-lg filter-none opacity-100 text-black z-50";
+  <div
+    className="relative flex items-center"
+    onMouseEnter={() => {
+      setIsHelpTooltipVisible(true);
+    }}
+    onMouseLeave={() => {
+      setIsHelpTooltipVisible(false);
+    }}
+  >
+    {isHelpTooltipVisible && (
+      <div className={`${tooltip} w-36 right-0`}>
+        <p className="text-center">가이드가 보고싶다면</p>
+        <p className="text-center">click!</p>
+      </div>
+    )}
+  </div>;
 
   if (dockerContainers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
         <p className="text-center text-gray-700">
-          현재 실행 중인 Docker 컨테이너가 없습니다.
+          현재 배포중인 서비스가 없습니다
         </p>
-        <div className="mt-4">
-          <span className="text-gray-400 text-sm">
-            Docker 컨테이너를 실행해주세요.
-          </span>
+        <div className="mt-4 flex text-gray-400 text-sm ">
+          <div className="text-gray-400 text-sm ">
+            서비스 할당을 기다려주세요
+          </div>
         </div>
       </div>
     );

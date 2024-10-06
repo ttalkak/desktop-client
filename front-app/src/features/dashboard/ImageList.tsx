@@ -29,11 +29,13 @@ const ImageList: React.FC = () => {
   if (dockerImages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-8">
-        <p className="text-center text-gray-500 font-bold">
-          현재 할당된 Docker Image가 없습니다.
+        <p className="text-center text-gray-700">
+          현재 사용중인 Docker Image가 없습니다.
         </p>
         <div className="mt-4">
-          <span className="text-gray-400 text-sm">서비스를 실행해주세요</span>
+          <span className="text-gray-400 text-sm">
+            서비스 할당을 기다려주세요
+          </span>
         </div>
       </div>
     );
