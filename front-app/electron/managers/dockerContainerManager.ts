@@ -130,63 +130,6 @@
 //   }
 // };
 
-// //컨테이너 정지
-// export const stopContainer = async (containerId: string): Promise<void> => {
-//   try {
-//     const container = docker.getContainer(containerId);
-//     const containerInfo = await container.inspect();
-
-//     if (containerInfo.State.Running) {
-//       await container.stop();
-//       console.log(`Container ${containerId} stopped successfully.`);
-//       const stopResult = await container.wait();
-//       console.log(
-//         `Container ${containerId} stopped with status code ${stopResult.StatusCode}`
-//       );
-//     } else if (containerInfo.State.Status === "exited") {
-//       console.log(`Container ${containerId} is already stopped.`);
-//     } else if (containerInfo.State.Status === "stopping") {
-//       console.log(`Container ${containerId} is already stopping.`);
-//     } else {
-//       console.log(`Container ${containerId} is not running.`);
-//     }
-//   } catch (err) {
-//     console.error(`Error stopping container ${containerId}:`, err);
-//   }
-// };
-
-// // 컨테이너 삭제
-// export const removeContainer = async (
-//   containerId: string,
-//   options?: Docker.ContainerRemoveOptions
-// ): Promise<void> => {
-//   try {
-//     const container = docker.getContainer(containerId);
-
-//     // 컨테이너 상태 확인
-//     const containerInfo = await container.inspect();
-
-//     // 컨테이너가 실행 중이면 정지
-//     if (containerInfo.State.Running) {
-//       console.log(`Container ${containerId} is running. Stopping container...`);
-//       await container.stop();
-//       console.log(`Container ${containerId} stopped successfully.`);
-
-//       // 컨테이너가 완전히 중지될 때까지 기다림
-//       const stopResult = await container.wait();
-//       console.log(
-//         `Container ${containerId} stopped with status code ${stopResult.StatusCode}`
-//       );
-//     }
-
-//     // 컨테이너 삭제
-//     await container.remove({ force: true, ...options });
-//     console.log(`Container ${containerId} removed successfully.`);
-//   } catch (err) {
-//     console.error(`Error removing container ${containerId}:`, err);
-//   }
-// };
-
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -196,24 +139,8 @@ const execAsync = promisify(exec);
 // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
 function formatEnvs(envs: EnvVar[]): string[] {
   return envs
-    .filter(({ key }) => key !== "PORT") // PORT는 별도로 처리하고, 나머지를 환경 변수로 변환
+    .filter(({ key }) => key !== "PORT")
     .map(({ key, value }) => `${key}=${value}`);
-}
-
-// 특정 포트는 ExposedPorts와 PortBindings에 추가
-function getPortBindings(envs: EnvVar[]): {
-  [port: string]: { HostPort: string }[];
-} {
-  const portBindings: { [port: string]: { HostPort: string }[] } = {};
-
-  envs
-    .filter(({ key }) => key === "PORT") // PORT key에 해당하는 값만 처리
-    .forEach(({ value }) => {
-      const port = value;
-      portBindings[`${port}/tcp`] = [{ HostPort: port }]; // 동일한 포트로 노출
-    });
-
-  return portBindings;
 }
 
 export const createContainerOptions = (
@@ -225,13 +152,13 @@ export const createContainerOptions = (
   healthCheckCommand: string[]
 ): string => {
   const formattedEnvs = formatEnvs(envs); // 환경 변수 처리
-  const portBindings = getPortBindings(envs); // PORT에 대한 노출 포트 처리
 
   const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
   const portsString = `-p ${outboundPort}:${inboundPort}`;
   const healthCheckString = healthCheckCommand.join(" ");
+  const memoryLimit = "1g";
 
-  return `docker run -d --name ${containerName} ${portsString} ${envString} --health-cmd "${healthCheckString}" ${imageName}`;
+  return `docker run -d --name ${containerName} ${portsString} ${envString} --memory=${memoryLimit} --health-cmd "${healthCheckString}" ${imageName}`;
 };
 
 // 컨테이너 생성
@@ -265,12 +192,29 @@ export const startContainer = async (
     const { stderr } = await execAsync(`docker run ${imageTag}`);
 
     if (stderr) {
-      await removeContainer(containerId);
+      const { success } = await removeContainer(containerId);
+      if (!success) {
+        return { success: false, error: "removeContainerFail" };
+      }
       await execAsync(`docker run ${imageTag}`);
     }
 
     console.log(`Container ${imageTag} started successfully`);
 
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: (err as Error).message };
+  }
+};
+
+// 컨테이너 시작
+export const restartContainer = async (
+  containerId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    await execAsync(`docker start ${containerId}`);
+    console.log(`Container ${containerId} started successfully`);
     return { success: true };
   } catch (err) {
     console.error(err);
@@ -289,11 +233,10 @@ export const stopContainer = async (
       console.error(`Error stopping container ${containerId}:`, stderr);
       return { success: false, error: stderr };
     }
-
     console.log(`Container ${containerId} stopped successfully.`);
     return { success: true };
   } catch (err) {
-    console.error(`Error stopping container ${containerId}:`, err);
+    console.error(`Error stopping container ${containerId}`);
     return { success: false, error: (err as Error).message };
   }
 };
@@ -304,17 +247,15 @@ export const removeContainer = async (
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     await stopContainer(containerId);
-    const { stderr } = await execAsync(`docker rm ${containerId}`);
+    const { stderr } = await execAsync(`docker rm -f ${containerId}`);
 
     if (stderr) {
-      await removeContainer(containerId);
-      return { success: true, error: stderr };
+      console.log(`Container ${containerId} removed successfully.`);
+      return { success: false, error: "remove failed" };
     }
-
-    console.log(`Container ${containerId} removed successfully.`);
     return { success: true };
   } catch (err) {
     console.error(`Error removing container ${containerId}:`, err);
-    return { success: false, error: (err as Error).message };
+    return { success: false, error: "remove failed" };
   }
 };

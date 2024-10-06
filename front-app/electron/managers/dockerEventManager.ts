@@ -48,7 +48,7 @@ export const handleGetDockerEvent = (): void => {
                 necessaryActions.includes(dockerEvent.Action)
               ) {
                 console.log(
-                  `이벤트타입 : ${dockerEvent.Type}, 이벤트종류: ${dockerEvent.Action} `
+                  `eventType : ${dockerEvent.Type}, action: ${dockerEvent.Action} `
                 );
                 event.reply("docker-event-response", dockerEvent);
               }

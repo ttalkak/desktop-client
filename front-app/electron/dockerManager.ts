@@ -9,6 +9,7 @@ export { buildDockerImage, removeImage } from "./managers/dockerImageManager";
 export {
   createContainer,
   startContainer,
+  restartContainer,
   stopContainer,
   removeContainer,
   createContainerOptions,

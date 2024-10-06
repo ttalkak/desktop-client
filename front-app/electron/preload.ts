@@ -101,6 +101,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   startContainer: (containerId: string, imageTag: string) =>
     ipcRenderer.invoke("start-container", containerId, imageTag),
 
+  restartContainer: (containerId: string) =>
+    ipcRenderer.invoke("restart-container", containerId),
+
   createContainerOptions: (
     name: string,
     containerName: string,

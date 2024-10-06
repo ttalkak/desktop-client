@@ -163,7 +163,7 @@ export async function pullAndStartDatabaseContainer(
     }
 
     // 컨테이너 시작
-    const startResult = await startContainer(containerId);
+    const startResult = await startContainer(containerId, imageName);
     if (!startResult.success) {
       return {
         success: false,

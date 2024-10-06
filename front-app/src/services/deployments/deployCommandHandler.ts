@@ -39,7 +39,7 @@ export async function handleContainerCommand(
     case "START":
       {
         console.log(`Starting container: ${containerId}`);
-        const { success } = await window.electronAPI.startContainer(
+        const { success } = await window.electronAPI.restartContainer(
           containerId
         );
         if (success) {
@@ -82,7 +82,7 @@ export async function handleContainerCommand(
     case "RESTART":
       {
         console.log(`Restarting container: ${containerId}`);
-        const { success } = await window.electronAPI.startContainer(
+        const { success } = await window.electronAPI.restartContainer(
           containerId
         );
         if (success) {

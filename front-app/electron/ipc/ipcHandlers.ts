@@ -37,13 +37,12 @@ export function registerIpcHandlers() {
   // Docker Desktop을 실행하는 핸들러
   ipcMain.handle("open-docker-desktop", async (_event, dockerPath: string) => {
     if (!dockerPath) {
-      throw new Error("Docker executable path not provided.");
+      alert("dockerDesktop이 설치되었는지 확인해주세요");
     }
 
     exec(`"${dockerPath}"`, (error) => {
       if (error) {
-        console.error("Error launching Docker Desktop:", error);
-        throw error;
+        alert("dockerDesktop 실행을 확인하세요.");
       }
       console.log("Docker Desktop launched successfully.");
     });
@@ -70,7 +69,6 @@ export function registerIpcHandlers() {
       return await docker.getImage(imageId).inspect();
     } catch (err) {
       console.error(`Failed to fetch Docker image ${imageId}:`, err);
-      throw err;
     }
   });
 
@@ -190,30 +188,6 @@ export function registerIpcHandlers() {
       return startContainer(containerId, imageTag);
     }
   );
-
-  // Docker 컨테이너를 생성하고 시작하는 핸들러
-  // ipcMain.handle(
-  //   "create-and-start-container",
-  //   async (_event, containerOptions: Docker.ContainerCreateOptions) => {
-  //     try {
-  //       const result = await createContainer(containerOptions);
-
-  //       if (result.success && result.containerId) {
-  //         const startResult = await startContainer(result.containerId);
-  //         if (startResult.success) {
-  //           return { success: true, containerId: result.containerId };
-  //         } else {
-  //           throw new Error(startResult.error);
-  //         }
-  //       } else {
-  //         throw new Error(result.error);
-  //       }
-  //     } catch (error) {
-  //       console.error("Error during container creation and start:", error);
-  //       return { success: false, error: (error as Error).message };
-  //     }
-  //   }
-  // );
 
   // Docker 컨테이너를 중지하는 핸들러
   ipcMain.handle("stop-container", async (_event, containerId: string) => {

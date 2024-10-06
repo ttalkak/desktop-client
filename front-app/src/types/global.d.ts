@@ -118,6 +118,12 @@ declare global {
       success: boolean;
       error?: string;
     }>;
+
+    restartContainer: (containerId: string) => Promise<{
+      success: boolean;
+      error?: string;
+    }>;
+
     createAndStartContainer: (options: ContainerCreateOptions) => Promise<{
       success: boolean;
       containerId: string;
