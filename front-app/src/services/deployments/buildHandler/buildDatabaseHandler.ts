@@ -54,26 +54,41 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
       sendInstanceUpdate(
         dbCreate.serviceType,
         dbCreate.databaseId,
-        "RUNNING",
+        "PENDING",
         dbCreate.outboundPort,
-        "coniner 빌드 완료 pgrok 시작.."
+        "CONTAINER COMPLETE"
       );
 
-      await window.electronAPI.runPgrok(
+      const result = await window.electronAPI.runPgrok(
         PGROK_URL,
         `localhost:${dbCreate.outboundPort}`,
         dbCreate.subdomainKey,
         dbCreate.databaseId
       );
 
-      // pgrok 시작 (추가 로직 필요)
+      if (result === "FAILED") {
+        sendInstanceUpdate(
+          dbCreate.serviceType,
+          dbCreate.databaseId,
+          "ERROR",
+          dbCreate.outboundPort,
+          "FAILED"
+        );
+      }
+      sendInstanceUpdate(
+        dbCreate.serviceType,
+        dbCreate.databaseId,
+        "RUNNING",
+        dbCreate.outboundPort,
+        "RUNNING"
+      );
     } else if (error) {
       sendInstanceUpdate(
         dbCreate.serviceType,
         dbCreate.databaseId,
         "ERROR",
         dbCreate.outboundPort,
-        "database build fail"
+        "FAILED"
       );
     }
   } catch (error) {

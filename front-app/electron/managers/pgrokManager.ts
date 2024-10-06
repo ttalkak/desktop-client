@@ -228,9 +228,9 @@ export function registerPgrokIpcHandlers() {
     ) => {
       try {
         await runPgrok(remoteAddr, forwardAddr, token, deploymentId, domain);
-        return "pgrok started successfully";
+        return "SUCCESS";
       } catch (error) {
-        return `pgrok failed to start: ${error}`;
+        return "FAILED";
       }
     }
   );

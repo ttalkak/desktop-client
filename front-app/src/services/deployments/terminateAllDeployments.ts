@@ -34,14 +34,6 @@ export async function terminateAndRemoveContainersAndImages() {
         await window.electronAPI.removeContainer(container.Id);
         console.log(`${container.Id} forcerDelected`);
       } catch (error) {
-        deployment.serviceType,
-          sendInstanceUpdate(
-            deployment.serviceType,
-            deploymentId,
-            "ERROR",
-            port,
-            "allocate"
-          );
         console.error(`Error removing container ${container.Id}:`, error);
       }
     } else {

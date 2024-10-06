@@ -43,7 +43,7 @@ export async function buildAndDeploy(
         compute.deploymentId,
         "ERROR",
         compute.outboundPort,
-        "이미지 생성에 실패했습니다. dockerfile을 확인하세요."
+        "DOCKER"
       );
       return;
     }
@@ -114,10 +114,10 @@ async function completeDeployment(
       compute.deploymentId,
       "RUNNING",
       compute.outboundPort,
-      "container 빌드 성공"
+      "RUNNING"
     );
     window.electronAPI.startContainerStats([container.Id]);
-    window.electronAPI.startLogStream(container.Id);
+    window.electronAPI.startLogStream(container.Id, compute.deploymentId);
     await startPgrok(compute);
   }
 }

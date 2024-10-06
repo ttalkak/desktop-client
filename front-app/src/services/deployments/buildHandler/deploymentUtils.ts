@@ -17,7 +17,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
       compute.deploymentId,
       "ERROR",
       compute.outboundPort,
-      "소스코드 다운로드 실패, 경로를 확인하세요"
+      "DOWNLOAD"
     );
     return { contextPath: null, dockerfilePath: null };
   }
@@ -48,7 +48,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
           compute.deploymentId,
           "ERROR",
           compute.outboundPort,
-          "도커 파일 생성 실패"
+          "DOCKER"
         );
         return { contextPath: null, dockerfilePath: null };
       }
@@ -65,7 +65,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
         compute.deploymentId,
         "ERROR",
         compute.outboundPort,
-        "도커 파일 생성 실패.. 파일을 확인해주세요"
+        "DOCKER"
       );
       return { contextPath: null, dockerfilePath: null };
     }

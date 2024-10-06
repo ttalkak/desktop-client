@@ -30,7 +30,7 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
   const [logs, setLogs] = useState<ParsedLog[]>([]);
 
   useEffect(() => {
-    const { onLogStream, onLogError, onLogEnd } = window.electronAPI;
+    const { onLogStream, onLogError } = window.electronAPI;
 
     console.log("Setting up log listeners for container:", containerId); // 리스너 설정 확인
 
@@ -54,18 +54,9 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
       }
     };
 
-    const handleEnd = (data: { containerId: string }) => {
-      console.log("Received end signal for container:", data.containerId); // 로그 스트림 종료 확인
-      if (data.containerId === containerId) {
-        console.log("Log stream ended for container:", data.containerId);
-        setLogs((prevLogs) => [...prevLogs, { message: "Log stream ended." }]);
-      }
-    };
-
     // IPC 이벤트 리스너 설정
     onLogStream(handleLog);
     onLogError(handleError);
-    onLogEnd(handleEnd);
   }, [containerId]);
 
   return (
@@ -74,7 +65,7 @@ const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
         Logs for Container: {shortenContainerId(containerId)}
       </h2>
       <div
-        className="text-xs bg-gray-100 p-2 border rounded h-60 overflow-y-auto whitespace-pre-wrap break-words mt-3"
+        className="text-xs bg-gray-100 p-2 border rounded h-60 overflow-hidden whitespace-pre-wrap break-words mt-3 cumstom-scrollbar"
         style={{
           maxWidth: "100%",
           wordBreak: "break-all",

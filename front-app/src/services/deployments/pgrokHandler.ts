@@ -28,7 +28,7 @@ export async function startPgrok(compute: DeploymentCommand) {
       compute.deploymentId,
       "ERROR",
       compute.outboundPort,
-      "도메인 생성 실패"
+      "DOMAIN"
     );
   }
 }

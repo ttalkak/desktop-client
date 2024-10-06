@@ -3,7 +3,6 @@ import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import ContainerLogs from "./ContainerLogs";
 import { useDockerStore } from "../../stores/dockerStore";
 import Dockerode from "dockerode";
-import { GoQuestion } from "react-icons/go";
 
 const ContainerList: React.FC = () => {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(

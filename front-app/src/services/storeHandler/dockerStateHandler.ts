@@ -1,6 +1,5 @@
 import { useDockerStore } from "../../stores/dockerStore";
 import useDeploymentStore from "../../stores/deploymentStore";
-import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 
 export const dockerStateManager = {
   //dockerContainer 상태값 변화(running..stopped..)
@@ -28,16 +27,6 @@ export const dockerStateManager = {
       console.log(
         `Store: ContainerID ${containerId} state updated to '${newState}'.`
       );
-
-      if (newState === "error") {
-        sendInstanceUpdate(
-          deployment.serviceType,
-          deploymentId,
-          "ERROR",
-          compute?.outboundPort,
-          `${newState} 전환 실패`
-        );
-      }
     } else {
       console.error(`Container with ID ${containerId} not found in store.`);
     }
