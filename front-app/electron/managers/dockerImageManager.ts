@@ -136,6 +136,7 @@ export const removeImage = async (
     const imageInfo = await image.inspect();
     const imageTags = imageInfo.RepoTags || [];
 
+    // Get all containers (both running and stopped)
     const containers = await docker.listContainers({ all: true });
     const usingContainers = containers.filter(
       (container) =>
@@ -144,17 +145,16 @@ export const removeImage = async (
     );
 
     if (usingContainers.length > 0) {
-      const containerIds = usingContainers
-        .map((container) => container.Id.substring(0, 12))
-        .join(", ");
-      const errorMessage = `Image ${imageId} is currently in use: ${containerIds}`;
-      console.log(errorMessage);
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      // Stop and remove all containers using the image
+      for (const container of usingContainers) {
+        const containerInstance = docker.getContainer(container.Id);
+        await containerInstance.stop(); // Stop the container
+        await containerInstance.remove(); // Remove the container
+        console.log(`Container ${container.Id} stopped and removed`);
+      }
     }
 
+    // Remove the image after containers are stopped and removed
     await image.remove({ force: false });
     console.log(`Image ${imageId} removed successfully`);
     return { success: true };

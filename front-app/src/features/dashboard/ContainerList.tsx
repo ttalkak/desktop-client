@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import { useDockerStore } from "../../stores/dockerStore";
 import Dockerode from "dockerode";
-import { FixedSizeList as List } from "react-window";
 
 const MAX_LOGS_PER_CONTAINER = 1000;
 const LOG_CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -66,7 +65,6 @@ const ContainerList: React.FC = () => {
 
     return () => {
       clearInterval(cleanupInterval);
-      // Clean up listeners if necessary
     };
   }, [addLog]);
 
@@ -95,6 +93,11 @@ const ContainerList: React.FC = () => {
     };
   };
 
+  const shortenImageName = (imageName: string) => {
+    const parts = imageName.split("/");
+    return parts[parts.length - 1].split(":")[0];
+  };
+
   const formatCreatedTime = (created: number) => {
     const date = new Date(created * 1000);
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
@@ -113,106 +116,100 @@ const ContainerList: React.FC = () => {
     );
   };
 
-  const VirtualizedLogs = useMemo(
-    () =>
-      ({ logs }: { logs: ParsedLog[] }) => {
-        return (
-          <List
-            height={200}
-            itemCount={logs.length}
-            itemSize={20}
-            width="100%"
-            className="custom-scrollbar"
-          >
-            {({ index, style }) => {
-              const log = logs[index];
-              return (
-                <div
-                  style={style}
-                  className={`text-xs ${
-                    log.message.toLowerCase().includes("error")
-                      ? "text-red-600"
-                      : "text-black"
-                  }`}
-                >
-                  <span className="text-gray-500 mr-2">{log.timestamp}</span>
-                  <span>{log.message}</span>
-                </div>
-              );
-            }}
-          </List>
-        );
-      },
-    []
-  );
-
-  const ContainerRow = ({
-    container,
-  }: {
-    container: Dockerode.ContainerInfo;
-  }) => {
-    const { Id, Names, Created, State, Ports } = container;
-    const isSelected = selectedContainerIds.includes(Id);
-
+  const Logs = ({ logs }: { logs: ParsedLog[] }) => {
     return (
-      <>
-        <tr className="hover:bg-gray-50">
-          <td className="py-2 px-4 text-sm text-gray-900">
-            {Names[0].slice(1)}
-          </td>
-          <td className="py-2 px-4 text-xs text-gray-900">
-            {formatCreatedTime(Created)}
-          </td>
-          <td className="py-2 px-4 text-sm text-gray-900">
-            {renderPorts(Ports)}
-          </td>
-          <td className="py-2 px-4 text-sm text-gray-900">{State}</td>
-          <td className="py-2 px-4 text-sm text-gray-900">
-            <button
-              onClick={() => toggleContainerSelection(Id)}
-              className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
-            >
-              {isSelected ? (
-                <MdKeyboardArrowUp className="text-gray-600" />
-              ) : (
-                <MdKeyboardArrowDown className="text-gray-600" />
-              )}
-            </button>
-          </td>
-        </tr>
-        {isSelected && (
-          <tr>
-            <td colSpan={6} className="p-4 bg-gray-100">
-              <VirtualizedLogs logs={logData[Id] || []} />
-            </td>
-          </tr>
-        )}
-      </>
+      <div
+        className="custom-scrollbar"
+        style={{ height: "200px", overflowY: "scroll" }}
+      >
+        {logs.map((log, index) => (
+          <div
+            key={index}
+            className={`text-xs ${
+              log.message.toLowerCase().includes("error")
+                ? "text-color-8"
+                : "text-color-5"
+            }`}
+          >
+            <span className="text-gray-500 mr-2">{log.timestamp}</span>
+            <span>{log.message}</span>
+          </div>
+        ))}
+      </div>
     );
   };
 
-  if (dockerContainers.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-8">
-        <p className="text-center text-gray-700">
-          현재 배포중인 서비스가 없습니다
-        </p>
-        <div className="mt-4 flex text-gray-400 text-sm ">
-          <div className="text-gray-400 text-sm ">
-            서비스 할당을 기다려주세요
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const ContainerRow = useMemo(
+    () =>
+      ({ container }: { container: DockerContainer }) => {
+        const { Id, Names, Image, Created, State, Ports } = container;
+        const isSelected = selectedContainerIds.includes(Id);
+
+        return (
+          <>
+            <tr className="hover:bg-gray-50">
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {Names[0].slice(1)}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900" title={Image}>
+                {shortenImageName(Image)}
+              </td>
+              <td className="py-2 px-4 text-xs text-gray-900">
+                {formatCreatedTime(Created)}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {renderPorts(Ports)}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">{State}</td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                <button
+                  onClick={() => toggleContainerSelection(Id)}
+                  className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
+                >
+                  {isSelected ? (
+                    <MdKeyboardArrowUp className="text-gray-600" />
+                  ) : (
+                    <MdKeyboardArrowDown className="text-gray-600" />
+                  )}
+                </button>
+              </td>
+            </tr>
+            {isSelected && (
+              <tr>
+                <td colSpan={6} className="p-4 bg-gray-100">
+                  <Logs logs={logData[Id] || []} />
+                </td>
+              </tr>
+            )}
+          </>
+        );
+      },
+    [selectedContainerIds, logData, toggleContainerSelection]
+  );
+
+  // if (dockerContainers.length === 0) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center mt-8">
+  //       <p className="text-center text-gray-700">
+  //         현재 배포중인 서비스가 없습니다
+  //       </p>
+  //       <div className="mt-4 flex text-gray-400 text-sm ">
+  //         <div className="text-gray-400 text-sm ">
+  //           서비스 할당을 기다려주세요
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div className="flex flex-col custom-scrollbar">
-      <div className="overflow-hidden rounded-lg ">
+    <div className="flex flex-col h-[calc(100vh-200px)]">
+      <div className="overflow-hidden rounded-lg custom-scrollbar">
         <table className="min-w-full divide-y divide-gray-300">
           <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
             <tr>
               <th className="p-1">Name</th>
+              <th className="p-1">Image</th>
               <th className="p-1">Created</th>
               <th className="p-1">Ports</th>
               <th className="p-1">State</th>

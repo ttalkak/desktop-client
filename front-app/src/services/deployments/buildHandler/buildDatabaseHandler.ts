@@ -66,22 +66,29 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
         dbCreate.databaseId
       );
 
-      if (result === "FAILED") {
-        sendInstanceUpdate(
-          dbCreate.serviceType,
-          dbCreate.databaseId,
-          "ERROR",
-          dbCreate.outboundPort,
-          "FAILED"
-        );
+      switch (result) {
+        case "FAILED":
+          sendInstanceUpdate(
+            dbCreate.serviceType,
+            dbCreate.databaseId,
+            "ERROR",
+            dbCreate.outboundPort,
+            "FAILED"
+          );
+          break;
+        case "SUCCESS":
+          sendInstanceUpdate(
+            dbCreate.serviceType,
+            dbCreate.databaseId,
+            "RUNNING",
+            dbCreate.outboundPort,
+            "RUNNING"
+          );
+          window.electronAPI.startLogStream(container.Id);
+          break;
+        default:
+          break;
       }
-      sendInstanceUpdate(
-        dbCreate.serviceType,
-        dbCreate.databaseId,
-        "RUNNING",
-        dbCreate.outboundPort,
-        "RUNNING"
-      );
     } else if (error) {
       sendInstanceUpdate(
         dbCreate.serviceType,

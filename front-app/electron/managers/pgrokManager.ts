@@ -28,11 +28,13 @@ async function runPgrok(
   if (!fs.existsSync(pgrokExePath)) {
     throw new Error("pgrok.exe not found. Please download it first.");
   }
-
+  const cleanedForwardAddr = forwardAddr.replace(/^http:\/\/|https:\/\//, "");
   let command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token} --deployment-id ${deploymentId} --domain ${domain}.ttalkak.com`;
 
-  if (!domain) {
-    command = `pgrok.exe tcp --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token}`;
+  if (domain) {
+    command = `pgrok.exe http --remote-addr ${remoteAddr} --forward-addr ${forwardAddr} --token ${token} --deployment-id ${deploymentId} --domain ${domain}`;
+  } else {
+    command = `pgrok.exe tcp --remote-addr ${remoteAddr} --forward-addr ${cleanedForwardAddr} --token ${token}`;
   }
 
   // 명령 프롬프트를 사용하여 pgrok 실행
