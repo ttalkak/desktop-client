@@ -36,6 +36,7 @@ interface DatabaseState {
 
   clearAllContainers: () => void; // 전체 삭제
   getContainerIdById: (databaseId: string | number) => string | null;
+  getContainerIds: () => string[];
 }
 
 // sessionStorage 적용하여 상태 관리
@@ -82,6 +83,7 @@ export const useDatabaseStore = create<DatabaseState>()(
         );
         return containerEntry ? containerEntry[0] : null; // containerId 반환 또는 null 반환
       },
+      getContainerIds: () => Object.keys(get().containerMap),
     }),
     {
       name: "container-storage", // sessionStorage에 저장될 키 이름

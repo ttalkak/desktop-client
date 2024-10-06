@@ -14,9 +14,7 @@ export const startService = async () => {
   try {
     console.log("1. ServiceUtil: Starting service");
     setServiceStatus("loading");
-    // const osType: OSType = await window.electronAPI.getOsType();
-    // setOsType(osType);
-    // Docker 상태 확인 및 실행
+
     const dockerStatus = await checkDockerStatus();
     console.log("2. ServiceUtil: Docker status:", dockerStatus);
 

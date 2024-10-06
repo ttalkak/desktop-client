@@ -2,6 +2,7 @@ import { disconnectWebSocket } from "./stompService";
 import { useAppStore } from "../stores/appStatusStore";
 import { useDockerStore } from "../stores/dockerStore";
 import { terminateAndRemoveContainersAndImages } from "./deployments/terminateAllDeployments";
+import { terminateAndRemoveDatabases } from "./deployments/terminateAllDatabases";
 import {
   stopSendingCurrentState,
   stopContainerStatsMonitoring,
@@ -29,6 +30,7 @@ export const stopAllTasks = async (): Promise<void> => {
     console.log("4. Stopped container stats monitoring.");
 
     // 2. 컨테이너와 이미지 정지 및 제거
+    await terminateAndRemoveDatabases();
     await terminateAndRemoveContainersAndImages(); // 비동기 작업을 기다림
     console.log("5. Containers and images removed.");
 
@@ -36,7 +38,7 @@ export const stopAllTasks = async (): Promise<void> => {
     setServiceStatus("stopped");
     console.log("6. Service status set to stopped.");
 
-    // // 4. WebSocket 종료
+    // 4. WebSocket 종료
     disconnectWebSocket();
     console.log("7. WebSocket disconnected.");
 
@@ -60,7 +62,7 @@ export const stopAllTasks = async (): Promise<void> => {
   }
 };
 
-// 메인 프로세스 종료 이벤트 인식 후 전체 task 종료
+// 메인 프로세스 종료 이벤트 인식 후 전체 task 종료[electron tray에서 꺼버릴떄]
 window.ipcRenderer.on("terminate", async () => {
   console.log("Received 'terminate' event from main process.");
   try {

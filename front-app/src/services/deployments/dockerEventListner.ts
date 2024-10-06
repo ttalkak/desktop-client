@@ -2,7 +2,6 @@ import { useAuthStore } from "../../stores/authStore";
 import useDeploymentStore from "../../stores/deploymentStore";
 import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 import { useAppStore } from "../../stores/appStatusStore";
-import { terminateAndRemoveContainersAndImages } from "./terminateAllDeployments";
 
 interface DockerEvent {
   Type: string;
@@ -24,47 +23,6 @@ export const registerDockerEventHandlers = () => {
   if (!userId) {
     throw new Error("User ID not found. Please ensure user is logged in.");
   }
-
-  const handleImageEvent = async (event: DockerEvent) => {
-    console.log(`Image event: ${event.Action} for image ${event.Actor.ID}`);
-
-    switch (event.Action) {
-      case "build":
-      case "tag":
-      case "untag":
-        try {
-          const images = await window.electronAPI.getDockerImages();
-          const updatedImage = images.find((img) => img.Id === event.Actor.ID);
-          if (updatedImage) {
-            dockerStateManager.updateImageState(updatedImage.Id, {
-              RepoTags: updatedImage.RepoTags,
-            });
-          } else {
-            console.error(
-              `Image with ID ${event.Actor.ID} not found after ${event.Action} event.`
-            );
-          }
-        } catch (error) {
-          console.error(
-            `Error handling ${event.Action} event for image ${event.Actor.ID}:`,
-            error
-          );
-          return {
-            error: true,
-            message: `Failed to process image event: ${event.Action}`,
-          };
-        }
-        break;
-      case "delete":
-        dockerStateManager.removeImage(event.Actor.ID);
-        break;
-      default:
-        console.log(`Unhandled image action: ${event.Action}`);
-        return { status: "unhandled", eventAction: event.Action };
-    }
-
-    return { status: "success", eventAction: event.Action };
-  };
 
   const handleContainerEvent = async (event: DockerEvent) => {
     console.log(
@@ -150,8 +108,6 @@ export const registerDockerEventHandlers = () => {
     switch (event.Type) {
       case "container":
         return handleContainerEvent(event);
-      case "image":
-        return handleImageEvent(event);
       default:
         console.log(`Unknown event type: ${event.Type}`);
         return { status: "unhandled", eventType: event.Type };
@@ -164,6 +120,5 @@ export const registerDockerEventHandlers = () => {
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
     setDockerStatus("unknown");
-    terminateAndRemoveContainersAndImages();
   });
 };

@@ -132,26 +132,30 @@ export const removeImage = async (
   try {
     const image = docker.getImage(imageId);
 
-    const containers = await docker.listContainers({ all: false });
+    // Get image details to get RepoTags
+    const imageInfo = await image.inspect();
+    const imageTags = imageInfo.RepoTags || [];
+
+    const containers = await docker.listContainers({ all: true });
     const usingContainers = containers.filter(
-      (container) => container.Image === imageId
+      (container) =>
+        imageTags.includes(container.Image) ||
+        container.ImageID === `sha256:${imageId}`
     );
 
     if (usingContainers.length > 0) {
-      console.log(`Image ${imageId} is used by the following containers:`);
-      usingContainers.forEach((container) => {
-        console.log(`Stopping and removing container ${container.Id}`);
-      });
-
-      for (const container of usingContainers) {
-        const cont = docker.getContainer(container.Id);
-        await cont.stop();
-        await cont.remove();
-        console.log(`Container ${container.Id} removed successfully`);
-      }
+      const containerIds = usingContainers
+        .map((container) => container.Id.substring(0, 12))
+        .join(", ");
+      const errorMessage = `Image ${imageId} is currently in use: ${containerIds}`;
+      console.log(errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
 
-    await image.remove({ force: true });
+    await image.remove({ force: false });
     console.log(`Image ${imageId} removed successfully`);
     return { success: true };
   } catch (error) {

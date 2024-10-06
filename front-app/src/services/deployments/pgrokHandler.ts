@@ -19,7 +19,7 @@ export async function startPgrok(compute: DeploymentCommand) {
       compute.deploymentId,
       "RUNNING",
       compute.outboundPort,
-      `${compute.subdomainName} 배포 완료`
+      `RUNNING`
     );
   } catch (error) {
     console.error(`Failed to start pgrok: ${error}`);

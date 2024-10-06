@@ -1,7 +1,6 @@
 import { useDockerStore } from "../../stores/dockerStore";
 import { useDeploymentStore } from "../../stores/deploymentStore";
 import {
-  getRunningContainers,
   getTotalMemoryUsage,
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
@@ -30,13 +29,15 @@ interface ComputeConnectRequest {
 export const sendComputeConnectMessage = async (
   userId: string
 ): Promise<void> => {
+  const dockerStore = useDockerStore.getState();
+
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
     const usedCompute = useDockerStore.getState().dockerContainers.length;
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
-    const runningContainers = await getRunningContainers();
+    const runningContainers = dockerStore.dockerContainers;
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
     const deployments: Deployment[] = [];

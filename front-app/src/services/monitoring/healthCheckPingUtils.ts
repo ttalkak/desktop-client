@@ -23,22 +23,10 @@ let containerCheckInterval: NodeJS.Timeout | null = null; // 컨테이너 체크
 let intervalId: NodeJS.Timeout | null = null; // 상태 전송 주기를 관리하는 변수
 
 // 실행 중인 컨테이너 목록을 가져오는 함수
-export const getRunningContainers = async () => {
-  try {
-    const allContainers = await window.electronAPI.getDockerContainers(true);
-    const dockerStore = useDockerStore.getState();
-    const storeContainerIds = new Set(
-      dockerStore.dockerContainers.map((container) => container.Id)
-    );
-    const runningContainers = allContainers.filter((container) =>
-      storeContainerIds.has(container.Id)
-    );
-    return runningContainers;
-  } catch (error) {
-    console.error("Error fetching running containers:", error);
-    throw error;
-  }
-};
+export function getStoreContainerIds(): string[] {
+  const dockerStore = useDockerStore.getState();
+  return dockerStore.dockerContainers.map((container) => container.Id);
+}
 
 // 모든 실행 중인 컨테이너의 메모리 사용량을 합산하는 함수
 export async function getTotalMemoryUsage(
