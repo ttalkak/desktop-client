@@ -111,7 +111,10 @@ declare global {
       containerId?: string;
       error?: string;
     }>;
-    startContainer: (containerId: string) => Promise<{
+    startContainer: (
+      containerId: string,
+      imageTag: string
+    ) => Promise<{
       success: boolean;
       error?: string;
     }>;

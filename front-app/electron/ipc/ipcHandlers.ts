@@ -179,41 +179,41 @@ export function registerIpcHandlers() {
   );
 
   // Docker 컨테이너를 생성하는 핸들러
-  ipcMain.handle(
-    "create-container",
-    async (_event, options: Docker.ContainerCreateOptions) => {
-      return createContainer(options);
-    }
-  );
-
-  // Docker 컨테이너를 시작하는 핸들러
-  ipcMain.handle("start-container", async (_event, containerId: string) => {
-    return startContainer(containerId);
+  ipcMain.handle("create-container", async (_event, options: string) => {
+    return createContainer(options);
   });
 
-  // Docker 컨테이너를 생성하고 시작하는 핸들러
+  // Docker 컨테이너를 시작하는 핸들러
   ipcMain.handle(
-    "create-and-start-container",
-    async (_event, containerOptions: Docker.ContainerCreateOptions) => {
-      try {
-        const result = await createContainer(containerOptions);
-
-        if (result.success && result.containerId) {
-          const startResult = await startContainer(result.containerId);
-          if (startResult.success) {
-            return { success: true, containerId: result.containerId };
-          } else {
-            throw new Error(startResult.error);
-          }
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error("Error during container creation and start:", error);
-        return { success: false, error: (error as Error).message };
-      }
+    "start-container",
+    async (_event, containerId: string, imageTag: string) => {
+      return startContainer(containerId, imageTag);
     }
   );
+
+  // Docker 컨테이너를 생성하고 시작하는 핸들러
+  // ipcMain.handle(
+  //   "create-and-start-container",
+  //   async (_event, containerOptions: Docker.ContainerCreateOptions) => {
+  //     try {
+  //       const result = await createContainer(containerOptions);
+
+  //       if (result.success && result.containerId) {
+  //         const startResult = await startContainer(result.containerId);
+  //         if (startResult.success) {
+  //           return { success: true, containerId: result.containerId };
+  //         } else {
+  //           throw new Error(startResult.error);
+  //         }
+  //       } else {
+  //         throw new Error(result.error);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error during container creation and start:", error);
+  //       return { success: false, error: (error as Error).message };
+  //     }
+  //   }
+  // );
 
   // Docker 컨테이너를 중지하는 핸들러
   ipcMain.handle("stop-container", async (_event, containerId: string) => {
@@ -235,7 +235,7 @@ export function registerIpcHandlers() {
       options?: Docker.ContainerRemoveOptions
     ) => {
       try {
-        await removeContainer(containerId, options);
+        await removeContainer(containerId);
         return { success: true };
       } catch (err) {
         console.error(`Error removing container ${containerId}:`, err);
