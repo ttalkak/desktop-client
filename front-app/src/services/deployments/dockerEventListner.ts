@@ -60,7 +60,6 @@ export const registerDockerEventHandlers = () => {
           updateContainerInfo(container.id, { status: "created" });
           break;
         case "start":
-          await window.electronAPI.startContainerStats([event.Actor.ID]);
           updateContainerInfo(container.id, { status: "running" });
           break;
         case "stop":
