@@ -7,14 +7,8 @@ const execAsync = promisify(exec);
 // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
 export function formatEnvs(envs: EnvVar[]): string[] {
   return envs
-    .filter(({ value }) => value.trim() !== "") // 빈 값인 환경 변수 필터링
-    .map(({ key, value }) => {
-      const needsQuoting = /\s|["'$`]/.test(value); // 공백 또는 특수 문자가 있는지 확인
-      const escapedValue = needsQuoting
-        ? `"${value.replace(/"/g, '\\"')}"`
-        : value; // 큰따옴표로 감싸서 처리
-      return `${key}=${escapedValue}`;
-    });
+    .filter(({ value }) => value.trim() !== "")
+    .map(({ key, value }) => `${key}=${value}`);
 }
 
 // 도커 이미지 빌드하는 곳(프론트, 백엔드)

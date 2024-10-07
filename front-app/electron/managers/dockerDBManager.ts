@@ -19,22 +19,28 @@ function getDatabaseConfig(
   envs: EnvVar[]
 ): DatabaseConfig {
   const formattedEnvs = formatEnvs(envs);
-  const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
 
-  const baseCommand = `docker run -d \\
-  --name ${containerName} \\
-  -p ${outboundPort}:${inboundPort} \\
-  ${envString} \\
-  -e TZ=Asia/Seoul`;
+  const baseCommand = [
+    "docker",
+    "run",
+    "-d",
+    "--name",
+    containerName,
+    "-p",
+    `${outboundPort}:${inboundPort}`,
+    ...formattedEnvs.flatMap((env) => ["-e", env]),
+    "-e",
+    "TZ=Asia/Seoul",
+  ];
 
-  console.log("databaseCommand :", baseCommand);
+  console.log("databaseCommand :", baseCommand.join(" "));
+
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
       return {
         imageName: "mysql",
         defaultPort: 3306,
-        command: `${baseCommand} \\
-  ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
@@ -44,8 +50,7 @@ function getDatabaseConfig(
       return {
         imageName: "postgres",
         defaultPort: 5432,
-        command: `${baseCommand} \\
-  ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "pg_isready -h localhost -p 5432 || exit 1",
@@ -55,19 +60,21 @@ function getDatabaseConfig(
       return {
         imageName: "redis",
         defaultPort: 6379,
-        command: `${baseCommand} \\
-  ${imageName} \\
-  redis-server --requirepass "${
-    envs.find((e) => e.key === "REDIS_PASSWORD")?.value || "your_password"
-  }"`,
+        command: [
+          ...baseCommand,
+          imageName,
+          "redis-server",
+          "--requirepass",
+          envs.find((e) => e.key === "REDIS_PASSWORD")?.value ||
+            "your_password",
+        ].join(" "),
         healthCheckCommand: ["CMD-SHELL", "redis-cli -p 6379 ping || exit 1"],
       };
     case "MONGO":
       return {
         imageName: "mongo",
         defaultPort: 27017,
-        command: `${baseCommand} \\
-  ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mongo --eval 'db.stats()' --port 27017 || exit 1",
@@ -77,8 +84,7 @@ function getDatabaseConfig(
       return {
         imageName: "mariadb",
         defaultPort: 3306,
-        command: `${baseCommand} \\
-  ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
@@ -86,6 +92,7 @@ function getDatabaseConfig(
       };
     default:
       console.warn(`Unsupported database type: ${databaseType}`);
+      throw new Error(`Unsupported database type: ${databaseType}`);
   }
 }
 
