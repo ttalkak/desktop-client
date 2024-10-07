@@ -1,135 +1,3 @@
-// import { docker } from "./dockerUtils";
-// import Docker from "dockerode";
-
-// // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
-// function formatEnvs(envs: EnvVar[]): string[] {
-//   return envs
-//     .filter(({ key }) => key !== "PORT") // PORT는 별도로 처리하고, 나머지를 환경 변수로 변환
-//     .map(({ key, value }) => `${key}=${value}`);
-// }
-
-// // 특정 포트는 ExposedPorts와 PortBindings에 추가
-// function getPortBindings(envs: EnvVar[]): {
-//   [port: string]: { HostPort: string }[];
-// } {
-//   const portBindings: { [port: string]: { HostPort: string }[] } = {};
-
-//   envs
-//     .filter(({ key }) => key === "PORT") // PORT key에 해당하는 값만 처리
-//     .forEach(({ value }) => {
-//       const port = value;
-//       portBindings[`${port}/tcp`] = [{ HostPort: port }]; // 동일한 포트로 노출
-//     });
-
-//   return portBindings;
-// }
-
-// export const createContainerOptions = (
-//   imageName: string,
-//   containerName: string,
-//   inboundPort: number,
-//   outboundPort: number,
-//   envs: EnvVar[] = [],
-//   healthCheckCommand: string[]
-// ): Docker.ContainerCreateOptions => {
-//   const formattedEnvs = formatEnvs(envs); // PORT가 아닌 환경 변수 처리
-//   const portBindings = getPortBindings(envs); // PORT에 대한 노출 포트 처리
-
-//   return {
-//     Image: imageName,
-//     name: containerName,
-//     ExposedPorts: {
-//       [`${inboundPort}/tcp`]: {}, // 기본 inbound 포트
-//       ...Object.keys(portBindings).reduce((acc, port) => {
-//         acc[port] = {}; // PORT에 대한 추가 노출 포트 설정
-//         return acc;
-//       }, {} as Record<string, object>), // 빈 객체 타입을 Record<string, object>로 정의
-//     },
-//     HostConfig: {
-//       PortBindings: {
-//         [`${inboundPort}/tcp`]: [{ HostPort: outboundPort.toString() }],
-//         ...portBindings, // PORT 값에 따른 PortBindings 추가
-//       },
-//     },
-//     Env: formattedEnvs.length > 0 ? formattedEnvs : undefined, // PORT 외 나머지 환경 변수 전달
-//     Healthcheck: {
-//       Test: healthCheckCommand,
-//       Interval: 30000000000,
-//       Timeout: 10000000000,
-//       Retries: 3,
-//       StartPeriod: 5000000000,
-//     },
-//   };
-// };
-
-// //컨테이너 생성
-// export const createContainer = async (
-//   options: Docker.ContainerCreateOptions
-// ): Promise<{ success: boolean; containerId?: string; error?: string }> => {
-//   try {
-//     const existingContainers = await docker.listContainers({ all: true });
-//     const existingContainer = existingContainers.find((container) =>
-//       container.Names.includes(`/${options.name}`)
-//     );
-
-//     if (existingContainer) {
-//       console.log(
-//         `Container with name ${options.name} already exists with ID ${existingContainer.Id}.`
-//       );
-//       return {
-//         success: true,
-//         containerId: existingContainer.Id,
-//         error: "Container with this name already exists",
-//       };
-//     }
-
-//     const container = await docker.createContainer(options);
-//     console.log(`Container ${container.id} created successfully`);
-//     return { success: true, containerId: container.id };
-//   } catch (error) {
-//     console.error("Error creating container:", error);
-//     return { success: false, error: (error as Error).message };
-//   }
-// };
-
-// //컨테이너 시작
-// export const startContainer = async (
-//   containerId: string
-// ): Promise<{ success: boolean; error?: string }> => {
-//   try {
-//     const container = docker.getContainer(containerId);
-//     const containerInfo = await container.inspect();
-
-//     if (containerInfo.State && containerInfo.State.Status !== "running") {
-//       await container.start();
-//       console.log(`Container ${containerId} started successfully`);
-
-//       // 컨테이너가 실행된 후 권한 변경
-//       await container.exec({
-//         Cmd: ["chmod", "-R", "755", "/"],
-//         AttachStdout: true,
-//         AttachStderr: true,
-//       });
-//       console.log(
-//         `Permissions updated successfully for container ${containerId}`
-//       );
-
-//       return { success: true };
-//     } else if (containerInfo.State.Status === "running") {
-//       console.log(`Container ${containerId} is already running`);
-//       return { success: true };
-//     } else {
-//       console.error(
-//         `Container ${containerId} is not in a state that can be started`
-//       );
-//       return { success: false, error: "Container is not in a startable state" };
-//     }
-//   } catch (error) {
-//     console.error(`Error starting container ${containerId}:`, error);
-//     return { success: false, error: (error as Error).message };
-//   }
-// };
-
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -137,28 +5,33 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 
 // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
-function formatEnvs(envs: EnvVar[]): string[] {
-  return envs
-    .filter(({ key }) => key !== "PORT")
-    .map(({ key, value }) => `${key}=${value}`);
+export function formatEnvs(envs: EnvVar[]): string[] {
+  return envs.map(({ key, value }) => {
+    // 값에 특수 문자나 공백이 포함된 경우 따옴표로 묶음
+    const escapedValue = value.includes("'") ? `"${value}"` : `'${value}'`;
+    return `${key}=${escapedValue}`;
+  });
 }
 
+//database 빌드 옵션 설정
+
+// 도커 이미지 빌드하는 곳(프론트, 백엔드)
 export const createContainerOptions = (
   imageName: string,
   containerName: string,
   inboundPort: number,
   outboundPort: number,
-  envs: EnvVar[] = [],
-  healthCheckCommand: string[]
+  envs: EnvVar[] = []
+  // healthCheckCommand: string[]
 ): string => {
   const formattedEnvs = formatEnvs(envs); // 환경 변수 처리
 
   const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
-  const portsString = `-p ${outboundPort}:${inboundPort}`;
-  const healthCheckString = healthCheckCommand.join(" ");
-  const memoryLimit = "1g";
 
-  return `docker run -d --name ${containerName} ${portsString} ${envString} --memory=${memoryLimit} --health-cmd "${healthCheckString}" ${imageName}`;
+  const command = `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
+
+  console.log("image build command", command);
+  return command;
 };
 
 // 컨테이너 생성

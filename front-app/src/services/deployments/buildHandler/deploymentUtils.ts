@@ -1,6 +1,6 @@
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils";
 
-export async function prepareDeploymentContext(compute: DeploymentCommand) {
+export async function prepareDeploymentContext(compute: Deployment) {
   const { hasDockerFileScript } = determineDeploymentType(compute);
 
   const { success, found, contextPath, dockerfilePath, message } =
@@ -15,6 +15,7 @@ export async function prepareDeploymentContext(compute: DeploymentCommand) {
     sendInstanceUpdate(
       compute.serviceType,
       compute.deploymentId,
+      compute.senderId,
       "ERROR",
       compute.outboundPort,
       "DOWNLOAD"

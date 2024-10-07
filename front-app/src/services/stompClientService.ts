@@ -30,9 +30,10 @@ export function setupClientHandlers(userId: string): void {
     client.subscribe(
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
-        const compute = JSON.parse(message.body);
-        console.log("생성요청 도착", compute);
-        await handleDockerBuild(compute);
+        const deployment = JSON.parse(message.body);
+
+        console.log("생성요청 도착", deployment);
+        await handleDockerBuild(deployment);
       }
     );
 

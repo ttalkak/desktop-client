@@ -48,6 +48,7 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
+            senderId,
             "RUNNING",
             deployment.outboundPort,
             "RUNNING"
@@ -69,6 +70,7 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
+            senderId,
             "STOPPED",
             deployment.outboundPort,
             `STOPPED`
@@ -91,6 +93,7 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
+            senderId,
             "RUNNING",
             deployment.outboundPort,
             `RUNNING`
@@ -113,6 +116,7 @@ export async function handleContainerCommand(
           sendInstanceUpdate(
             deployment.serviceType,
             Id,
+            senderId,
             "DELETED",
             deployment.outboundPort,
             `DELETED`

@@ -19,6 +19,7 @@ import {
   removeContainer,
   dockerFileMaker,
 } from "../dockerManager";
+import { restartContainer } from "../dockerManager";
 
 import Docker from "dockerode";
 import { pullAndStartDatabaseContainer } from "../managers/dockerDBManager";
@@ -188,6 +189,9 @@ export function registerIpcHandlers() {
       return startContainer(containerId, imageTag);
     }
   );
+  ipcMain.handle("restart-container", async (_event, containerId: string) => {
+    return restartContainer(containerId);
+  });
 
   // Docker 컨테이너를 중지하는 핸들러
   ipcMain.handle("stop-container", async (_event, containerId: string) => {

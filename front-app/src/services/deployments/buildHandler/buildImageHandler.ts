@@ -75,20 +75,30 @@ export const createAndStartContainer = async (
     );
 
     if (success && containerId) {
-      await window.electronAPI.startContainer(containerId, repoTag);
-    }
+      const { success } = await window.electronAPI.restartContainer(
+        containerId
+      );
 
-    const containers = await window.electronAPI.getDockerContainers(true);
-    const createdContainer = containers.find((c) => c.Id === containerId);
+      if (success) {
+        console.log("container 빌드 여부 확인", success, containerId);
+
+        const containers = await window.electronAPI.getDockerContainers(true);
+        const createdContainer = containers.find((c) => c.Id === containerId);
+        console.log("container 빌드 여부 확인", success, createdContainer);
+        return { success: true, container: createdContainer };
+      }
+    }
 
     if (!success) {
       return { success: false, container: undefined };
     }
-    return { success: true, container: createdContainer };
   } catch (error) {
     return {
       success: false,
       error: "container 실행 실패",
     };
   }
+
+  // 마지막 기본 반환 값 추가
+  return { success: false, error: "Unexpected error" };
 };

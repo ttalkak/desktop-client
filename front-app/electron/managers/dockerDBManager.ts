@@ -1,24 +1,40 @@
 import { docker } from "./dockerUtils";
 import {
   createContainer,
-  startContainer,
+  restartContainer,
   createContainerOptions,
 } from "./dockerContainerManager";
+import { formatEnvs } from "./dockerContainerManager";
 
 type EnvVar = { key: string; value: string };
 
 interface DatabaseConfig {
   imageName: string;
   defaultPort: number;
+  command: string;
   healthCheckCommand: string[]; // 헬스 체크 명령어 추가
 }
 
-function getDatabaseConfig(databaseType: string): DatabaseConfig {
+// database 생성 명령어
+// const command = `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
+
+function getDatabaseConfig(
+  databaseType: string,
+  imageName: string,
+  containerName: string,
+  inboundPort: number,
+  outboundPort: number,
+  envs: EnvVar[]
+): DatabaseConfig {
+  const formattedEnvs = formatEnvs(envs);
+  const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
+
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
       return {
         imageName: "mysql",
         defaultPort: 3306,
+        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
@@ -28,6 +44,7 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
       return {
         imageName: "postgres",
         defaultPort: 5432,
+        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
         healthCheckCommand: [
           "CMD-SHELL",
           "pg_isready -h localhost -p 5432 || exit 1",
@@ -37,12 +54,14 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
       return {
         imageName: "redis",
         defaultPort: 6379,
+        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
         healthCheckCommand: ["CMD-SHELL", "redis-cli -p 6379 ping || exit 1"],
       };
-    case "MONGODB":
+    case "MONGO":
       return {
         imageName: "mongo",
         defaultPort: 27017,
+        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
         healthCheckCommand: [
           "CMD-SHELL",
           "mongo --eval 'db.stats()' --port 27017 || exit 1",
@@ -52,6 +71,7 @@ function getDatabaseConfig(databaseType: string): DatabaseConfig {
       return {
         imageName: "mariadb",
         defaultPort: 3306,
+        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
@@ -123,7 +143,14 @@ export async function pullAndStartDatabaseContainer(
 }> {
   try {
     // 기본 포트 및 healthCheckCommand 가져오기
-    const { defaultPort, healthCheckCommand } = getDatabaseConfig(databaseType);
+    const { defaultPort, command, healthCheckCommand } = getDatabaseConfig(
+      databaseType,
+      imageName,
+      containerName,
+      inboundPort,
+      outboundPort,
+      envs
+    );
 
     // Docker 이미지 풀링
     const {
@@ -163,7 +190,7 @@ export async function pullAndStartDatabaseContainer(
     }
 
     // 컨테이너 시작
-    const startResult = await startContainer(containerId, imageName);
+    const startResult = await restartContainer(containerId);
     if (!startResult.success) {
       return {
         success: false,
@@ -188,8 +215,7 @@ export async function pullAndStartDatabaseContainer(
     return { success: true, image, container };
   } catch (error) {
     console.error(
-      `Failed to pull Docker image and start container for ${databaseType}:`,
-      error
+      `Failed to pull Docker image and start container for ${databaseType}:`
     );
     return { success: false, error: (error as Error).message };
   }

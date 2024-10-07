@@ -7,6 +7,7 @@ export interface DeploymentCreate {
 }
 
 export interface Deployment {
+  senderId: string;
   deploymentId: number;
   serviceType: string;
   hasDockerFile?: boolean;
