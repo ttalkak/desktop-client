@@ -4,12 +4,14 @@ import { axiosInstance } from "../axios/constants";
 import { login } from "../axios/auth";
 import { SlArrowDown, SlArrowUp } from "react-icons/sl";
 import logoImg from "./../assets/images/logo.png";
+import { IoIosInformationCircleOutline } from "react-icons/io";
 
 const SignUp = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
+  const [metaUrl, setMetaUrl] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null); // 아이디 길이
   const [pwLengthError, setPwLengthError] = useState<string | null>(null); // 비밀번호 길이
   const [passwordError, setPasswordError] = useState<string | null>(null); // 비밀번호 불일치
@@ -19,6 +21,7 @@ const SignUp = () => {
   const [isTermsOpen, setIsTermsOpen] = useState(false); // 토글 상태
   const [isAgreementHighlighted, setIsAgreementHighlighted] = useState(false); // 동의하지 않으면 하이라이트
   const [dynamicMargin, setDynamicMargin] = useState("mt-4");
+  const [hoverInfo, setHoverInfo] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,6 +66,7 @@ const SignUp = () => {
         username,
         email,
         password: password1,
+        address: metaUrl,
       });
 
       const { success, message } = response.data;
@@ -125,6 +129,8 @@ const SignUp = () => {
   const haveMsg = "flex items-center";
   const btn = `mt-6 rounded w-full bg-color-15 text-white py-2`;
   const errorMsg = "ml-2 text-color-8 text-sm";
+  const tooltip =
+    "absolute bottom-16 left-24 mb-1 bg-color-14 border text-xs rounded py-1 shadow-lg z-50";
 
   return (
     <div className="h-full card overflow-auto custom-scrollbar">
@@ -192,6 +198,40 @@ const SignUp = () => {
               type="password"
               value={password2}
               onChange={(e) => setPassword2(e.target.value)}
+              required
+              className={ipt}
+            />
+          </div>
+
+          <div className="flex flex-col relative">
+            <label className={`${lbl} ${haveMsg}`} htmlFor="metamask">
+              <div className="flex justify-between">
+                MetaMask 주소
+                <IoIosInformationCircleOutline
+                  size={17}
+                  color="#c0c0c0"
+                  className="ml-1 mt-0.5 cursor-pointer"
+                  onMouseEnter={() => {
+                    setHoverInfo(
+                      "결제 연동을 위해 MetaMask 주소를 입력해주세요."
+                    );
+                  }}
+                  onMouseLeave={() => {
+                    setHoverInfo("");
+                  }}
+                />
+                {hoverInfo && (
+                  <div className={`${tooltip} w-72 text-center`}>
+                    {hoverInfo}
+                  </div>
+                )}
+              </div>
+            </label>
+            <input
+              id="metamask"
+              type="text"
+              value={metaUrl}
+              onChange={(e) => setMetaUrl(e.target.value)}
               required
               className={ipt}
             />
