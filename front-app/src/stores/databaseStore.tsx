@@ -2,7 +2,9 @@ import create from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 // 기존 DatabaseCreateEvent 인터페이스 수정
+
 export interface DatabaseCreateEvent {
+  senderId: string;
   containerName: string;
   databaseId: number;
   dockerImageName: string;
@@ -13,11 +15,16 @@ export interface DatabaseCreateEvent {
   serviceType: string;
   subdomainKey: string;
 }
+export interface DatabaseCreate {
+  senderId: string;
+  instance: DatabaseCreateEvent;
+}
 
 // 새로운 DatabaseState 인터페이스// envs 미 포함  COMMAND 처리시 ID type 충돌 오류로 Sting, number
 interface DatabaseState {
   containerMap: {
     [containerId: string]: {
+      senderId: string;
       databaseId: number;
       containerName: string;
       dockerImageName: string;
@@ -54,6 +61,7 @@ export const useDatabaseStore = create<DatabaseState>()(
           containerMap: {
             ...state.containerMap,
             [containerId]: {
+              senderId: dbCreate.senderId,
               databaseId: dbCreate.databaseId,
               containerName: dbCreate.containerName,
               dockerImageName: dbCreate.dockerImageName,

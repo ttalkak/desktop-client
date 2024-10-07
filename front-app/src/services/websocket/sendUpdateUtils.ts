@@ -5,6 +5,7 @@ import { client } from "./stompClientUtils";
 export function sendInstanceUpdate(
   serviceType: string,
   id: number,
+  senderId: string,
   status: string,
   port?: number,
   details?: string
@@ -12,6 +13,7 @@ export function sendInstanceUpdate(
   const message = {
     serviceType: serviceType,
     status: status.toUpperCase(),
+    senderId: senderId,
     port: port,
     message: details || "",
   };

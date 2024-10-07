@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export interface DeploymentCreate {
+  senderId: string;
+  instance: DeploymentCommand;
+}
+
 export interface Deployment {
   deploymentId: number;
   serviceType: string;
@@ -10,7 +15,6 @@ export interface Deployment {
   inboundPort: number;
   outboundPort: number;
   subdomainName: string;
-  // subdomainKey: string;
   sourceCodeLink: string;
   dockerRootDirectory: string;
   dockerFileScript: string;

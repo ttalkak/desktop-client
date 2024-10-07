@@ -210,8 +210,8 @@ declare global {
     key: string;
     value: string;
   }
-
   export interface DeploymentCommand {
+    senderId: string;
     deploymentId: number;
     serviceType: string;
     hasDockerFile: boolean;

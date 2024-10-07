@@ -6,22 +6,24 @@ import { createAndStartContainer } from "./buildImageHandler.ts";
 import {
   useDeploymentStore,
   Deployment,
+  DeploymentCreate,
 } from "../../../stores/deploymentStore.tsx";
 
 // 공통 빌드 및 배포 처리 함수
 export async function buildAndDeploy(
-  compute: DeploymentCommand,
+  deployCreate: DeploymentCreate,
   contextPath: string,
   dockerfilePath: string | null
 ) {
+  const { senderId, instance } = deployCreate;
   // 1. Docker 이미지 빌드
   const { addDockerImage } = useDockerStore.getState();
 
-  const imageName = compute.dockerImageName
-    ? compute.dockerImageName
-    : compute.subdomainName;
+  const imageName = instance.dockerImageName
+    ? instance.dockerImageName
+    : instance.subdomainName;
 
-  const tagName = compute.dockerImageTag ? compute.dockerImageTag : "latest";
+  const tagName = instance.dockerImageTag ? instance.dockerImageTag : "latest";
 
   if (dockerfilePath && imageName) {
     const { image } = await handleBuildImage(
@@ -39,16 +41,17 @@ export async function buildAndDeploy(
     // 이미지 생성 실패시 생성 실패 알림
     if (!image) {
       sendInstanceUpdate(
-        compute.serviceType,
-        compute.deploymentId,
+        instance.serviceType,
+        instance.deploymentId,
+        senderId,
         "ERROR",
-        compute.outboundPort,
+        instance.outboundPort,
         "DOCKER"
       );
       return;
     }
     // 도커 이미지 추가 및 컨테이너 생성 및 시작
-    await completeDeployment(compute, image);
+    await completeDeployment(instance, image);
   }
 }
 
@@ -112,6 +115,7 @@ async function completeDeployment(
     sendInstanceUpdate(
       compute.serviceType,
       compute.deploymentId,
+      compute.senderId,
       "RUNNING",
       compute.outboundPort,
       "RUNNING"
