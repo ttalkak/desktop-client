@@ -1,99 +1,106 @@
-import { useDatabaseStore } from "../../../stores/databaseStore";
-import { useDockerStore } from "../../../stores/dockerStore"; // Docker store 추가
 import { sendInstanceUpdate } from "../../../services/websocket/sendUpdateUtils";
 import { PGROK_URL } from "../pgrokHandler";
-import { DatabaseCreate } from "../../../stores/databaseStore";
+import { useContainerStore } from "../../../stores/containerStore";
+import { useImageStore } from "../../../stores/imageStore";
+import { DeployImageInfo } from "../../../stores/imageStore";
+import { DeployContainerInfo } from "../../../stores/containerStore";
 
-export async function handleDatabaseBuild(dbCreate: DatabaseCreate) {
+export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
+  const { senderId, instance } = dbCreate;
+  const { getContainerById, removeContainer } = useContainerStore.getState();
+  const id = `${instance.serviceType}-${instance.databaseId}`;
+  const dbImageName = `${instance.dockerImageName}:${
+    instance.dockerImageTag || "latest"
+  }`;
+
   try {
-    const { senderId, instance } = dbCreate;
-    // 기존 deployment 확인 및 삭제 => 기존에 있었으면 rebuild 요청임
-    const databaseStore = useDatabaseStore.getState();
-    const dockerStore = useDockerStore.getState();
+    // 1. 기존 컨테이너가 있는지 확인하고 삭제 처리
+    const existingContainer = getContainerById(id);
 
-    // 기존 databaseId에 해당하는 containerId 찾기
-    const existingContainerId = Object.entries(databaseStore.containerMap).find(
-      ([_, deployment]) => deployment.databaseId === instance.databaseId
-    )?.[0];
-
-    if (existingContainerId) {
-      // 기존 containerId 삭제
-      await window.electronAPI.removeContainer(existingContainerId);
-      await window.electronAPI.stopContainerStats([existingContainerId]);
-      databaseStore.removeContainer(existingContainerId);
-      dockerStore.removeDockerContainer(existingContainerId);
-      console.log(
-        `Removed existing deployment with ID: ${instance.databaseId} and containerId: ${existingContainerId}`
-      );
+    if (existingContainer) {
+      const existingContainerId = existingContainer.containerId;
+      if (existingContainerId) {
+        try {
+          await stopAndRemoveExistingContainer(existingContainerId);
+          removeContainer(existingContainerId);
+          console.log(`기존 컨테이너 삭제 완료, ID: ${existingContainerId}`);
+        } catch (error) {
+          console.error(`기존 배포 삭제 중 오류 발생: ${error}`);
+          throw error;
+        }
+        return existingContainerId;
+      }
     }
 
-    const dbImageName = `${instance.dockerImageName}:${
-      instance.dockerImageTag || "latest"
-    }`;
-
-    // Docker 컨테이너를 띄우는 API 호출
+    // 2. 새로운 Docker 컨테이너 생성 및 실행
     const { success, image, container, error } =
       await window.electronAPI.pullAndStartDatabaseContainer(
         instance.dockerImageName,
-        dbImageName, // dockerImageName 사용
-        instance.containerName, // containerName 사용
-        instance.inboundPort, // inboundPort
-        instance.outboundPort, // 외부 포트
-        instance.envs // 환경 변수들
-      );
-
-    console.log(`db id undefined 확인`, instance.databaseId);
-    console.log(instance.outboundPort);
-
-    if (success && container.Id) {
-      // dbstore에 데이터베이스 저장
-      databaseStore.addContainer(container.Id, instance); // 전체 dbCreate 객체 전달
-      dockerStore.addDockerImage(image);
-      dockerStore.addDockerContainer(container);
-      console.log("Database container started and stored in dbstore");
-
-      sendInstanceUpdate(
-        instance.serviceType,
-        instance.databaseId,
-        senderId,
-        "PENDING",
+        dbImageName,
+        instance.containerName,
+        instance.inboundPort,
         instance.outboundPort,
-        "CONTAINER COMPLETE"
+        instance.envs
       );
 
-      const result = await window.electronAPI.runPgrok(
-        PGROK_URL,
-        `localhost:${instance.outboundPort}`,
-        instance.subdomainKey,
-        instance.databaseId
-      );
-
-      switch (result) {
-        case "FAILED":
-          sendInstanceUpdate(
-            instance.serviceType,
-            instance.databaseId,
-            senderId,
-            "ERROR",
-            instance.outboundPort,
-            "FAILED"
-          );
-          break;
-        case "SUCCESS":
-          sendInstanceUpdate(
-            instance.serviceType,
-            instance.databaseId,
-            senderId,
-            "RUNNING",
-            instance.outboundPort,
-            "RUNNING"
-          );
-          window.electronAPI.startLogStream(container.Id);
-          break;
-        default:
-          break;
-      }
+    if (success && container?.Id) {
+      handleSuccessfulContainerStart(instance, image, container, senderId, id);
     } else if (error) {
+    }
+  } catch (error) {
+    console.error("Error during database build process:", error);
+  }
+}
+
+// 기존 컨테이너 중지 및 삭제 처리 함수
+async function stopAndRemoveExistingContainer(containerId: string) {
+  await window.electronAPI.stopContainerStats([containerId]);
+  await window.electronAPI.stopContainer(containerId);
+  await window.electronAPI.removeContainer(containerId);
+}
+
+// 새로운 컨테이너 시작 성공 시 처리 함수
+async function handleSuccessfulContainerStart(
+  instance: any,
+  image: DockerImage,
+  container: DockerContainer,
+  senderId: string,
+  id: string
+) {
+  const { updateImageInfo } = useImageStore.getState();
+  const { updateContainerInfo } = useContainerStore.getState();
+  // 이미지 정보를 업데이트
+  const newImage: Omit<DeployImageInfo, "id"> = {
+    imageId: image.Id,
+    serviceType: instance.serviceType,
+    deployId: instance.databaseId,
+    RepoTags: image.RepoTags,
+    Created: image.Created,
+    Size: image.Size,
+    Containers: image.Containers,
+    created: image.Created,
+  };
+  updateImageInfo(id, newImage);
+  // 상태 업데이트
+  sendInstanceUpdate(
+    instance.serviceType,
+    instance.databaseId,
+    senderId,
+    "PENDING",
+    instance.outboundPort,
+    "PENDING"
+  );
+
+  // pgrok 실행 및 결과 처리
+  const result = await window.electronAPI.runPgrok(
+    PGROK_URL,
+    `localhost:${instance.outboundPort}`,
+    instance.subdomainKey,
+    instance.databaseId
+  );
+
+  switch (result) {
+    case "FAILED":
       sendInstanceUpdate(
         instance.serviceType,
         instance.databaseId,
@@ -102,8 +109,38 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreate) {
         instance.outboundPort,
         "FAILED"
       );
-    }
-  } catch (error) {
-    console.error("Error during database build process:", error);
+      break;
+    case "SUCCESS":
+      sendInstanceUpdate(
+        instance.serviceType,
+        instance.databaseId,
+        senderId,
+        "RUNNING",
+        instance.outboundPort,
+        "RUNNING"
+      );
+
+      const newContainer: Omit<DeployContainerInfo, "id"> = {
+        senderId: senderId,
+        deployId: instance.databaseId,
+        serviceType: instance.serviceType,
+        containerName: instance.containerName,
+        imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
+        status: "RUNNING",
+        containerId: container.Id,
+        ports: [
+          {
+            internal: instance.inboundPort,
+            external: instance.outboundPort,
+          },
+        ],
+        created: container.Created,
+      };
+      //pgrok 생성 되고 나서
+      updateContainerInfo(id, newContainer);
+      window.electronAPI.startLogStream(container.Id);
+      break;
+    default:
+      break;
   }
 }

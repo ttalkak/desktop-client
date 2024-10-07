@@ -1,6 +1,5 @@
 import { Message } from "@stomp/stompjs";
 import { handleContainerCommand } from "./deployments/deployCommandHandler";
-import { sendPaymentInfo } from "./paymentService";
 import {
   startSendingCurrentState,
   stopContainerStatsMonitoring,
@@ -11,18 +10,19 @@ import { sendComputeConnectMessage } from "./websocket/sendComputeConnect";
 import { useAppStore } from "../stores/appStatusStore";
 import { handleDockerBuild } from "./deployments/buildHandler/buildDeployHandler";
 import { handleDatabaseBuild } from "./deployments/buildHandler/buildDatabaseHandler";
+import { useContainerStore } from "../stores/containerStore";
+import { useImageStore } from "../stores/imageStore";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
-
+const { createContainerEntry } = useContainerStore.getState();
+const { createImageEntry } = useImageStore.getState();
 export function setupClientHandlers(userId: string): void {
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
-
     // WebSocket 연결 시, 컴퓨트 연결 메시지 및 결제 정보 전송
     sendComputeConnectMessage(userId);
-    sendPaymentInfo(userId);
     startSendingCurrentState(userId); // 배포 상태 PING 전송 시작
     setServiceStatus("running");
 
@@ -30,10 +30,17 @@ export function setupClientHandlers(userId: string): void {
     client.subscribe(
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
-        const deployment = JSON.parse(message.body);
-
-        console.log("생성요청 도착", deployment);
-        await handleDockerBuild(deployment);
+        const deployCreate: DeploymentCreateEvent = JSON.parse(message.body);
+        createImageEntry(
+          deployCreate.instance.serviceType,
+          deployCreate.instance.deploymentId
+        );
+        createContainerEntry(
+          deployCreate.instance.serviceType,
+          deployCreate.instance.deploymentId
+        );
+        console.log(`생성요청 도착`, deployCreate);
+        await handleDockerBuild(deployCreate);
       }
     );
 
@@ -41,8 +48,16 @@ export function setupClientHandlers(userId: string): void {
     client.subscribe(
       `/sub/database-create/${userId}`,
       async (message: Message) => {
-        const dbCreate = JSON.parse(message.body);
-        console.log(`db ${dbCreate} 생성요청 도착`, dbCreate);
+        const dbCreate: DatabaseCreateEvent = JSON.parse(message.body);
+        createImageEntry(
+          dbCreate.instance.serviceType,
+          dbCreate.instance.databaseId
+        );
+        createContainerEntry(
+          dbCreate.instance.serviceType,
+          dbCreate.instance.databaseId
+        );
+        console.log(`생성요청 도착`, dbCreate);
         await handleDatabaseBuild(dbCreate);
       }
     );
@@ -52,10 +67,9 @@ export function setupClientHandlers(userId: string): void {
       `/sub/compute-update/${userId}`,
       async (message: Message) => {
         try {
-          const { serviceType, deploymentId, command } = JSON.parse(
-            message.body
-          );
-          handleContainerCommand(serviceType, deploymentId, command); // 컨테이너 명령 처리
+          const { serviceType, id, command } = JSON.parse(message.body);
+          const serviceId = `${serviceType}-${id}`;
+          handleContainerCommand(serviceId, command); // 컨테이너 명령 처리
         } catch (error) {
           console.error("Error processing compute update message:", error);
         }
@@ -66,6 +80,11 @@ export function setupClientHandlers(userId: string): void {
     client.onStompError = (frame) => {
       console.error("Broker reported error: " + frame.headers["message"]);
       console.error("Additional details: " + frame.body);
+      setWebsocketStatus("disconnected");
+    };
+
+    client.onWebSocketClose = (event: CloseEvent) => {
+      console.warn("WebSocket connection closed:", event);
       setWebsocketStatus("disconnected");
     };
 

@@ -6,14 +6,10 @@ const execAsync = promisify(exec);
 
 // 환경 변수를 Docker-friendly 형식으로 변환하는 함수
 export function formatEnvs(envs: EnvVar[]): string[] {
-  return envs.map(({ key, value }) => {
-    // 값에 특수 문자나 공백이 포함된 경우 따옴표로 묶음
-    const escapedValue = value.includes("'") ? `"${value}"` : `'${value}'`;
-    return `${key}=${escapedValue}`;
-  });
+  return envs
+    .filter(({ value }) => value.trim() !== "")
+    .map(({ key, value }) => `${key}=${value}`);
 }
-
-//database 빌드 옵션 설정
 
 // 도커 이미지 빌드하는 곳(프론트, 백엔드)
 export const createContainerOptions = (
@@ -25,13 +21,8 @@ export const createContainerOptions = (
   // healthCheckCommand: string[]
 ): string => {
   const formattedEnvs = formatEnvs(envs); // 환경 변수 처리
-
   const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
-
-  const command = `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
-
-  console.log("image build command", command);
-  return command;
+  return `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
 };
 
 // 컨테이너 생성

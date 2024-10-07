@@ -1,9 +1,8 @@
 import { useAuthStore } from "../../stores/authStore";
-import useDeploymentStore from "../../stores/deploymentStore";
-import { dockerStateManager } from "../storeHandler/dockerStateHandler";
 import { useAppStore } from "../../stores/appStatusStore";
+import { useContainerStore } from "../../stores/containerStore";
 
-interface DockerEvent {
+export interface DockerEvent {
   Type: string;
   Action: string;
   Actor: {
@@ -17,79 +16,68 @@ interface DockerEvent {
 }
 
 export const registerDockerEventHandlers = () => {
-  const userId = useAuthStore.getState().userSettings?.userId;
   const { setDockerStatus } = useAppStore.getState();
+  const { getContainerByContainerId, updateContainerInfo, removeContainer } =
+    useContainerStore.getState();
+  const userId = useAuthStore.getState().userSettings?.userId;
 
   if (!userId) {
-    throw new Error("User ID not found. Please ensure user is logged in.");
+    console.error("User is not logged in.");
+    return;
   }
 
+  const handleDockerEvent = (event: DockerEvent) => {
+    switch (event.Type) {
+      case "container":
+        return handleContainerEvent(event);
+      case "image":
+        console.log(`Image event detected: ${event.Action}`);
+        return {
+          status: "logged",
+          eventType: event.Type,
+          action: event.Action,
+        };
+      default:
+        console.log(`Unknown event type: ${event.Type}`);
+        return { status: "unhandled", eventType: event.Type };
+    }
+  };
+
   const handleContainerEvent = async (event: DockerEvent) => {
-    console.log(
-      `Container event: ${event.Action} for container ${event.Actor.ID}`
-    );
-
-    const deployment = useDeploymentStore.getState().containers[event.Actor.ID];
-
-    // deployment가 없으면 넘어감
-    if (!deployment) {
-      console.warn(
-        `Deployment not found for container ID: ${event.Actor.ID}, skipping.`
-      );
+    const container = getContainerByContainerId(event.Actor.ID);
+    if (!container) {
+      console.warn(`Container not found for ID: ${event.Actor.ID}, skipping.`);
       return {
         status: "pending",
-        message: "Deployment not found, skipping event.",
+        message: "Container not found, skipping event.",
       };
     }
-
-    const deploymentId = deployment.deploymentId;
-
-    // deploymentId가 없으면 넘어감
-    if (!deploymentId) {
-      console.error(
-        `No deployment ID found for container ID: ${event.Actor.ID}, skipping.`
-      );
-      return {
-        status: "pending",
-        message: "No deployment ID found, skipping event.",
-      };
-    }
+    const id = `${container?.serviceType}-${container?.deployId}`;
 
     try {
       switch (event.Action) {
         case "create":
-          dockerStateManager.updateContainerState(event.Actor.ID, "created");
+          updateContainerInfo(container.id, { status: "created" });
           break;
         case "start":
-          window.electronAPI.startContainerStats([event.Actor.ID]);
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "running"
-          );
+          updateContainerInfo(container.id, { status: "running" });
           break;
         case "stop":
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "stopped"
-          );
-          break;
         case "die":
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "stopped"
-          );
-          window.electronAPI.stopContainerStats([event.Actor.ID]);
+          updateContainerInfo(container.id, { status: "stopped" });
+          if (event.Action === "die") {
+            await window.electronAPI.stopContainerStats([event.Actor.ID]);
+          }
           break;
         case "destroy":
-          await dockerStateManager.updateContainerState(
-            event.Actor.ID,
-            "deleted"
-          );
+          removeContainer(id);
           break;
         default:
           console.log(`Unhandled container action: ${event.Action}`);
           return { status: "unhandled", eventAction: event.Action };
       }
+
+      return { status: "success", eventAction: event.Action };
     } catch (error) {
       console.error(
         `Error handling ${event.Action} event for container ${event.Actor.ID}:`,
@@ -100,23 +88,12 @@ export const registerDockerEventHandlers = () => {
         message: `Failed to process container event: ${event.Action}`,
       };
     }
-
-    return { status: "success", eventAction: event.Action };
   };
 
-  const handleDockerEvent = (event: DockerEvent) => {
-    switch (event.Type) {
-      case "container":
-        return handleContainerEvent(event);
-      default:
-        console.log(`Unknown event type: ${event.Type}`);
-        return { status: "unhandled", eventType: event.Type };
-    }
-  };
-
-  // Register the event handlers with the electron API
+  // 이벤트 리스너 등록
   window.electronAPI.onDockerEventResponse(handleDockerEvent);
 
+  // Error 감지
   window.electronAPI.onDockerEventError((error) => {
     console.error("Docker Event Error:", error);
     setDockerStatus("unknown");

@@ -20,12 +20,12 @@ import {
   dockerFileMaker,
 } from "../dockerManager";
 import { restartContainer } from "../dockerManager";
-
-import Docker from "dockerode";
 import { pullAndStartDatabaseContainer } from "../managers/dockerDBManager";
 import { envFileMaker } from "../managers/filemanager/envFileMaker";
-import { downloadAndUnzip } from "../managers/filemanager/downloadManager";
-import { getProjectSourceDirectory } from "../managers/filemanager/downloadManager";
+import {
+  downloadAndUnzip,
+  getProjectSourceDirectory,
+} from "../managers/filemanager/downloadManager";
 
 // IPC 핸들러들을 등록하는 함수
 export function registerIpcHandlers() {
@@ -81,7 +81,6 @@ export function registerIpcHandlers() {
         return await docker.getContainer(containerId).inspect();
       } catch (err) {
         console.error(`Failed to fetch Docker container ${containerId}:`, err);
-        throw err;
       }
     }
   );
@@ -92,7 +91,6 @@ export function registerIpcHandlers() {
       return await docker.listImages({ all: true });
     } catch (err) {
       console.error("Failed to fetch Docker images:", err);
-      throw err;
     }
   });
 
@@ -104,7 +102,6 @@ export function registerIpcHandlers() {
         return await docker.listContainers({ all, size: true });
       } catch (err) {
         console.error("Failed to fetch Docker containers:", err);
-        throw err;
       }
     }
   );
@@ -159,8 +156,7 @@ export function registerIpcHandlers() {
       containerName: string,
       inboundPort: number,
       outboundPort: number,
-      envs: EnvVar[],
-      healthCheckCommand: string[]
+      envs: EnvVar[]
     ) => {
       try {
         return createContainerOptions(
@@ -168,8 +164,7 @@ export function registerIpcHandlers() {
           containerName,
           inboundPort,
           outboundPort,
-          envs,
-          healthCheckCommand
+          envs
         );
       } catch (error) {
         console.error(`Error creating container options:`, error);
@@ -205,22 +200,15 @@ export function registerIpcHandlers() {
   });
 
   // Docker 컨테이너를 제거하는 핸들러
-  ipcMain.handle(
-    "remove-container",
-    async (
-      _event,
-      containerId: string,
-      options?: Docker.ContainerRemoveOptions
-    ) => {
-      try {
-        await removeContainer(containerId);
-        return { success: true };
-      } catch (err) {
-        console.error(`Error removing container ${containerId}:`, err);
-        return { success: false, error: (err as Error).message };
-      }
+  ipcMain.handle("remove-container", async (_event, containerId: string) => {
+    try {
+      await removeContainer(containerId);
+      return { success: true };
+    } catch (err) {
+      console.error(`Error removing container ${containerId}:`, err);
+      return { success: false, error: (err as Error).message };
     }
-  );
+  });
 
   // Docker 이미지를 pull하는 핸들러
   ipcMain.handle("pull-docker-image", async (_event, imageName: string) => {

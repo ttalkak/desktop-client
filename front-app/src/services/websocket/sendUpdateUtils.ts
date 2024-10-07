@@ -3,11 +3,11 @@ import { client } from "./stompClientUtils";
 
 //Deployment 상태 업데이트
 export function sendInstanceUpdate(
-  serviceType: string,
+  serviceType: string | undefined,
   id: number,
-  senderId: string,
+  senderId: string | undefined,
   status: string,
-  port?: number,
+  port: number | 0,
   details?: string
 ) {
   const message = {

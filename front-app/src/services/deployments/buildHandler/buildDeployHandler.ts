@@ -1,42 +1,57 @@
 import { prepareDeploymentContext } from "./deploymentUtils.ts";
 import { buildAndDeploy } from "./buildProcessHandler.ts";
-import { useDeploymentStore } from "../../../stores/deploymentStore.tsx";
-import { useDockerStore } from "../../../stores/dockerStore.tsx";
-import { DeploymentCreate } from "../../../stores/deploymentStore.tsx";
+import { useContainerStore } from "../../../stores/containerStore.tsx";
+import { useImageStore } from "../../../stores/imageStore.tsx";
 
-export async function handleDockerBuild(deployment: DeploymentCreate) {
+export async function handleDockerBuild(deployCreate: DeploymentCreateEvent) {
+  const { instance } = deployCreate;
+  const containerStore = useContainerStore.getState();
+  const imageStore = useImageStore.getState();
+  const id = `${instance.serviceType}-${instance.deploymentId}`;
+
   try {
-    //기존에 있었으면 rebuild 요청임 삭제하고 재시작
-    const deploymentstore = useDeploymentStore.getState();
-    const dockerstore = useDockerStore.getState();
-    const { instance } = deployment;
+    // 컨테이너 스토어에서 기존 컨테이너를 가져옴
+    const existingContainer = containerStore.getContainerById(id);
 
-    // 기존에 존재하던건지 확인
-    const existingContainerId = Object.entries(deploymentstore.containers).find(
-      ([_, deployment]) => deployment.deploymentId === instance.deploymentId
-    )?.[0];
+    if (existingContainer) {
+      const existingContainerId = existingContainer.containerId;
 
-    if (existingContainerId) {
-      //존재하면 container 삭제
-      await window.electronAPI.stopContainerStats([existingContainerId]);
-      await window.electronAPI.removeContainer(existingContainerId);
-      deploymentstore.removeContainer(existingContainerId);
-      dockerstore.removeDockerContainer(existingContainerId);
-      console.log(
-        `Removed existing deployment with ID: ${instance.deploymentId}`
-      );
+      if (existingContainerId) {
+        try {
+          // 컨테이너 통계 중지/중지/삭제/스토어에서 삭제
+          await window.electronAPI.stopContainerStats([existingContainerId]);
+          await window.electronAPI.stopContainer(existingContainerId);
+          await window.electronAPI.removeContainer(existingContainerId);
+          containerStore.removeContainer(existingContainerId);
+
+          console.log(`기존 컨테이너 삭제 완료, ID: ${existingContainerId}`);
+
+          // 연관된 이미지 삭제
+          const existingImage = imageStore.getImageById(existingContainerId);
+          if (existingImage && existingImage.imageId) {
+            await window.electronAPI.removeImage(existingImage.imageId);
+            imageStore.removeImage(existingContainerId);
+            console.log(`기존 이미지 삭제 완료, ID: ${existingImage.imageId}`);
+          }
+        } catch (error) {
+          console.error(`기존 배포 삭제 중 오류 발생: ${error}`);
+        }
+      }
     }
 
-    //instance env, dockerfile 여부 확인하고 생성 후 반환
+    // 기존 컨테이너가 없을 경우에만 새로운 컨테이너를 빌드 및 배포
     const { contextPath, dockerfilePath } = await prepareDeploymentContext(
-      instance
+      deployCreate
     );
 
     if (!contextPath) {
-      return;
+      console.error("컨텍스트 경로가 유효하지 않습니다.");
+      return; // 컨텍스트 경로가 없을 경우 함수 종료
     }
-    await buildAndDeploy(deployment, contextPath, dockerfilePath);
+
+    // 새로운 컨테이너를 빌드하고 배포
+    await buildAndDeploy(deployCreate, contextPath, dockerfilePath);
   } catch (error) {
-    console.error("Error during Docker build and setup:", error);
+    console.error("Docker 빌드 및 설정 중 오류 발생:", error);
   }
 }

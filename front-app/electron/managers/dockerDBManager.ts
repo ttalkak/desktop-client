@@ -1,23 +1,15 @@
 import { docker } from "./dockerUtils";
-import {
-  createContainer,
-  restartContainer,
-  createContainerOptions,
-} from "./dockerContainerManager";
+import { createContainer, restartContainer } from "./dockerContainerManager";
 import { formatEnvs } from "./dockerContainerManager";
-
-type EnvVar = { key: string; value: string };
 
 interface DatabaseConfig {
   imageName: string;
   defaultPort: number;
   command: string;
-  healthCheckCommand: string[]; // 헬스 체크 명령어 추가
+  healthCheckCommand?: string[]; //필요시 healthcheck 명령어 추가
 }
 
-// database 생성 명령어
-// const command = `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
-
+//databasetype에 따른 빌드 command 처리
 function getDatabaseConfig(
   databaseType: string,
   imageName: string,
@@ -27,14 +19,28 @@ function getDatabaseConfig(
   envs: EnvVar[]
 ): DatabaseConfig {
   const formattedEnvs = formatEnvs(envs);
-  const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
+
+  const baseCommand = [
+    "docker",
+    "run",
+    "-d",
+    "--name",
+    containerName,
+    "-p",
+    `${outboundPort}:${inboundPort}`,
+    ...formattedEnvs.flatMap((env) => ["-e", env]),
+    "-e",
+    "TZ=Asia/Seoul",
+  ];
+
+  console.log("databaseCommand :", baseCommand.join(" "));
 
   switch (databaseType.toUpperCase()) {
     case "MYSQL":
       return {
         imageName: "mysql",
         defaultPort: 3306,
-        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
@@ -44,7 +50,7 @@ function getDatabaseConfig(
       return {
         imageName: "postgres",
         defaultPort: 5432,
-        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "pg_isready -h localhost -p 5432 || exit 1",
@@ -54,14 +60,21 @@ function getDatabaseConfig(
       return {
         imageName: "redis",
         defaultPort: 6379,
-        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
+        command: [
+          ...baseCommand,
+          imageName,
+          "redis-server",
+          "--requirepass",
+          envs.find((e) => e.key === "REDIS_PASSWORD")?.value ||
+            "your_password",
+        ].join(" "),
         healthCheckCommand: ["CMD-SHELL", "redis-cli -p 6379 ping || exit 1"],
       };
     case "MONGO":
       return {
         imageName: "mongo",
         defaultPort: 27017,
-        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mongo --eval 'db.stats()' --port 27017 || exit 1",
@@ -71,13 +84,14 @@ function getDatabaseConfig(
       return {
         imageName: "mariadb",
         defaultPort: 3306,
-        command: `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`,
+        command: [...baseCommand, imageName].join(" "),
         healthCheckCommand: [
           "CMD-SHELL",
           "mysqladmin ping -h localhost -P 3306 || exit 1",
         ],
       };
     default:
+      console.warn(`Unsupported database type: ${databaseType}`);
       throw new Error(`Unsupported database type: ${databaseType}`);
   }
 }
@@ -143,7 +157,7 @@ export async function pullAndStartDatabaseContainer(
 }> {
   try {
     // 기본 포트 및 healthCheckCommand 가져오기
-    const { defaultPort, command, healthCheckCommand } = getDatabaseConfig(
+    const { command } = getDatabaseConfig(
       databaseType,
       imageName,
       containerName,
@@ -158,7 +172,6 @@ export async function pullAndStartDatabaseContainer(
       image,
       error: pullError,
     } = await pullDatabseImage(imageName);
-
     if (!success || !image) {
       return {
         success: false,
@@ -166,42 +179,35 @@ export async function pullAndStartDatabaseContainer(
       };
     }
 
-    // 컨테이너 옵션 생성
-    const options = createContainerOptions(
-      imageName,
-      containerName,
-      inboundPort || defaultPort,
-      outboundPort || defaultPort, // 아웃바운드 포트가 없으면 기본 포트 사용
-      envs,
-      healthCheckCommand
-    );
-
-    // 컨테이너 생성
+    // 데이터베이스 컨테이너 생성
     const {
       success: createSuccess,
       containerId,
       error: createError,
-    } = await createContainer(options);
+    } = await createContainer(command);
     if (!createSuccess || !containerId) {
       return {
         success: false,
-        error: `Error creating container: ${createError}`,
+        error: createError || `Error creating DB container`,
       };
     }
 
     // 컨테이너 시작
-    const startResult = await restartContainer(containerId);
-    if (!startResult.success) {
+    const { success: startSuccess, error: startError } = await restartContainer(
+      containerId
+    );
+    if (!startSuccess) {
       return {
         success: false,
-        error: `Failed to start container with ID: ${containerId}`,
+        error:
+          startError || `Failed to start container with ID: ${containerId}`,
       };
     }
 
     // 컨테이너 정보 가져오기
     const existingContainers = await docker.listContainers({ all: true });
     const container = existingContainers.find(
-      (container) => container.Id === containerId // 수정: 할당 대신 비교
+      (container) => container.Id === containerId
     );
 
     if (!container) {
@@ -215,8 +221,12 @@ export async function pullAndStartDatabaseContainer(
     return { success: true, image, container };
   } catch (error) {
     console.error(
-      `Failed to pull Docker image and start container for ${databaseType}:`
+      `Failed to pull Docker image and start container for ${databaseType}:`,
+      error
     );
-    return { success: false, error: (error as Error).message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }

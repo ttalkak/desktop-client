@@ -1,4 +1,7 @@
-import { useDockerStore } from "../../stores/dockerStore";
+import {
+  DeployContainerInfo,
+  useContainerStore,
+} from "../../stores/containerStore";
 import { sendCurrentState } from "../websocket/sendCurrentState";
 
 // 컨테이너 상태와 관련된 인터페이스 정의
@@ -24,32 +27,39 @@ let intervalId: NodeJS.Timeout | null = null; // 상태 전송 주기를 관리�
 
 // 실행 중인 컨테이너 목록을 가져오는 함수
 export function getStoreContainerIds(): string[] {
-  const dockerStore = useDockerStore.getState();
-  return dockerStore.dockerContainers.map((container) => container.Id);
+  const containers = useContainerStore.getState().containers;
+  return containers.map((container) => container.id);
 }
 
 // 모든 실행 중인 컨테이너의 메모리 사용량을 합산하는 함수
 export async function getTotalMemoryUsage(
-  runningContainers: DockerContainer[]
+  runningContainers: DeployContainerInfo[]
 ): Promise<number> {
   try {
     const memoryUsages = await Promise.all(
-      runningContainers.map((container) =>
-        window.electronAPI.getContainerMemoryUsage(container.Id)
-      )
+      runningContainers.map(async (container) => {
+        if (container.containerId) {
+          return await window.electronAPI.getContainerMemoryUsage(
+            container.containerId
+          );
+        }
+        return { success: false, memoryUsage: 0 };
+      })
     );
+
     const totalMemoryUsage = memoryUsages.reduce((acc, usage) => {
       if (usage.success && usage.memoryUsage !== undefined) {
         return acc + usage.memoryUsage;
       } else {
-        console.warn(`Failed to retrieve memory usage for container`);
+        console.warn("Failed to retrieve memory usage for a container.");
         return acc;
       }
     }, 0);
+
     return totalMemoryUsage;
   } catch (error) {
     console.error("Error calculating total memory usage:", error);
-    throw error;
+    return 0;
   }
 }
 
@@ -81,11 +91,14 @@ export function startContainerStatsMonitoring() {
 
 // 컨테이너 상태 모니터링을 중지하는 함수
 export function stopContainerStatsMonitoring() {
+  const containers = useContainerStore.getState().containers;
+
   stopPeriodicContainerCheck();
   window.electronAPI.removeContainerStatsListeners();
-  useDockerStore.getState().dockerContainers.forEach((container) => {
+
+  containers.forEach((container) => {
     window.electronAPI
-      .stopContainerStats([container.Id])
+      .stopContainerStats([container.id])
       .then((result) => console.log(result.message))
       .catch((error) =>
         console.error("Failed to stop container stats:", error)
@@ -110,12 +123,10 @@ export function stopPeriodicContainerCheck() {
   }
 }
 
-//도커 컨테이너의 ID를 주기적으로 가져옴
+// 도커 컨테이너의 ID를 주기적으로 가져옴
 export async function checkAndUpdateContainerMonitoring() {
-  const dockerStore = useDockerStore.getState();
-  const currentContainers = new Set(
-    dockerStore.dockerContainers.map((c) => c.Id)
-  );
+  const containers = useContainerStore.getState().containers;
+  const currentContainers = new Set(containers.map((c) => c.id));
 
   // 실제 실행 중인 모든 컨테이너 가져오기
   const allRunningContainers = await window.electronAPI.getDockerContainers(
@@ -141,10 +152,10 @@ export async function checkAndUpdateContainerMonitoring() {
   });
 
   // 현재 Store에 있는 컨테이너 중 더 이상 실행 중이지 않은 컨테이너 모니터링 중지
-  dockerStore.dockerContainers.forEach((container) => {
-    if (!allRunningContainerIds.has(container.Id)) {
+  containers.forEach((container) => {
+    if (!allRunningContainerIds.has(container.id)) {
       window.electronAPI
-        .stopContainerStats([container.Id])
+        .stopContainerStats([container.id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to stop container stats:", error)

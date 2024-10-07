@@ -64,7 +64,6 @@ export async function unzipFile(
     console.log("Unzip completed and permissions set!");
   } catch (err) {
     console.error("Error during unzip:", err);
-    throw err;
   } finally {
     await zip.close(); // ZIP 파일 닫기
   }
