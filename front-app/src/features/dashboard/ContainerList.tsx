@@ -80,6 +80,20 @@ const ContainerList: React.FC = () => {
     });
   }, []);
 
+  const formatCreatedTime = (created: number | undefined) => {
+    if (created === undefined) return "Unknown";
+    const date = new Date(created * 1000);
+    if (isNaN(date.getTime())) return "Unknown";
+    const dateString = date.toLocaleDateString();
+    const timeString = date.toLocaleTimeString();
+    return (
+      <>
+        <div>{dateString}</div>
+        <div>{timeString}</div>
+      </>
+    );
+  };
+
   const parseLog = (log: string): ParsedLog => {
     const logPattern = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s(.*)$/;
     const match = log.match(logPattern);
@@ -93,11 +107,6 @@ const ContainerList: React.FC = () => {
       timestamp: new Date().toISOString(),
       message: log,
     };
-  };
-
-  const shortenImageName = (imageName: string = "") => {
-    const parts = imageName.split("/");
-    return parts[parts.length - 1].split(":")[0];
   };
 
   const renderPorts = (ports?: { internal: number; external: number }[]) => {
@@ -139,22 +148,22 @@ const ContainerList: React.FC = () => {
   const ContainerRow = useMemo(
     () =>
       ({ container }: { container: DeployContainerInfo }) => {
-        const { containerId, containerName, imageTag, status, ports } =
+        const { id, containerId, containerName, status, ports, created } =
           container;
         const isSelected = selectedContainerIds.includes(containerId || "");
 
         return (
           <>
             <tr className="hover:bg-gray-50">
-              <td className="py-2 px-4 text-sm text-gray-900">
-                {containerName || "N/A"}
+              <td className="py-2 px-4 text-sm text-gray-900">{id || "N/A"}</td>
+              <td
+                className="py-2 px-4 text-sm text-gray-900"
+                title={containerName}
+              >
+                {containerName}
               </td>
-              <td className="py-2 px-4 text-sm text-gray-900" title={imageTag}>
-                {shortenImageName(imageTag)}
-              </td>
               <td className="py-2 px-4 text-sm text-gray-900">
-                {/* Created time is not available in DeployContainerInfo */}
-                N/A
+                {formatCreatedTime(created)}
               </td>
               <td className="py-2 px-4 text-sm text-gray-900">
                 {renderPorts(ports)}
@@ -211,8 +220,8 @@ const ContainerList: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-300">
           <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
             <tr>
+              <th className="p-1">ServiceId</th>
               <th className="p-1">Name</th>
-              <th className="p-1">Image</th>
               <th className="p-1">Created</th>
               <th className="p-1">Ports</th>
               <th className="p-1">State</th>

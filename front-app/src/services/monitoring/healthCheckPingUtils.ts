@@ -43,7 +43,7 @@ export async function getTotalMemoryUsage(
             container.containerId
           );
         }
-        return { success: false, memoryUsage: 0 }; // 조건에 맞지 않으면 기본값 반환
+        return { success: false, memoryUsage: 0 };
       })
     );
 
@@ -59,6 +59,7 @@ export async function getTotalMemoryUsage(
     return totalMemoryUsage;
   } catch (error) {
     console.error("Error calculating total memory usage:", error);
+    return 0;
   }
 }
 

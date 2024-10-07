@@ -62,8 +62,8 @@ async function stopAndRemoveExistingContainer(containerId: string) {
 // 새로운 컨테이너 시작 성공 시 처리 함수
 async function handleSuccessfulContainerStart(
   instance: any,
-  image: any,
-  container: any,
+  image: DockerImage,
+  container: DockerContainer,
   senderId: string,
   id: string
 ) {
@@ -78,9 +78,9 @@ async function handleSuccessfulContainerStart(
     Created: image.Created,
     Size: image.Size,
     Containers: image.Containers,
+    created: image.Created,
   };
   updateImageInfo(id, newImage);
-
   // 상태 업데이트
   sendInstanceUpdate(
     instance.serviceType,
@@ -134,6 +134,7 @@ async function handleSuccessfulContainerStart(
             external: instance.outboundPort,
           },
         ],
+        created: container.Created,
       };
       //pgrok 생성 되고 나서
       updateContainerInfo(id, newContainer);

@@ -12,18 +12,12 @@ export const handleBuildImage = async (
   try {
     console.log(`Building Docker image: ${name}:${tag} from ${contextPath}`);
 
-    const { success, image, error } = await window.electronAPI.buildDockerImage(
+    const { success, image } = await window.electronAPI.buildDockerImage(
       contextPath,
       dockerfilePath,
       name,
       tag
     );
-
-    console.log(`Docker build success: ${success}`);
-    if (error) {
-      console.log(`Docker build error: ${error}`);
-    }
-
     return {
       success: success,
       image: image,

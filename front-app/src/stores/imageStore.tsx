@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export interface DeployImageInfo {
@@ -10,6 +10,7 @@ export interface DeployImageInfo {
   Created?: number;
   Size?: number;
   Containers?: number;
+  created?: number;
 }
 
 // 이미지 저장소 타입 정의

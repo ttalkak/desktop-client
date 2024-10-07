@@ -17,6 +17,7 @@ export interface DeployContainerInfo {
   containerId?: string;
   ports?: Port[];
   subdomainName?: string;
+  created?: number;
 }
 
 // 컨테이너 저장소 타입 정의

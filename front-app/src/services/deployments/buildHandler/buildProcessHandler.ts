@@ -16,10 +16,8 @@ export async function buildAndDeploy(
   dockerfilePath: string | null
 ) {
   const { senderId, instance } = deployCreate;
-  // 1. Docker 이미지 빌드
-  const { createImageEntry, updateImageInfo } = useImageStore.getState();
-  const id = createImageEntry(instance.serviceType, instance.deploymentId);
-
+  const { updateImageInfo } = useImageStore.getState();
+  const id = `${instance.serviceType}-${instance.deploymentId}`;
   const imageName = instance.dockerImageName || instance.subdomainName;
   const tagName = instance.dockerImageTag || "latest";
 
@@ -41,8 +39,11 @@ export async function buildAndDeploy(
         Containers: image.Containers,
       };
 
-      // 이미지 빌드시 리스트에 추가
+      // 이미지 빌드시 리스트에 추가 (한 번만 호출)
       updateImageInfo(id, newImage);
+
+      // 도커 이미지 추가 및 컨테이너 생성 및 시작
+      await completeDeployment(deployCreate, image);
     } else {
       // 이미지 생성 실패시 생성 실패 알림
       sendInstanceUpdate(
@@ -53,10 +54,7 @@ export async function buildAndDeploy(
         instance.outboundPort,
         "DOCKER"
       );
-      return;
     }
-    // 도커 이미지 추가 및 컨테이너 생성 및 시작
-    await completeDeployment(deployCreate, image);
   }
 }
 
@@ -116,6 +114,7 @@ async function completeDeployment(
         },
       ],
       subdomainName: instance.subdomainName,
+      created: container.Created,
     };
 
     //Store 저장 및 성공 상태 반환
