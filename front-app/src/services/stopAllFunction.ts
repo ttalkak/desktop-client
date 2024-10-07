@@ -1,21 +1,15 @@
 import { disconnectWebSocket } from "./stompService";
 import { useAppStore } from "../stores/appStatusStore";
-import { useDockerStore } from "../stores/dockerStore";
 import { terminateAndRemoveContainersAndImages } from "./deployments/terminateAllDeployments";
-import { terminateAndRemoveDatabases } from "./deployments/terminateAllDatabases";
 import {
   stopSendingCurrentState,
   stopContainerStatsMonitoring,
   stopPeriodicContainerCheck,
 } from "./monitoring/healthCheckPingUtils";
-import useDeploymentStore from "../stores/deploymentStore";
 
 // 전체 종료 함수
 export const stopAllTasks = async (): Promise<void> => {
-  const clearImages = useDockerStore.getState().clearDockerImages;
-  const clearContainer = useDockerStore.getState().clearDockerContainers;
   const setServiceStatus = useAppStore.getState().setServiceStatus;
-  const clearDeployments = useDeploymentStore.getState().clearAllContainers;
 
   try {
     console.log("1. Starting task termination...");
@@ -30,7 +24,6 @@ export const stopAllTasks = async (): Promise<void> => {
     console.log("4. Stopped container stats monitoring.");
 
     // 2. 컨테이너와 이미지 정지 및 제거
-    await terminateAndRemoveDatabases();
     await terminateAndRemoveContainersAndImages(); // 비동기 작업을 기다림
     console.log("5. Containers and images removed.");
 
@@ -47,9 +40,6 @@ export const stopAllTasks = async (): Promise<void> => {
     console.log("8. Removed all Docker event listeners.");
 
     // 6. store 초기화
-    clearDeployments();
-    clearImages();
-    clearContainer();
     console.log("9. Cleared Docker images and containers from store.");
 
     console.log("10. Task termination completed.");

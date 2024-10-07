@@ -1,65 +1,93 @@
 import { useAuthStore } from "../../stores/authStore";
-import { useDockerStore } from "../../stores/dockerStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import useDeploymentStore from "../../stores/deploymentStore";
 import { useAppStore } from "../../stores/appStatusStore";
-import { dockerStateManager } from "../storeHandler/dockerStateHandler";
+import { useContainerStore } from "../../stores/containerStore";
+import { useImageStore } from "../../stores/imageStore";
 
 export async function terminateAndRemoveContainersAndImages() {
-  const containers = useDockerStore.getState().dockerContainers;
-  const images = useDockerStore.getState().dockerImages;
+  const { containers, removeAllContainers, updateContainerInfo } =
+    useContainerStore.getState();
+  const { images, removeAllImages, removeImage } = useImageStore.getState();
   const userId = useAuthStore.getState().userSettings?.userId;
   const { setServiceStatus } = useAppStore.getState();
-
+  // userId가 없으면 함수 종료
   if (!userId) {
     return;
   }
+
   // 1. 모든 컨테이너 종료 및 삭제
   const containerPromises = containers.map(async (container) => {
-    // 컨테이너 종료 및 삭제
+    const port =
+      container.ports && container.ports.length > 0
+        ? container.ports[0].external
+        : 0;
 
-    // 해당 container의 deployment 정보를 가져옵니다.
-    const deployment = useDeploymentStore.getState().containers[container.Id];
-    const deploymentId = deployment.deploymentId;
-    const port = deployment.outboundPort;
-    if (container && deploymentId) {
+    if (!container) {
+      return;
+    }
+    if (container.deployId && container.containerId) {
+      const id = container.id;
       try {
+        // serviceType과 senderId가 undefined일 경우 빈 문자열로 처리
+        const serviceType = container.serviceType; // Fallback to empty string
+        const senderId = container.senderId; // Fallback to empty string
+
+        // 상태 업데이트 메시지 전송
         sendInstanceUpdate(
-          deployment.serviceType,
-          deploymentId,
+          serviceType, // 확실하게 string
+          container.deployId,
+          senderId, // 확실하게 string
           "WAITING",
           port,
           "cloud manipulate"
         );
-        await window.electronAPI.removeContainer(container.Id);
-        console.log(`${container.Id} forcerDelected`);
+        // 컨테이너 삭제
+        await window.electronAPI.removeContainer(container.containerId);
+        sendInstanceUpdate(
+          container.serviceType,
+          container.deployId,
+          senderId,
+          "WAITING",
+          port,
+          "cloud manipulate"
+        );
+        updateContainerInfo(id, { status: "DELETE" });
+        console.log(`컨테이너 ${container.containerId} 강제 종료 및 삭제 완료`);
       } catch (error) {
-        console.error(`Error removing container ${container.Id}:`, error);
+        console.error(
+          `컨테이너 ${container.containerId} 삭제 중 오류 발생:`,
+          error
+        );
       }
     } else {
-      return;
+      console.warn(
+        `컨테이너 또는 deploymentId가 누락되었습니다: ${container.containerId}`
+      );
     }
   });
 
-  // 모든 컨테이너가 삭제될 때까지 대기
+  // 모든 컨테이너 삭제 대기
   await Promise.all(containerPromises);
+  removeAllContainers();
 
   // 2. 모든 이미지 삭제
   const imagePromises = images.map(async (image) => {
+    const id = image.id;
     try {
-      const { success } = await window.electronAPI.removeImage(image.Id);
+      const { success } = await window.electronAPI.removeImage(image.imageId);
       if (success) {
-        console.log(`Image ${image.Id} removed successfully.`);
-        dockerStateManager.removeImage(image.Id);
+        console.log(`이미지 ${image.imageId} 성공적으로 삭제됨.`);
+        removeImage(id);
       }
     } catch (error) {
-      console.error(`Error removing image ${image.Id}:`, error);
+      console.error(`이미지 ${image.imageId} 삭제 중 오류 발생:`, error);
     }
   });
 
-  // 모든 이미지 삭제가 완료될 때까지 대기
+  // 모든 이미지 삭제 대기
   await Promise.all(imagePromises);
-
+  removeAllImages();
+  // 서비스 상태 'stopped'로 설정
   setServiceStatus("stopped");
-  console.log("All containers and images have been successfully removed.");
+  console.log("모든 컨테이너 및 이미지가 성공적으로 삭제되었습니다.");
 }

@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import ContainerList from "../features/dashboard/ContainerList";
 import ImageList from "../features/dashboard/ImageList";
 import { useAppStore } from "../stores/appStatusStore";
-import { useDockerStore } from "../stores/dockerStore";
 import {
   Tabs,
   TabsContent,
@@ -10,11 +9,12 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { useAuthStore } from "../stores/authStore";
+import { useContainerStore } from "../stores/containerStore";
 
 const DashBoard: React.FC = () => {
   const userSettings = useAuthStore((state) => state.userSettings);
   const serviceStatus = useAppStore((state) => state.serviceStatus);
-  const dockerContainers = useDockerStore((state) => state.dockerContainers);
+  const dockerContainers = useContainerStore((state) => state.containers);
   const containerCount = dockerContainers.length;
 
   useEffect(() => {}, [

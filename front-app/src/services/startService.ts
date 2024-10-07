@@ -6,12 +6,17 @@ import { registerDockerEventHandlers } from "./deployments/dockerEventListner";
 import { connectWebSocket } from "./stompService";
 //위치 고민해보기
 import { startContainerStatsMonitoring } from "./monitoring/healthCheckPingUtils";
+import { useCpuStore } from "../stores/cpuStore";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
+  const setOsType = useCpuStore.getState().setOsType;
 
   try {
+    const OsType = window.electronAPI.getOsType();
+    setOsType(OsType);
+    console.log(OsType);
     console.log("1. ServiceUtil: Starting service");
     setServiceStatus("loading");
 

@@ -1,11 +1,10 @@
-import { useDockerStore } from "../../stores/dockerStore";
-import { useDeploymentStore } from "../../stores/deploymentStore";
 import {
   getTotalMemoryUsage,
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
 import { client } from "./stompClientUtils";
 import { getUsedPortsInRange } from "./../../features/port/parseInboundRule";
+import { useContainerStore } from "../../stores/containerStore";
 interface Deployment {
   deploymentId: number;
   status: string;
@@ -29,25 +28,25 @@ interface ComputeConnectRequest {
 export const sendComputeConnectMessage = async (
   userId: string
 ): Promise<void> => {
-  const dockerStore = useDockerStore.getState();
+  const { containers, getContainerByContainerId } =
+    useContainerStore.getState();
 
   try {
     const platform = await window.electronAPI.getOsType();
     const usedCPU = await window.electronAPI.getCpuUsage();
     const images = await window.electronAPI.getDockerImages();
-    const usedCompute = useDockerStore.getState().dockerContainers.length;
+    const usedCompute = containers.length;
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
-    const runningContainers = dockerStore.dockerContainers;
+    const runningContainers = containers;
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
     const deployments: Deployment[] = [];
     for (const [containerId, stats] of globalStats.entries()) {
-      const deploymentId =
-        useDeploymentStore.getState().containers[containerId].deploymentId;
+      const deploymentId = getContainerByContainerId(containerId)?.deployId;
       if (deploymentId !== undefined) {
         deployments.push({
           deploymentId: deploymentId,
-          status: runningContainers.some((c) => c.Id === containerId)
+          status: runningContainers.some((c) => c.id === containerId)
             ? "RUNNING"
             : "STOPPED",
           useMemory: stats.memory_usage,

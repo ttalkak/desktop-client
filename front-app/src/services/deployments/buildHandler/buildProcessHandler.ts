@@ -1,47 +1,50 @@
-import { useDockerStore } from "../../../stores/dockerStore.tsx";
 import { handleBuildImage } from "./buildImageHandler.ts";
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils.ts";
-import { startPgrok } from "../pgrokHandler.ts";
 import { createAndStartContainer } from "./buildImageHandler.ts";
+import { DeployImageInfo, useImageStore } from "../../../stores/imageStore.tsx";
 import {
-  useDeploymentStore,
-  Deployment,
-  DeploymentCreate,
-} from "../../../stores/deploymentStore.tsx";
+  DeployContainerInfo,
+  useContainerStore,
+} from "../../../stores/containerStore.tsx";
 
 export const PGROK_URL = "pgrok.ttalkak.com:2222";
 
 // 공통 빌드 및 배포 처리 함수
 export async function buildAndDeploy(
-  deployCreate: DeploymentCreate,
+  deployCreate: DeploymentCreateEvent,
   contextPath: string,
   dockerfilePath: string | null
 ) {
   const { senderId, instance } = deployCreate;
   // 1. Docker 이미지 빌드
-  const { addDockerImage } = useDockerStore.getState();
+  const { createImageEntry, updateImageInfo } = useImageStore.getState();
+  const id = createImageEntry(instance.serviceType, instance.deploymentId);
 
-  const imageName = instance.dockerImageName
-    ? instance.dockerImageName
-    : instance.subdomainName;
-
-  const tagName = instance.dockerImageTag ? instance.dockerImageTag : "latest";
+  const imageName = instance.dockerImageName || instance.subdomainName;
+  const tagName = instance.dockerImageTag || "latest";
 
   if (dockerfilePath && imageName) {
-    const { image } = await handleBuildImage(
+    const { success, image } = await handleBuildImage(
       contextPath,
       dockerfilePath,
       imageName,
       tagName
     );
+    if (success && image) {
+      const newImage: Omit<DeployImageInfo, "id"> = {
+        imageId: image.Id,
+        serviceType: instance.serviceType,
+        deployId: instance.deploymentId,
+        RepoTags: image.RepoTags,
+        Created: image.Created,
+        Size: image.Size,
+        Containers: image.Containers,
+      };
 
-    // 이미지 빌드시 리스트에 추가
-    if (image) {
-      addDockerImage(image);
-    }
-
-    // 이미지 생성 실패시 생성 실패 알림
-    if (!image) {
+      // 이미지 빌드시 리스트에 추가
+      updateImageInfo(id, newImage);
+    } else {
+      // 이미지 생성 실패시 생성 실패 알림
       sendInstanceUpdate(
         instance.serviceType,
         instance.deploymentId,
@@ -57,15 +60,16 @@ export async function buildAndDeploy(
   }
 }
 
-// 공통 처리 함수: 배포 완료 및 상태 업데이트
+// 배포 완료 및 상태 업데이트
 async function completeDeployment(
-  deployCreate: DeploymentCreate,
+  deployCreate: DeploymentCreateEvent,
   image: DockerImage
 ) {
   // 헬스 체크 명령어 설정
   let healthCheckCommand: string[] = [];
-
   const { senderId, instance } = deployCreate;
+  const { updateContainerInfo } = useContainerStore.getState();
+  const id = `${instance.serviceType}-${instance.deploymentId}`;
 
   //빌드 타입에 따른 healthCheck로직 확인
   if (instance.serviceType === "FRONTEND") {
@@ -97,34 +101,33 @@ async function completeDeployment(
 
   if (container) {
     // Deployment 정보를 DeploymentStore에 추가
-    const deployment: Deployment = {
+    const newContainer: Omit<DeployContainerInfo, "id"> = {
       senderId: senderId,
-      deploymentId: instance.deploymentId,
+      deployId: instance.deploymentId,
       serviceType: instance.serviceType,
-      hasDockerFile: !!instance.hasDockerFile,
-      hasDockerImage: instance.hasDockerImage,
       containerName: instance.containerName,
-      inboundPort: instance.inboundPort,
-      outboundPort: instance.outboundPort,
+      imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
+      status: "RUNNING",
+      containerId: container.Id,
+      ports: [
+        {
+          internal: instance.inboundPort,
+          external: instance.outboundPort,
+        },
+      ],
       subdomainName: instance.subdomainName,
-      sourceCodeLink: instance.sourceCodeLink,
-      dockerRootDirectory: instance.dockerRootDirectory,
-      dockerFileScript: instance.dockerFileScript,
-      envs: instance.envs,
-      dockerImageName: instance.dockerImageName,
-      dockerImageTag: instance.dockerImageTag,
     };
 
     //Store 저장 및 성공 상태 반환
-    useDeploymentStore.getState().addContainer(container.Id, deployment);
-    useDockerStore.getState().addDockerContainer(container);
+    updateContainerInfo(id, newContainer);
+    //
     sendInstanceUpdate(
       instance.serviceType,
       instance.deploymentId,
-      instance.senderId,
-      "RUNNING",
+      senderId,
+      "PENDING",
       instance.outboundPort,
-      "RUNNING"
+      "PENDING"
     );
     window.electronAPI.startContainerStats([container.Id]);
     window.electronAPI.startLogStream(container.Id, instance.deploymentId);

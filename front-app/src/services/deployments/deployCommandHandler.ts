@@ -1,133 +1,126 @@
-import useDeploymentStore from "../../stores/deploymentStore";
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { dockerStateManager } from "../storeHandler/dockerStateHandler";
-import { useDatabaseStore } from "../../stores/databaseStore";
+import { useContainerStore } from "../../stores/containerStore";
 
 export async function handleContainerCommand(
-  serviceType: string,
-  Id: number,
+  serviceId: string,
   command: string
 ) {
-  let containerId: string | null = null;
-  let store;
+  const { getContainerIdById, getContainerById, updateContainerInfo } =
+    useContainerStore.getState();
 
-  // serviceType에 따라 적절한 store 선택 및 containerId 가져오기
-  switch (serviceType) {
-    case "FRONTEND":
-    case "BACKEND":
-      store = useDeploymentStore.getState();
-      containerId = store.getContainerIdById(Id);
+  const id = serviceId;
+  const containerId = getContainerIdById(serviceId);
+  const container = getContainerById(serviceId);
 
-      break;
-    case "DATABASE":
-      store = useDatabaseStore.getState();
-      containerId = store.getContainerIdById(Id);
-      break;
-    default:
-      console.error(`Unknown service type: ${serviceType}`);
-      return;
-  }
-
-  if (!containerId) {
-    console.error(`No container found for ${serviceType} with Id: ${Id}`);
+  if (!containerId || !container) {
+    console.error(`No container or deployment found for ${serviceId}`);
     return;
   }
 
-  const deployment = useDeploymentStore.getState().containers[containerId];
+  const outboundPort = container.ports?.[0]?.external ?? 0;
 
-  switch (command) {
-    case "START":
-      {
-        console.log(`Starting container: ${containerId}`);
-        const { success } = await window.electronAPI.restartContainer(
-          containerId
-        );
-        if (success) {
-          await dockerStateManager.updateContainerState(containerId, "running");
-          window.electronAPI.startContainerStats([containerId]);
-          sendInstanceUpdate(
-            deployment.serviceType,
-            Id,
-            senderId,
-            "RUNNING",
-            deployment.outboundPort,
-            "RUNNING"
+  if (container && container.deployId) {
+    switch (command) {
+      case "START":
+        {
+          console.log(`Starting container: ${containerId}`);
+          const { success } = await window.electronAPI.restartContainer(
+            containerId
           );
-        } else {
-          await dockerStateManager.updateContainerState(containerId, "error");
+          if (success) {
+            //Stats 시작
+            window.electronAPI.startContainerStats([containerId]);
+            //store 업데이트
+            updateContainerInfo(id, { status: "RUNNING" });
+            //상태 전송
+            if (container && container.deployId) {
+              sendInstanceUpdate(
+                container.serviceType,
+                container.deployId,
+                container.senderId,
+                "RUNNING",
+                outboundPort,
+                "RUNNING"
+              );
+            }
+          } else {
+            updateContainerInfo(id, { status: "ERROR" });
+          }
         }
-      }
-      break;
+        break;
 
-    case "STOP":
-      {
-        console.log(`Stopping container: ${containerId}`);
-        await dockerStateManager.updateContainerState(containerId, "stopped");
-        await window.electronAPI.stopContainerStats([containerId]);
-        const { success } = await window.electronAPI.stopContainer(containerId);
-        if (success) {
-          await window.electronAPI.stopPgrok(Id);
-          sendInstanceUpdate(
-            deployment.serviceType,
-            Id,
-            senderId,
-            "STOPPED",
-            deployment.outboundPort,
-            `STOPPED`
+      case "STOP":
+        {
+          console.log(`Stopping container: ${containerId}`);
+          await window.electronAPI.stopContainerStats([containerId]);
+          const { success } = await window.electronAPI.stopContainer(
+            containerId
           );
-        } else {
-          await dockerStateManager.updateContainerState(containerId, "error");
+          if (success) {
+            sendInstanceUpdate(
+              container.serviceType,
+              container.deployId,
+              container.senderId,
+              "STOPPED",
+              outboundPort,
+              `STOPPED`
+            );
+            updateContainerInfo(id, { status: "STOPPED" });
+          } else {
+            updateContainerInfo(id, { status: "ERROR" });
+          }
         }
-      }
-      break;
+        break;
 
-    case "RESTART":
-      {
-        console.log(`Restarting container: ${containerId}`);
-        const { success } = await window.electronAPI.restartContainer(
-          containerId
-        );
-        if (success) {
-          await dockerStateManager.updateContainerState(containerId, "running");
-          window.electronAPI.startContainerStats([containerId]);
-          sendInstanceUpdate(
-            deployment.serviceType,
-            Id,
-            senderId,
-            "RUNNING",
-            deployment.outboundPort,
-            `RUNNING`
+      case "RESTART":
+        {
+          console.log(`Restarting container: ${containerId}`);
+          const { success } = await window.electronAPI.restartContainer(
+            containerId
           );
-        } else {
-          await dockerStateManager.updateContainerState(containerId, "error");
-        }
-      }
-      break;
+          if (success) {
+            updateContainerInfo(id, { status: "RUNNING" });
 
-    case "DELETE":
-      {
-        console.log(`Deleting container: ${containerId}`);
-        const { success } = await window.electronAPI.removeContainer(
-          containerId
-        );
-        if (success) {
-          window.electronAPI.stopContainerStats([containerId]);
-          window.electronAPI.stopPgrok(Id);
-          sendInstanceUpdate(
-            deployment.serviceType,
-            Id,
-            senderId,
-            "DELETED",
-            deployment.outboundPort,
-            `DELETED`
+            window.electronAPI.startContainerStats([containerId]);
+            sendInstanceUpdate(
+              container.serviceType,
+              container.deployId,
+              container.senderId,
+              "RUNNING",
+              outboundPort,
+              "RUNNING"
+            );
+          } else {
+            updateContainerInfo(id, { status: "ERROR" });
+          }
+        }
+        break;
+
+      case "DELETE":
+        {
+          console.log(`Deleting container: ${containerId}`);
+          const { success } = await window.electronAPI.removeContainer(
+            containerId
           );
-          dockerStateManager.removeContainer(containerId);
-          store.removeContainer(containerId);
-        }
-      }
-      break;
+          if (success) {
+            window.electronAPI.stopContainerStats([containerId]);
+            window.electronAPI.stopPgrok(container.deployId);
 
-    default:
-      console.warn(`Unknown command: ${command}`);
+            sendInstanceUpdate(
+              container.serviceType,
+              container.deployId,
+              container.senderId,
+              "DELETED",
+              outboundPort,
+              "DELETED"
+            );
+            updateContainerInfo(id, { status: "DELETED" });
+          }
+        }
+        break;
+
+      default:
+        console.warn(`Unknown command: ${command}`);
+    }
   }
 }

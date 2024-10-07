@@ -3,52 +3,33 @@ import {
   getTotalMemoryUsage,
   globalStats,
 } from "../monitoring/healthCheckPingUtils";
-import useDeploymentStore from "../../stores/deploymentStore";
-import { useDockerStore } from "../../stores/dockerStore";
-import { useDatabaseStore } from "../../stores/databaseStore";
+import { useCpuStore } from "../../stores/cpuStore";
+import { useContainerStore } from "../../stores/containerStore";
+import { useImageStore } from "../../stores/imageStore";
 
 export const sendCurrentState = async (userId: string) => {
-  const dockerStore = useDockerStore.getState();
-  const databaseStore = useDatabaseStore.getState(); // 제대로 선언됨
-
   try {
-    const osType = await window.electronAPI.getOsType();
+    const OsType = await useCpuStore.getState().osType;
+    const { containers, getContainerByContainerId } =
+      useContainerStore.getState();
     const usedCPU = await window.electronAPI.getCpuUsage();
-    const images = await window.electronAPI.getDockerImages();
+    const images = await useImageStore.getState().images;
     const totalSize = images.reduce((acc, image) => acc + (image.Size || 0), 0);
-    const runningContainers = dockerStore.dockerContainers;
+    const runningContainers = containers;
     const containerMemoryUsage = await getTotalMemoryUsage(runningContainers);
     const totalUsedMemory = totalSize + containerMemoryUsage;
 
     const deployments = [];
 
     for (const [containerId, stats] of globalStats.entries()) {
-      const deployment = useDeploymentStore.getState().containers[containerId];
-      const deploymentId = deployment?.deploymentId; // deployment가 없는 경우 안전하게 처리
+      const deployment = getContainerByContainerId(containerId);
+      const deployId = deployment?.deployId; // deployment가 없는 경우 안전하게 처리
 
-      const database = databaseStore.containerMap[containerId];
-      const databaseId = database?.databaseId; // database가 없는 경우 안전하게 처리
-
-      if (deploymentId !== undefined) {
+      if (deployment !== undefined) {
         deployments.push({
-          id: deploymentId,
+          id: deployId,
           serviceType: deployment.serviceType,
-          status: runningContainers.some((c) => c.Id === containerId)
-            ? "RUNNING"
-            : "STOPPED",
-          useMemory: stats.memory_usage,
-          useCPU: stats.cpu_usage,
-          runningTime: stats.running_time,
-          diskRead: stats.blkio_read,
-          diskWrite: stats.blkio_write,
-        });
-      }
-
-      if (databaseId !== undefined) {
-        deployments.push({
-          id: databaseId,
-          serviceType: database.serviceType,
-          status: runningContainers.some((c) => c.Id === containerId)
+          status: runningContainers.some((c) => c.id === containerId)
             ? "RUNNING"
             : "STOPPED",
           useMemory: stats.memory_usage,
@@ -62,7 +43,7 @@ export const sendCurrentState = async (userId: string) => {
 
     const currentState = {
       userId: userId,
-      computerType: osType,
+      computerType: OsType,
       usedCompute: runningContainers.length,
       usedMemory: totalUsedMemory,
       usedCPU: usedCPU,

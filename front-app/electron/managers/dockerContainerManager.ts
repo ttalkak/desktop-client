@@ -13,8 +13,6 @@ export function formatEnvs(envs: EnvVar[]): string[] {
   });
 }
 
-//database 빌드 옵션 설정
-
 // 도커 이미지 빌드하는 곳(프론트, 백엔드)
 export const createContainerOptions = (
   imageName: string,
@@ -25,13 +23,8 @@ export const createContainerOptions = (
   // healthCheckCommand: string[]
 ): string => {
   const formattedEnvs = formatEnvs(envs); // 환경 변수 처리
-
   const envString = formattedEnvs.map((env) => `-e ${env}`).join(" ");
-
-  const command = `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
-
-  console.log("image build command", command);
-  return command;
+  return `docker run -d --name ${containerName} -p ${outboundPort}:${inboundPort} ${envString} ${imageName}`;
 };
 
 // 컨테이너 생성

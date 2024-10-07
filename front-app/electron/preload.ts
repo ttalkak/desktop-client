@@ -1,5 +1,6 @@
 import { ipcRenderer, contextBridge } from "electron";
 import path from "path";
+import { DockerEvent } from "src/services/deployments/dockerEventListner";
 
 console.log("Preload script loaded");
 

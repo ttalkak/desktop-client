@@ -1,10 +1,11 @@
 import React from "react";
-import { useDockerStore } from "../../stores/dockerStore";
+import { DeployImageInfo, useImageStore } from "../../stores/imageStore";
 
 const ImageList: React.FC = () => {
-  const dockerImages = useDockerStore((state) => state.dockerImages);
+  const dockerImages = useImageStore((state) => state.images);
 
-  const formatCreatedTime = (created: number) => {
+  const formatCreatedTime = (created: number | undefined) => {
+    if (created === undefined) return "Unknown";
     const date = new Date(created * 1000);
     if (isNaN(date.getTime())) return "Unknown";
     const dateString = date.toLocaleDateString();
@@ -17,7 +18,8 @@ const ImageList: React.FC = () => {
     );
   };
 
-  const formatSize = (size: number) => {
+  const formatSize = (size: number | undefined) => {
+    if (size === undefined) return "Unknown";
     if (size < 1024) return `${size} B`;
     const i = Math.floor(Math.log(size) / Math.log(1024));
     const sizes = ["B", "KB", "MB", "GB", "TB"];
@@ -55,15 +57,15 @@ const ImageList: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
-            {dockerImages.map((image: DockerImage) => (
-              <tr key={image.Id} className="hover:bg-gray-50">
+            {dockerImages.map((image: DeployImageInfo) => (
+              <tr key={image.id} className="hover:bg-gray-50">
                 <td className={tableBody}>
-                  {image.RepoTags?.[0]?.split(":")[0]}
+                  {image.RepoTags?.[0]?.split(":")[0] || "N/A"}
                 </td>
                 <td className={tableBody}>
-                  {image.RepoTags?.[0]?.split(":")[1]}
+                  {image.RepoTags?.[0]?.split(":")[1] || "N/A"}
                 </td>
-                <td className={tableBody}>{image.Id.slice(7, 19)}</td>
+                <td className={tableBody}>{image.imageId.slice(7, 19)}</td>
                 <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
                   {formatCreatedTime(image.Created)}
                 </td>

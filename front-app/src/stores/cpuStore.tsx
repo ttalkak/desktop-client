@@ -7,9 +7,9 @@ interface CpuUsageData {
 }
 
 interface CpuState {
-  osType: OSType;
+  osType: OsType;
   containerCpuUsages: CpuUsageData[];
-  setOsType: (osType: OSType) => void;
+  setOsType: (osType: OsType) => void;
   setContainerCpuUsages: (cpuUsages: CpuUsageData[]) => void;
   updateContainerCpuUsage: (
     containerId: string,
@@ -27,7 +27,7 @@ export const useCpuStore = create<CpuState>()(
   persist(
     (set) => ({
       ...initialState,
-      setOsType: (osType: OSType) => set({ osType }),
+      setOsType: (osType: OsType) => set({ osType }),
       setContainerCpuUsages: (cpuUsages: CpuUsageData[]) =>
         set({ containerCpuUsages: cpuUsages }),
       updateContainerCpuUsage: (containerId: string, cpuUsagePercent: number) =>

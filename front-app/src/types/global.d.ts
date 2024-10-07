@@ -3,29 +3,72 @@ export {};
 
 // Docker Related Types
 declare global {
-  type OSType = "WINDOWS" | "MACOS" | "LINUX";
+  //OsType
+  type OsType = "WINDOWS" | "MACOS" | "LINUX" | "UNKNOWN";
+  // 배포 상태 저장용 선언, database, front, back은 serviceType으로 구분함
+  type serviceType = "FRONTEND" | "BACKEND" | "DATABASE";
+
+  interface EnvironmentVariable {
+    key: string;
+    value: string;
+  }
+
+  //Create 요청시
+  interface DeploymentCommand {
+    deploymentId: number;
+    serviceType: string;
+    hasDockerFile: boolean;
+    hasDockerImage: boolean;
+    containerName: string;
+    inboundPort: number;
+    outboundPort: number;
+    subdomainName: string;
+    subdomainKey: string;
+    sourceCodeLink: string;
+    dockerRootDirectory: string; // 선택적 필드에서 필수 필드로 변경
+    dockerFileScript: string; // 선택적 필드에서 필수 필드로 변경
+    envs: EnvironmentVariable[];
+    dockerImageName: string | null; // 백엔드 db 설정 있을때
+    dockerImageTag: string | null; // 백엔드 db 설정있을때
+  }
+
+  //FE, BE  CREATE요청
+  interface DeploymentCreateEvent {
+    senderId: string;
+    instance: DeploymentCommand;
+  }
+
+  // DATABASE  CREATE요청
+  interface DatabaseCommand {
+    containerName: string;
+    databaseId: number;
+    dockerImageName: string;
+    dockerImageTag: string;
+    envs: EnvironmentVariable[];
+    inboundPort: number;
+    outboundPort: number;
+    serviceType: string;
+    subdomainKey: string;
+    senderId?: number;
+  }
+
+  // DATABASE 생성 관련
+  interface DatabaseCreateEvent {
+    senderId: string;
+    instance: DatabaseCommand;
+  }
+
+  interface Port {
+    hostPort: number; // 호스트 포트
+    containerPort: number; // 컨테이너 포트
+  }
+
   // Docker Basic Types
   type DockerImage = Dockerode.ImageInfo;
   type DockerContainer = Dockerode.ContainerInfo;
   type ContainerCreateOptions = Dockerode.ContainerCreateOptions;
   type ContainerRemoveOptions = Dockerode.ContainerRemoveOptions;
   type EnvVar = { key: string; value: string };
-  // Docker Event Types
-  interface DockerEventActor {
-    ID: string;
-    Attributes: Record<string, string>;
-  }
-
-  interface DockerEvent {
-    status: string;
-    id: string;
-    Type: string;
-    Action: string;
-    Actor: DockerEventActor;
-    scope: string;
-    time: number;
-    timeNano: number;
-  }
 
   type EventCallback = (event: DockerEvent) => void;
 
@@ -206,29 +249,6 @@ declare global {
     monitorCpuUsage: () => void;
   }
 
-  export interface EnvironmentVariable {
-    key: string;
-    value: string;
-  }
-  export interface DeploymentCommand {
-    senderId: string;
-    deploymentId: number;
-    serviceType: string;
-    hasDockerFile: boolean;
-    hasDockerImage: boolean;
-    containerName: string;
-    inboundPort: number;
-    outboundPort: number;
-    subdomainName: string;
-    subdomainKey: string;
-    sourceCodeLink: string;
-    dockerRootDirectory: string; // 선택적 필드에서 필수 필드로 변경
-    dockerFileScript: string; // 선택적 필드에서 필수 필드로 변경
-    envs: EnvironmentVariable[];
-    dockerImageName: string | null; // 백엔드 db 설정 있을때
-    dockerImageTag: string | null; // 백엔드 db 설정있을때
-  }
-
   // pgrok Operations
   interface ElectronAPI {
     downloadPgrok: () => Promise<string>;
@@ -248,7 +268,7 @@ declare global {
     minimizeWindow: () => void;
     maximizeWindow: () => void;
     closeWindow: () => void;
-    getOsType: () => Promise<string>;
+    getOsType: () => OsType;
     terminateTasks: () => void;
     onTerminated: (
       callback: (event: Electron.IpcRendererEvent) => void

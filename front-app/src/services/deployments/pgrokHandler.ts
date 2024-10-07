@@ -1,10 +1,9 @@
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
-import { DeploymentCreate } from "src/stores/deploymentStore";
 
 export const PGROK_URL = "pgrok.ttalkak.com:2222";
 
 // pgrok 실행 함수
-export async function startPgrok(deployCreate: DeploymentCreate) {
+export async function startPgrok(deployCreate: DeploymentCreateEvent) {
   const { senderId, instance } = deployCreate;
 
   try {

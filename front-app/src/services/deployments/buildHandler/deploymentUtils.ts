@@ -1,88 +1,80 @@
 import { sendInstanceUpdate } from "../../websocket/sendUpdateUtils";
 
-export async function prepareDeploymentContext(compute: Deployment) {
-  const { hasDockerFileScript } = determineDeploymentType(compute);
+export async function prepareDeploymentContext(
+  deployCreate: DeploymentCreateEvent
+) {
+  const { senderId, instance } = deployCreate;
+  const hasDockerFileScript = determineDeploymentType(instance);
 
+  // 다운로드 및 압축 해제 시도
   const { success, found, contextPath, dockerfilePath, message } =
     await window.electronAPI.downloadAndUnzip(
-      compute.sourceCodeLink,
-      compute.dockerRootDirectory
+      instance.sourceCodeLink,
+      instance.dockerRootDirectory
     );
 
   // 다운로드 실패 시
   if (!success) {
     console.error("Download and unzip failed:", message);
     sendInstanceUpdate(
-      compute.serviceType,
-      compute.deploymentId,
-      compute.senderId,
+      instance.serviceType,
+      instance.deploymentId,
+      senderId,
       "ERROR",
-      compute.outboundPort,
+      instance.outboundPort,
       "DOWNLOAD"
     );
     return { contextPath: null, dockerfilePath: null };
   }
 
-  //도커 파일
+  // 도커 파일 경로 설정
   let finalDockerfilePath = dockerfilePath;
 
-  // Switch문으로 조건 나누기
-  switch (true) {
+  // Dockerfile 존재 여부와 스크립트 유무에 따른 처리
+  if (found) {
     // Dockerfile이 있을 때
-    case found: {
-      console.log("Dockerfile found...start image build");
-      break;
-    }
-
+    console.log("Dockerfile found...start image build");
+  } else if (!found && hasDockerFileScript) {
     // Dockerfile이 없고 스크립트가 있을 때
-    case !found && hasDockerFileScript: {
-      console.log("Dockerfile not found, creating Dockerfile");
+    console.log("Dockerfile not found, creating Dockerfile");
 
-      // Dockerfile 생성
-      const createResult = await window.electronAPI.createDockerfile(
-        dockerfilePath,
-        compute.dockerFileScript
-      );
-      if (!createResult.success) {
-        sendInstanceUpdate(
-          compute.serviceType,
-          compute.deploymentId,
-          "ERROR",
-          compute.outboundPort,
-          "DOCKER"
-        );
-        return { contextPath: null, dockerfilePath: null };
-      }
+    // Dockerfile 생성 시도
+    const createResult = await window.electronAPI.createDockerfile(
+      dockerfilePath,
+      instance.dockerFileScript
+    );
 
-      finalDockerfilePath = createResult.dockerFilePath;
-
-      break;
-    }
-
-    // Dockerfile이 없고, 스크립트도 없을 때
-    case !found && !hasDockerFileScript: {
+    if (!createResult.success) {
       sendInstanceUpdate(
-        compute.serviceType,
-        compute.deploymentId,
+        instance.serviceType,
+        instance.deploymentId,
+        senderId,
         "ERROR",
-        compute.outboundPort,
+        instance.outboundPort,
         "DOCKER"
       );
       return { contextPath: null, dockerfilePath: null };
     }
 
-    default:
-      console.error("Unexpected case occurred in deployment preparation.");
-      return { contextPath: null, dockerfilePath: null };
+    finalDockerfilePath = createResult.dockerFilePath;
+  } else {
+    // Dockerfile도 없고 스크립트도 없을 때
+    sendInstanceUpdate(
+      instance.serviceType,
+      instance.deploymentId,
+      senderId,
+      "ERROR",
+      instance.outboundPort,
+      "DOCKER"
+    );
+    return { contextPath: null, dockerfilePath: null };
   }
 
+  // 결과 반환
   return { contextPath, dockerfilePath: finalDockerfilePath };
 }
 
-//도커 스크립트 있는지 검증
-export function determineDeploymentType(compute: DeploymentCommand) {
-  const hasDockerFileScript =
-    compute.dockerFileScript && compute.dockerFileScript.trim() !== "";
-
-  return { hasDockerFileScript };
+// 도커 스크립트 있는지 확인하는 함수
+export function determineDeploymentType(instance: DeploymentCommand) {
+  return instance.dockerFileScript && instance.dockerFileScript.trim() !== "";
 }

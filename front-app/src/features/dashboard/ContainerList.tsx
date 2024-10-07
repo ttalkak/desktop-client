@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
-import { useDockerStore } from "../../stores/dockerStore";
-import Dockerode from "dockerode";
+import {
+  DeployContainerInfo,
+  useContainerStore,
+} from "../../stores/containerStore";
 
 const MAX_LOGS_PER_CONTAINER = 1000;
 const LOG_CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -16,7 +18,7 @@ const ContainerList: React.FC = () => {
   const [selectedContainerIds, setSelectedContainerIds] = useState<string[]>(
     []
   );
-  const dockerContainers = useDockerStore((state) => state.dockerContainers);
+  const dockerContainers = useContainerStore((state) => state.containers);
   const [logData, setLogData] = useState<Record<string, ParsedLog[]>>({});
 
   const addLog = useCallback((containerId: string, newLog: ParsedLog) => {
@@ -93,23 +95,18 @@ const ContainerList: React.FC = () => {
     };
   };
 
-  const shortenImageName = (imageName: string) => {
+  const shortenImageName = (imageName: string = "") => {
     const parts = imageName.split("/");
     return parts[parts.length - 1].split(":")[0];
   };
 
-  const formatCreatedTime = (created: number) => {
-    const date = new Date(created * 1000);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-  };
-
-  const renderPorts = (ports: Dockerode.Port[]) => {
+  const renderPorts = (ports?: { internal: number; external: number }[]) => {
     if (!ports || ports.length === 0) return <span>No Ports</span>;
     return (
       <ul className="list-none p-0">
         {ports.map((port, index) => (
-          <li key={`${port.PrivatePort}-${port.PublicPort}-${index}`}>
-            {port.PrivatePort} : {port.PublicPort || "N/A"} ({port.Type})
+          <li key={index}>
+            {port.internal} : {port.external || "N/A"}
           </li>
         ))}
       </ul>
@@ -141,29 +138,35 @@ const ContainerList: React.FC = () => {
 
   const ContainerRow = useMemo(
     () =>
-      ({ container }: { container: DockerContainer }) => {
-        const { Id, Names, Image, Created, State, Ports } = container;
-        const isSelected = selectedContainerIds.includes(Id);
+      ({ container }: { container: DeployContainerInfo }) => {
+        const { containerId, containerName, imageTag, status, ports } =
+          container;
+        const isSelected = selectedContainerIds.includes(containerId || "");
 
         return (
           <>
             <tr className="hover:bg-gray-50">
               <td className="py-2 px-4 text-sm text-gray-900">
-                {Names[0].slice(1)}
+                {containerName || "N/A"}
               </td>
-              <td className="py-2 px-4 text-sm text-gray-900" title={Image}>
-                {shortenImageName(Image)}
-              </td>
-              <td className="py-2 px-4 text-xs text-gray-900">
-                {formatCreatedTime(Created)}
+              <td className="py-2 px-4 text-sm text-gray-900" title={imageTag}>
+                {shortenImageName(imageTag)}
               </td>
               <td className="py-2 px-4 text-sm text-gray-900">
-                {renderPorts(Ports)}
+                {/* Created time is not available in DeployContainerInfo */}
+                N/A
               </td>
-              <td className="py-2 px-4 text-sm text-gray-900">{State}</td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {renderPorts(ports)}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {status || "N/A"}
+              </td>
               <td className="py-2 px-4 text-sm text-gray-900">
                 <button
-                  onClick={() => toggleContainerSelection(Id)}
+                  onClick={() =>
+                    containerId && toggleContainerSelection(containerId)
+                  }
                   className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
                 >
                   {isSelected ? (
@@ -174,10 +177,10 @@ const ContainerList: React.FC = () => {
                 </button>
               </td>
             </tr>
-            {isSelected && (
+            {isSelected && containerId && (
               <tr>
                 <td colSpan={6} className="p-4 bg-gray-100">
-                  <Logs logs={logData[Id] || []} />
+                  <Logs logs={logData[containerId] || []} />
                 </td>
               </tr>
             )}
@@ -187,20 +190,20 @@ const ContainerList: React.FC = () => {
     [selectedContainerIds, logData, toggleContainerSelection]
   );
 
-  // if (dockerContainers.length === 0) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center mt-8">
-  //       <p className="text-center text-gray-700">
-  //         현재 배포중인 서비스가 없습니다
-  //       </p>
-  //       <div className="mt-4 flex text-gray-400 text-sm ">
-  //         <div className="text-gray-400 text-sm ">
-  //           서비스 할당을 기다려주세요
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (dockerContainers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center mt-8">
+        <p className="text-center text-gray-700">
+          현재 배포중인 서비스가 없습니다
+        </p>
+        <div className="mt-4 flex text-gray-400 text-sm ">
+          <div className="text-gray-400 text-sm ">
+            서비스 할당을 기다려주세요
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-200px)]">
@@ -218,7 +221,7 @@ const ContainerList: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {dockerContainers.map((container) => (
-              <ContainerRow key={container.Id} container={container} />
+              <ContainerRow key={container.id} container={container} />
             ))}
           </tbody>
         </table>

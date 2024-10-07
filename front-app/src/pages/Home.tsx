@@ -1,17 +1,20 @@
 import React from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
 import PaymentStatusItem from "../features/home/PaymentStatusItem";
-import useDeploymentStore, { Deployment } from "../stores/deploymentStore";
+import {
+  DeployContainerInfo,
+  useContainerStore,
+} from "../stores/containerStore";
 
 const Home: React.FC = () => {
-  const containers = useDeploymentStore((state) => state.containers);
+  const containers = useContainerStore((state) => state.containers);
 
-  const getUrl = (deployment: Deployment) => {
+  const getUrl = (deployment: DeployContainerInfo) => {
     let subdomain = deployment.subdomainName;
-    if (!subdomain && deployment.serviceType === "BACKEND") {
-      subdomain = `api_${deployment.deploymentId}`;
-    } else if (!subdomain) {
-      subdomain = `${deployment.deploymentId}`;
+    if (deployment.serviceType === "BACKEND") {
+      subdomain = `api_${subdomain}`;
+    } else if (deployment.serviceType === "DATABASE") {
+      return `${deployment.containerName}.ttalkak.com`;
     }
     return `http://${subdomain}.ttalkak.com`;
   };
@@ -43,7 +46,7 @@ const Home: React.FC = () => {
                 {Object.entries(containers).map(([containerId, deployment]) => (
                   <tr key={containerId} className="hover:bg-gray-50">
                     <td className={`${tableBody} min-w-32`}>
-                      {deployment.subdomainName || deployment.deploymentId}
+                      {deployment.subdomainName || deployment.deployId}
                     </td>
                     <td className={`${tableBody} min-w-md break-words`}>
                       <a
