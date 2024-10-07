@@ -85,7 +85,7 @@ function getDatabaseConfig(
         ],
       };
     default:
-      throw new Error(`Unsupported database type: ${databaseType}`);
+      console.warn(`Unsupported database type: ${databaseType}`);
   }
 }
 

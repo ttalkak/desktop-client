@@ -91,7 +91,7 @@ export async function getContainerMemoryUsage(
     return memoryUsage;
   } catch (error) {
     console.error("Error fetching memory usage:", error);
-    throw error;
+    return 0;
   }
 }
 

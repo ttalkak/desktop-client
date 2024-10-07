@@ -81,7 +81,6 @@ export function registerIpcHandlers() {
         return await docker.getContainer(containerId).inspect();
       } catch (err) {
         console.error(`Failed to fetch Docker container ${containerId}:`, err);
-        throw err;
       }
     }
   );
@@ -92,7 +91,6 @@ export function registerIpcHandlers() {
       return await docker.listImages({ all: true });
     } catch (err) {
       console.error("Failed to fetch Docker images:", err);
-      throw err;
     }
   });
 
@@ -104,7 +102,6 @@ export function registerIpcHandlers() {
         return await docker.listContainers({ all, size: true });
       } catch (err) {
         console.error("Failed to fetch Docker containers:", err);
-        throw err;
       }
     }
   );

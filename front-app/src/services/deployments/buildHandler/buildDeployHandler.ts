@@ -35,12 +35,8 @@ export async function handleDockerBuild(deployCreate: DeploymentCreateEvent) {
           }
         } catch (error) {
           console.error(`기존 배포 삭제 중 오류 발생: ${error}`);
-          throw error; // 상위 함수에서 처리할 수 있도록 에러를 다시 던짐
         }
       }
-
-      // 기존 컨테이너가 존재할 경우 더 이상의 작업을 하지 않도록 종료
-      return existingContainerId;
     }
 
     // 기존 컨테이너가 없을 경우에만 새로운 컨테이너를 빌드 및 배포

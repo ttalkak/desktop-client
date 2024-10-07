@@ -37,22 +37,28 @@ export async function getTotalMemoryUsage(
 ): Promise<number> {
   try {
     const memoryUsages = await Promise.all(
-      runningContainers.map((container) =>
-        window.electronAPI.getContainerMemoryUsage(container.id)
-      )
+      runningContainers.map(async (container) => {
+        if (container.containerId) {
+          return await window.electronAPI.getContainerMemoryUsage(
+            container.containerId
+          );
+        }
+        return { success: false, memoryUsage: 0 }; // 조건에 맞지 않으면 기본값 반환
+      })
     );
+
     const totalMemoryUsage = memoryUsages.reduce((acc, usage) => {
       if (usage.success && usage.memoryUsage !== undefined) {
         return acc + usage.memoryUsage;
       } else {
-        console.warn(`Failed to retrieve memory usage for container`);
+        console.warn("Failed to retrieve memory usage for a container.");
         return acc;
       }
     }, 0);
+
     return totalMemoryUsage;
   } catch (error) {
     console.error("Error calculating total memory usage:", error);
-    throw error;
   }
 }
 
@@ -88,6 +94,7 @@ export function stopContainerStatsMonitoring() {
 
   stopPeriodicContainerCheck();
   window.electronAPI.removeContainerStatsListeners();
+
   containers.forEach((container) => {
     window.electronAPI
       .stopContainerStats([container.id])
@@ -115,7 +122,7 @@ export function stopPeriodicContainerCheck() {
   }
 }
 
-//도커 컨테이너의 ID를 주기적으로 가져옴
+// 도커 컨테이너의 ID를 주기적으로 가져옴
 export async function checkAndUpdateContainerMonitoring() {
   const containers = useContainerStore.getState().containers;
   const currentContainers = new Set(containers.map((c) => c.id));
