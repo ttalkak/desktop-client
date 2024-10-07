@@ -1,6 +1,8 @@
 import { docker } from "./dockerUtils";
 import * as fs from "fs";
 import path from "path";
+import { exec } from "child_process";
+import { removeContainer } from "./dockerContainerManager";
 
 // Docker 이미지를 pull 받는 함수
 export async function pullDockerImage(imageName: string): Promise<void> {
@@ -17,7 +19,7 @@ export async function pullDockerImage(imageName: string): Promise<void> {
   });
 }
 
-//이미지 빌드
+// 이미지 빌드 함수 (CMD 명령어 사용)
 export async function buildDockerImage(
   contextPath: string,
   dockerfilePath: string | null,
@@ -43,7 +45,6 @@ export async function buildDockerImage(
 
   // 이미 존재하는 이미지가 있으면 삭제 후 다시 빌드
   if (imageInDocker) {
-    console.log(`Image ${fullTag} already exists. Deleting and rebuilding...`);
     const removeResult = await removeImage(fullTag);
     if (!removeResult.success) {
       return { success: false, error: "Failed to remove existing image" };
@@ -70,58 +71,48 @@ export async function buildDockerImage(
     };
   }
 
+  const linuxDockerfilePath = path.posix.normalize(
+    dockerfilePath.replace(/\\/g, "/")
+  );
   // 상대 경로로 Dockerfile 경로 설정
   const relativeDockerfilePath = path
     .relative(contextPath, dockerfilePath)
     .replace(/\\/g, "/");
   console.log("docker relativePath:", relativeDockerfilePath);
 
-  // Docker 이미지를 빌드
-  const stream = await new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-    docker.buildImage(
-      { context: contextPath, src: ["."] },
-      { t: fullTag, dockerfile: relativeDockerfilePath, nocache: true },
-      (err, stream) => {
-        if (err) {
-          reject(err);
-        } else if (stream) {
-          resolve(stream);
-        } else {
-          reject(new Error("Stream is undefined"));
-        }
-      }
-    );
-  });
-
-  // 빌드 결과를 처리
-  stream.pipe(process.stdout, { end: true });
+  // CMD 명령어로 Docker 이미지 빌드
+  const dockerBuildCommand = `docker build -t ${fullTag} -f ${linuxDockerfilePath} ${contextPath}`;
 
   return new Promise<{
     success: boolean;
     image?: DockerImage;
     error?: string;
   }>((resolve, reject) => {
-    stream.on("end", async () => {
-      console.log(`Docker image ${fullTag} built successfully`);
-
-      try {
-        // 빌드된 이미지를 다시 확인
-        const images = await docker.listImages({
-          filters: { reference: [fullTag] },
-        });
-        const builtImage = images.find((img) =>
-          img.RepoTags?.includes(fullTag)
-        );
-        resolve({ success: true, image: builtImage });
-      } catch (error) {
-        console.error("Error inspecting built image:", error);
-        reject({ success: false, error: "Error inspecting built image" });
+    exec(dockerBuildCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Error building Docker image:", error);
+        return reject({ success: false, error: stderr || error.message });
       }
-    });
 
-    stream.on("error", (err: Error) => {
-      console.error("Error building Docker image:", err);
-      reject({ success: false, error: err.message });
+      console.log(stdout); // 빌드 과정 출력
+
+      // 빌드된 이미지를 다시 확인
+      docker
+        .listImages({ filters: { reference: [fullTag] } })
+        .then((images) => {
+          const builtImage = images.find((img) =>
+            img.RepoTags?.includes(fullTag)
+          );
+          if (builtImage) {
+            resolve({ success: true, image: builtImage });
+          } else {
+            resolve({ success: false, error: "Image not found after build" });
+          }
+        })
+        .catch((err) => {
+          console.error("Error inspecting built image:", err);
+          reject({ success: false, error: "Error inspecting built image" });
+        });
     });
   });
 }
@@ -147,15 +138,13 @@ export const removeImage = async (
     if (usingContainers.length > 0) {
       // Stop and remove all containers using the image
       for (const container of usingContainers) {
-        const containerInstance = docker.getContainer(container.Id);
-        await containerInstance.stop(); // Stop the container
-        await containerInstance.remove(); // Remove the container
+        removeContainer(container.Id);
         console.log(`Container ${container.Id} stopped and removed`);
       }
     }
 
     // Remove the image after containers are stopped and removed
-    await image.remove({ force: false });
+    await image.remove({ force: true });
     console.log(`Image ${imageId} removed successfully`);
     return { success: true };
   } catch (error) {

@@ -78,7 +78,6 @@ function registerIpcHandlers() {
       return cpuUsage;
     } catch (error) {
       console.error("Failed to get CPU usage:", error);
-      throw error;
     }
   });
 

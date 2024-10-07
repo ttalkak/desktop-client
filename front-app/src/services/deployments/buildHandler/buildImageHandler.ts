@@ -47,6 +47,7 @@ export const createAndStartContainer = async (
   error?: string;
 }> => {
   try {
+    console.log("이미지 빌드 시작.... 이미지 정보 ", dockerImage);
     // repoTag 기반 컨테이너 생성 및 시작
     const repoTag = dockerImage.RepoTags?.[0];
     if (!repoTag) {
@@ -69,8 +70,13 @@ export const createAndStartContainer = async (
     );
 
     //Option 기반 container 생성 및 실행
-    const { success, containerId } =
-      await window.electronAPI.createAndStartContainer(containerOptions);
+    const { success, containerId } = await window.electronAPI.createContainer(
+      containerOptions
+    );
+
+    if (success && containerId) {
+      await window.electronAPI.startContainer(containerId, repoTag);
+    }
 
     const containers = await window.electronAPI.getDockerContainers(true);
     const createdContainer = containers.find((c) => c.Id === containerId);
