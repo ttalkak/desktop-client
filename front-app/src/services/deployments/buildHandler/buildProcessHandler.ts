@@ -7,6 +7,8 @@ import {
   useContainerStore,
 } from "../../../stores/containerStore.tsx";
 import { DeployStatus } from "../../../types/deploy.ts";
+import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils";
+
 export const PGROK_URL = "pgrok.ttalkak.com:2222";
 
 // 공통 빌드 및 배포 처리 함수
@@ -132,6 +134,7 @@ async function completeDeployment(
     window.electronAPI.startContainerStats([container.Id]);
     window.electronAPI.startLogStream(container.Id, instance.deploymentId);
 
+    checkAndUpdateContainerMonitoring();
     // await startPgrok(deployCreate);
     try {
       console.log("pgrok will..start..");

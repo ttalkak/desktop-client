@@ -1,7 +1,8 @@
 import React from "react";
 import { DeployImageInfo, useImageStore } from "../../stores/imageStore";
 import { DeployStatus } from "../../types/deploy";
-import { ImSpinner8 } from "react-icons/im";
+import Loading from "../../components/Loading";
+
 const ImageList: React.FC = () => {
   const dockerImages = useImageStore((state) => state.images);
 
@@ -83,11 +84,7 @@ const ImageList: React.FC = () => {
                       className="py-2 px-4 text-xs text-gray-900 text-center align-middle"
                     >
                       <div className="flex justify-center items-center">
-                        <ImSpinner8
-                          className="animate-spin-slow mr-1.5 mt-0.5"
-                          color="#757575"
-                          size={10}
-                        />
+                        <Loading />
                       </div>
                     </td>
                   </tr>

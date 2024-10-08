@@ -5,7 +5,8 @@ import {
   useContainerStore,
 } from "../../stores/containerStore";
 import { DeployStatus } from "../../types/deploy";
-import Loading from "../../components/loading";
+import Loading from "../../components/Loading";
+
 const MAX_LOGS_PER_CONTAINER = 1000;
 const LOG_CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
 const LOG_RETENTION_PERIOD = 24 * 60 * 60 * 1000; // 24 hours
@@ -173,14 +174,12 @@ const ContainerList: React.FC = () => {
         const StatusComponent = ({ status }: { status?: DeployStatus }) => {
           const { color, text } = getStatusElement(status || DeployStatus.NA);
           return (
-            <td className="py-2 text-sm text-gray-900">
-              <div className="flex justify-center items-center">
-                <div
-                  className={`inline-block w-3 h-3 rounded-full mr-1 ${color}`}
-                ></div>
-                <div>{text}</div>
-              </div>
-            </td>
+            <div className="flex justify-center items-center">
+              <div
+                className={`inline-block w-3 h-3 rounded-full mr-1 ${color}`}
+              ></div>
+              <div>{text}</div>
+            </div>
           );
         };
 
@@ -204,8 +203,8 @@ const ContainerList: React.FC = () => {
                   <td className="py-2 px-4 text-sm text-gray-900">
                     {renderPorts(container.ports)}
                   </td>
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    {StatusComponent({ status: container.status })}
+                  <td className="py-2 text-sm text-gray-900">
+                    <StatusComponent status={container.status} />
                   </td>
                   <td className="py-2 px-4 text-sm text-gray-900">
                     <button
@@ -224,8 +223,7 @@ const ContainerList: React.FC = () => {
                 </tr>
               ) : (
                 <tr className="hover:bg-gray-50">
-                  {/* RUNNING 상태가 아닌 경우 */}
-                  <td colSpan={1} className="py-2 px-4 text-sm text-gray-900">
+                  <td className="py-2 px-4 text-sm text-gray-900">
                     {container.id}
                   </td>
                   <td

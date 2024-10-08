@@ -1,27 +1,27 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Loading = () => {
-  const [progress, setProgress] = useState(0);
+  const [position, setPosition] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((oldProgress) => {
-        if (oldProgress === 100) {
-          return 0;
-        }
-        return Math.min(oldProgress + 1, 100);
-      });
-    }, 50);
+    const animate = () => {
+      setPosition((prevPosition) => (prevPosition + 2) % 100);
+    };
 
-    return () => clearInterval(interval);
+    const intervalId = setInterval(animate, 20);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
-    <div className="m-x-10 w-full max-w-md mx-auto bg-gray-300 rounded">
-      <div className="relative h-3 w-full">
-        <div className="absolute left-0 w-8 h-full bg-black transform transition-all duration-300 ease-in-out rounded"></div>
-      </div>
+    <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div
+        className="h-full w-12 bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+        style={{
+          transform: `translateX(${position}%)`,
+          transition: "transform 0.2s linear",
+        }}
+      />
     </div>
   );
 };

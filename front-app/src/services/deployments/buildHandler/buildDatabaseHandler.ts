@@ -5,6 +5,7 @@ import { useImageStore } from "../../../stores/imageStore";
 import { DeployImageInfo } from "../../../stores/imageStore";
 import { DeployContainerInfo } from "../../../stores/containerStore";
 import { DeployStatus } from "../../../types/deploy";
+import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils";
 
 export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
   const { senderId, instance } = dbCreate;
@@ -148,6 +149,7 @@ async function handleSuccessfulContainerStart(
 
       //pgrok 생성 되고 나서
       updateContainerInfo(id, newContainer);
+      checkAndUpdateContainerMonitoring();
       window.electronAPI.startLogStream(container.Id);
       break;
     default:
