@@ -1,6 +1,7 @@
 import React from "react";
 import { DeployImageInfo, useImageStore } from "../../stores/imageStore";
-
+import { DeployStatus } from "../../types/deploy";
+import { ImSpinner8 } from "react-icons/im";
 const ImageList: React.FC = () => {
   const dockerImages = useImageStore((state) => state.images);
 
@@ -58,17 +59,40 @@ const ImageList: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
             {dockerImages.map((image: DeployImageInfo) => (
-              <tr key={image.id} className="hover:bg-gray-50">
-                <td className={tableBody}>{image.id || "N/A"}</td>
-                <td className={tableBody}>
-                  {image.RepoTags?.[0]?.split(":")[1] || "N/A"}
-                </td>
-                <td className={tableBody}>{image.imageId?.slice(7, 19)}</td>
-                <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
-                  {formatCreatedTime(image.Created)}
-                </td>
-                <td className={tableBody}>{formatSize(image.Size)}</td>
-              </tr>
+              <React.Fragment key={image.id}>
+                {/* image.status 값에 따라 다른 섹션으로 나머지 항목 렌더링 */}
+                {image.status === DeployStatus.RUNNING ? (
+                  <tr className="hover:bg-gray-50">
+                    <td className={tableBody}>{image.id || "N/A"}</td>
+                    <td className={tableBody}>
+                      {image.RepoTags?.[0]?.split(":")[1] || "N/A"}
+                    </td>
+                    <td className={tableBody}>{image.imageId?.slice(7, 19)}</td>
+                    <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
+                      {formatCreatedTime(image.Created)}
+                    </td>
+                    <td className={tableBody}>{formatSize(image.Size)}</td>
+                  </tr>
+                ) : (
+                  <tr className="hover:bg-gray-50">
+                    <td colSpan={1} className={tableBody}>
+                      {image.id}
+                    </td>
+                    <td
+                      colSpan={4}
+                      className="py-2 px-4 text-xs text-gray-900 text-center align-middle"
+                    >
+                      <div className="flex justify-center items-center">
+                        <ImSpinner8
+                          className="animate-spin-slow mr-1.5 mt-0.5"
+                          color="#757575"
+                          size={10}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -8,7 +8,9 @@ import { DeployStatus } from "../../../types/deploy";
 
 export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
   const { senderId, instance } = dbCreate;
-  const { getContainerById, removeContainer } = useContainerStore.getState();
+  const { getContainerById, removeContainer, updateContainerInfo } =
+    useContainerStore.getState();
+  const { updateImageInfo, removeImage } = useImageStore.getState();
   const id = `${instance.serviceType}-${instance.databaseId}`;
   const dbImageName = `${instance.dockerImageName}:${
     instance.dockerImageTag || "latest"
@@ -23,7 +25,10 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
       if (existingContainerId) {
         try {
           await stopAndRemoveExistingContainer(existingContainerId);
-          removeContainer(existingContainerId);
+          updateImageInfo(id, { status: DeployStatus.DELETED });
+          updateContainerInfo(id, { status: DeployStatus.DELETED });
+          removeImage(id);
+          removeContainer(id);
           console.log(`기존 컨테이너 삭제 완료, ID: ${existingContainerId}`);
         } catch (error) {
           console.error(`기존 배포 삭제 중 오류 발생: ${error}`);
@@ -51,6 +56,8 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
     }
   } catch (error) {
     console.error("Error during database build process:", error);
+    updateImageInfo(id, { status: DeployStatus.ERROR });
+    updateContainerInfo(id, { status: DeployStatus.ERROR });
   }
 }
 
