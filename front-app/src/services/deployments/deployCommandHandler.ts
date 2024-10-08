@@ -12,6 +12,7 @@ export async function handleContainerCommand(
   const id = serviceId;
   const containerId = getContainerIdById(serviceId);
   const container = getContainerById(serviceId);
+  console.log(`${command} : ${serviceId} command will start`);
 
   if (!containerId || !container) {
     console.error(`No container or deployment found for ${serviceId}`);
@@ -24,10 +25,15 @@ export async function handleContainerCommand(
     switch (command) {
       case "START":
         {
-          console.log(`Starting container: ${containerId}`);
           const { success } = await window.electronAPI.restartContainer(
             containerId
           );
+
+          if (container.status === DeployStatus.RUNNING) {
+            console.log(`${serviceId} already running`);
+            return;
+          }
+
           if (success) {
             //Stats 시작
             window.electronAPI.startContainerStats([containerId]);
@@ -52,11 +58,16 @@ export async function handleContainerCommand(
 
       case "STOP":
         {
-          console.log(`Stopping container: ${containerId}`);
+          if (container.status === DeployStatus.STOPPED) {
+            console.log(`${serviceId} already running`);
+            return;
+          }
+
           await window.electronAPI.stopContainerStats([containerId]);
           const { success } = await window.electronAPI.stopContainer(
             containerId
           );
+
           if (success) {
             sendInstanceUpdate(
               container.serviceType,
@@ -75,7 +86,11 @@ export async function handleContainerCommand(
 
       case "RESTART":
         {
-          console.log(`Restarting container: ${containerId}`);
+          if (container.status === DeployStatus.RUNNING) {
+            console.log(`${serviceId} already running`);
+            return;
+          }
+
           const { success } = await window.electronAPI.restartContainer(
             containerId
           );
@@ -99,7 +114,11 @@ export async function handleContainerCommand(
 
       case "DELETE":
         {
-          console.log(`Deleting container: ${containerId}`);
+          if (container.status === DeployStatus.DELETED) {
+            console.log(`${serviceId} already DELETED`);
+            return;
+          }
+
           const { success } = await window.electronAPI.removeContainer(
             containerId
           );
