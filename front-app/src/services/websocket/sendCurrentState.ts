@@ -25,13 +25,13 @@ export const sendCurrentState = async (userId: string) => {
       const deployment = getContainerByContainerId(containerId);
       const deployId = deployment?.deployId; // deployment가 없는 경우 안전하게 처리
 
+      console.log("ping확인용", deployment);
+
       if (deployment !== undefined) {
         deployments.push({
           id: deployId,
           serviceType: deployment.serviceType,
-          status: runningContainers.some((c) => c.id === containerId)
-            ? "RUNNING"
-            : "STOPPED",
+          status: deployment.status,
           useMemory: stats.memory_usage,
           useCPU: stats.cpu_usage,
           runningTime: stats.running_time,
