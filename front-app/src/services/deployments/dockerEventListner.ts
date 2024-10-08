@@ -1,7 +1,7 @@
 import { useAuthStore } from "../../stores/authStore";
 import { useAppStore } from "../../stores/appStatusStore";
 import { useContainerStore } from "../../stores/containerStore";
-
+import { DeployStatus } from "../../types/deploy";
 export interface DockerEvent {
   Type: string;
   Action: string;

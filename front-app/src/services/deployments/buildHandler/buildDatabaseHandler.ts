@@ -4,6 +4,7 @@ import { useContainerStore } from "../../../stores/containerStore";
 import { useImageStore } from "../../../stores/imageStore";
 import { DeployImageInfo } from "../../../stores/imageStore";
 import { DeployContainerInfo } from "../../../stores/containerStore";
+import { DeployStatus } from "../../../types/deploy";
 
 export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
   const { senderId, instance } = dbCreate;

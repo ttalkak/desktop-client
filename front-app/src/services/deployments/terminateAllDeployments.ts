@@ -3,6 +3,7 @@ import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { useAppStore } from "../../stores/appStatusStore";
 import { useContainerStore } from "../../stores/containerStore";
 import { useImageStore } from "../../stores/imageStore";
+import { DeployStatus } from "../../types/deploy";
 
 export async function terminateAndRemoveContainersAndImages() {
   const { containers, removeAllContainers, updateContainerInfo } =

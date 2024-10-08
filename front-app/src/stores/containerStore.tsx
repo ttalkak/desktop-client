@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { DeployStatus } from "../types/deploy";
 
 export interface Port {
   internal: number;

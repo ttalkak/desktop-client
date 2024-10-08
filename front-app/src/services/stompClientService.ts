@@ -12,6 +12,7 @@ import { handleDockerBuild } from "./deployments/buildHandler/buildDeployHandler
 import { handleDatabaseBuild } from "./deployments/buildHandler/buildDatabaseHandler";
 import { useContainerStore } from "../stores/containerStore";
 import { useImageStore } from "../stores/imageStore";
+import { DeployStatus } from "../types/deploy";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;

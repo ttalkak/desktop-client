@@ -1,5 +1,6 @@
 import { sendInstanceUpdate } from "../websocket/sendUpdateUtils";
 import { useContainerStore } from "../../stores/containerStore";
+import { DeployStatus } from "../../types/deploy";
 
 export async function handleContainerCommand(
   serviceId: string,

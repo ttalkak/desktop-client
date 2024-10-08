@@ -6,7 +6,7 @@ import {
   DeployContainerInfo,
   useContainerStore,
 } from "../../../stores/containerStore.tsx";
-
+import { DeployStatus } from "../../../types/deploy.ts";
 export const PGROK_URL = "pgrok.ttalkak.com:2222";
 
 // 공통 빌드 및 배포 처리 함수

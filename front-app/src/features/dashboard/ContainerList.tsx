@@ -4,7 +4,7 @@ import {
   DeployContainerInfo,
   useContainerStore,
 } from "../../stores/containerStore";
-
+import { DeployStatus } from "../../types/deploy";
 const MAX_LOGS_PER_CONTAINER = 1000;
 const LOG_CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
 const LOG_RETENTION_PERIOD = 24 * 60 * 60 * 1000; // 24 hours
@@ -153,6 +153,8 @@ const ContainerList: React.FC = () => {
         return { color: "bg-red-400", text: "STOPPED" };
       case DeployStatus.NA:
         return { color: "bg-yellow-400", text: "N/A" };
+      case DeployStatus.WAITING:
+        return { color: "bg-yellow-400 animate-pulse", text: "ERROR" };
       case DeployStatus.ERROR:
         return { color: "bg-red-400 animate-pulse", text: "ERROR" };
       default:
@@ -168,15 +170,14 @@ const ContainerList: React.FC = () => {
         const isSelected = selectedContainerIds.includes(containerId || "");
 
         const StatusComponent = ({ status }: { status?: DeployStatus }) => {
-          // status가 없으면 N/A로 처리
           const { color, text } = getStatusElement(status || DeployStatus.NA);
-
           return (
-            <td className="py-2 px-4 text-sm text-gray-900">
-              <div
-                className={`inline-block w-3 h-3 rounded-full mr-2 ${color}`}
-              >
-                {text}
+            <td className="py-2 text-sm text-gray-900">
+              <div className="flex justify-center items-center">
+                <div
+                  className={`inline-block w-3 h-3 rounded-full mr-1 ${color}`}
+                ></div>
+                <div>{text}</div>
               </div>
             </td>
           );
