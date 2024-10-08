@@ -199,20 +199,20 @@ const ContainerList: React.FC = () => {
     [selectedContainerIds, logData, toggleContainerSelection]
   );
 
-  if (dockerContainers.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-8">
-        <p className="text-center text-gray-700">
-          현재 배포중인 서비스가 없습니다
-        </p>
-        <div className="mt-4 flex text-gray-400 text-sm ">
-          <div className="text-gray-400 text-sm ">
-            서비스 할당을 기다려주세요
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (dockerContainers.length === 0) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center mt-8">
+  //       <p className="text-center text-gray-700">
+  //         현재 배포중인 서비스가 없습니다
+  //       </p>
+  //       <div className="mt-4 flex text-gray-400 text-sm ">
+  //         <div className="text-gray-400 text-sm ">
+  //           서비스 할당을 기다려주세요
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex flex-col h-[calc(100vh-200px)]">

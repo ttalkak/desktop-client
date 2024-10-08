@@ -21,7 +21,7 @@ export const startDocker = async () => {
     await waitForDockerToStart();
     console.log("Docker started successfully");
   } catch (error) {
-    alert("Docker Desktop을 설치해주세요");
+    console.warn("doceker start fail");
   }
 };
 
