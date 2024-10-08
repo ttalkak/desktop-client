@@ -11,10 +11,9 @@ const Home: React.FC = () => {
 
   const getUrl = (deployment: DeployContainerInfo) => {
     let subdomain = deployment.subdomainName;
-    if (deployment.serviceType === "BACKEND") {
-      subdomain = `api_${subdomain}`;
-    } else if (deployment.serviceType === "DATABASE") {
-      return `${deployment.containerName}.ttalkak.com`;
+    if (deployment.serviceType === "DATABASE") {
+      subdomain = deployment.containerName;
+      return `database_${subdomain}`;
     }
     return `http://${subdomain}.ttalkak.com`;
   };
@@ -38,6 +37,7 @@ const Home: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-300">
               <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
                 <tr>
+                  <th className="p-1 ">ServiceId</th>
                   <th className="p-1 ">Name</th>
                   <th className="p-1 text-left">URL</th>
                 </tr>
@@ -45,8 +45,9 @@ const Home: React.FC = () => {
               <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
                 {Object.entries(containers).map(([containerId, deployment]) => (
                   <tr key={containerId} className="hover:bg-gray-50">
+                    <td className={`${tableBody} min-w-32`}>{deployment.id}</td>
                     <td className={`${tableBody} min-w-32`}>
-                      {deployment.subdomainName || deployment.deployId}
+                      {deployment.subdomainName || deployment.containerName}
                     </td>
                     <td className={`${tableBody} min-w-md break-words`}>
                       <a

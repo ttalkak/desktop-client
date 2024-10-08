@@ -103,7 +103,7 @@ async function completeDeployment(
       senderId: senderId,
       deployId: instance.deploymentId,
       serviceType: instance.serviceType,
-      containerName: instance.containerName,
+      containerName: instance.subdomainName,
       imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
       status: "RUNNING",
       containerId: container.Id,

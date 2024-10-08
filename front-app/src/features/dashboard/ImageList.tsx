@@ -49,7 +49,7 @@ const ImageList: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-300">
           <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
             <tr>
-              <th className="p-1">Name</th>
+              <th className="p-1">ServiceId</th>
               <th className="p-1">Tag</th>
               <th className="p-1">ID</th>
               <th className="p-1">Created</th>
@@ -59,9 +59,7 @@ const ImageList: React.FC = () => {
           <tbody className="divide-y divide-gray-200 bg-white overflow-y-auto">
             {dockerImages.map((image: DeployImageInfo) => (
               <tr key={image.id} className="hover:bg-gray-50">
-                <td className={tableBody}>
-                  {image.RepoTags?.[0]?.split(":")[0] || "N/A"}
-                </td>
+                <td className={tableBody}>{image.id || "N/A"}</td>
                 <td className={tableBody}>
                   {image.RepoTags?.[0]?.split(":")[1] || "N/A"}
                 </td>

@@ -50,6 +50,8 @@ async function runPgrok(
 
   // 로그 스트림 수신
   child.stdout?.on("data", (data) => {
+    data.toString();
+
     console.log(data.toString()); // 콘솔에 로그 출력
     win?.webContents.send("pgrok-log", data.toString()); // 렌더러 프로세스로 로그 전송
   });

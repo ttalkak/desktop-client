@@ -46,6 +46,7 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
     if (success && container?.Id) {
       handleSuccessfulContainerStart(instance, image, container, senderId, id);
     } else if (error) {
+      console.log(error);
     }
   } catch (error) {
     console.error("Error during database build process:", error);
@@ -61,7 +62,7 @@ async function stopAndRemoveExistingContainer(containerId: string) {
 
 // 새로운 컨테이너 시작 성공 시 처리 함수
 async function handleSuccessfulContainerStart(
-  instance: any,
+  instance: DatabaseCommand,
   image: DockerImage,
   container: DockerContainer,
   senderId: string,
@@ -79,6 +80,23 @@ async function handleSuccessfulContainerStart(
     Size: image.Size,
     Containers: image.Containers,
     created: image.Created,
+  };
+  //container 정보 업데이트
+  const newContainer: Omit<DeployContainerInfo, "id"> = {
+    senderId: senderId,
+    deployId: instance.databaseId,
+    serviceType: instance.serviceType,
+    containerName: `${instance.dockerImageName}:${instance.dockerImageTag}`,
+    imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
+    status: "RUNNING",
+    containerId: container.Id,
+    ports: [
+      {
+        internal: instance.inboundPort,
+        external: instance.outboundPort,
+      },
+    ],
+    created: container.Created,
   };
   updateImageInfo(id, newImage);
   // 상태 업데이트
@@ -120,22 +138,6 @@ async function handleSuccessfulContainerStart(
         "RUNNING"
       );
 
-      const newContainer: Omit<DeployContainerInfo, "id"> = {
-        senderId: senderId,
-        deployId: instance.databaseId,
-        serviceType: instance.serviceType,
-        containerName: instance.containerName,
-        imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
-        status: "RUNNING",
-        containerId: container.Id,
-        ports: [
-          {
-            internal: instance.inboundPort,
-            external: instance.outboundPort,
-          },
-        ],
-        created: container.Created,
-      };
       //pgrok 생성 되고 나서
       updateContainerInfo(id, newContainer);
       window.electronAPI.startLogStream(container.Id);
