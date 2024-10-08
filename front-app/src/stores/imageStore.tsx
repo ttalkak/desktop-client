@@ -3,21 +3,24 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export interface DeployImageInfo {
   id: string;
-  imageId: string;
+  imageId?: string;
   serviceType: string;
   deployId: number;
   RepoTags?: string[];
   Created?: number;
+  status?: DeployStatus;
   Size?: number;
   Containers?: number;
-  created?: number;
 }
 
 // 이미지 저장소 타입 정의
 interface ImageStore {
   images: DeployImageInfo[];
   createImageEntry: (serviceType: string, deployId: number) => string;
-  updateImageInfo: (id: string, imageInfo: Omit<DeployImageInfo, "id">) => void;
+  updateImageInfo: (
+    id: string,
+    imageInfo: Omit<DeployImageInfo, "id" | "serviceType" | "deployId">
+  ) => void;
   removeImage: (id: string) => void;
   removeAllImages: () => void;
   getImageById: (id: string) => DeployImageInfo | undefined;

@@ -4,34 +4,24 @@ import { checkDockerStatus } from "./deployments/dockerUtils";
 import { startDocker } from "./deployments/dockerUtils";
 import { registerDockerEventHandlers } from "./deployments/dockerEventListner";
 import { connectWebSocket } from "./stompService";
-//위치 고민해보기
 import { startContainerStatsMonitoring } from "./monitoring/healthCheckPingUtils";
 import { useCpuStore } from "../stores/cpuStore";
-import { axiosInstance } from "../axios/constants";
 import { useAuthStore } from "../stores/authStore";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
   const setOsType = useCpuStore.getState().setOsType;
-  const trueUserId = await useAuthStore.getState().userSettings?.userId;
 
-  if (!trueUserId) {
-    console.error("유효한 사용자 ID가 없습니다.");
+  const { userSettings } = useAuthStore.getState();
+  const address = userSettings?.address;
+
+  if (!address) {
+    alert("Metamask 지갑정보를 확인하세요");
     return;
   }
 
   try {
-    const response = await axiosInstance.get("/payment/signature");
-    console.log("test", response);
-
-    const { userId, address, hasKey } = response.data;
-
-    if (!hasKey || !address || userId === trueUserId) {
-      alert("MetaMask 지갑 정보를 확인하세요");
-      return;
-    }
-
     const OsType = await window.electronAPI.getOsType();
     setOsType(OsType);
     console.log("1. ServiceUtil: Starting service");

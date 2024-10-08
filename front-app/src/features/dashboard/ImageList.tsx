@@ -63,7 +63,7 @@ const ImageList: React.FC = () => {
                 <td className={tableBody}>
                   {image.RepoTags?.[0]?.split(":")[1] || "N/A"}
                 </td>
-                <td className={tableBody}>{image.imageId.slice(7, 19)}</td>
+                <td className={tableBody}>{image.imageId?.slice(7, 19)}</td>
                 <td className="py-2 px-4 text-xs text-gray-900 align-middle text-center">
                   {formatCreatedTime(image.Created)}
                 </td>

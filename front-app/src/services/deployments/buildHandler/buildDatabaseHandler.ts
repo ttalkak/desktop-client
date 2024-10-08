@@ -79,7 +79,7 @@ async function handleSuccessfulContainerStart(
     Created: image.Created,
     Size: image.Size,
     Containers: image.Containers,
-    created: image.Created,
+    status: DeployStatus.RUNNING,
   };
   //container 정보 업데이트
   const newContainer: Omit<DeployContainerInfo, "id"> = {
@@ -88,7 +88,7 @@ async function handleSuccessfulContainerStart(
     serviceType: instance.serviceType,
     containerName: `${instance.dockerImageName}:${instance.dockerImageTag}`,
     imageTag: image.RepoTags ? image.RepoTags[0] : undefined,
-    status: "RUNNING",
+    status: DeployStatus.RUNNING,
     containerId: container.Id,
     ports: [
       {

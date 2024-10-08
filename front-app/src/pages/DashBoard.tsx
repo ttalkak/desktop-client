@@ -25,7 +25,7 @@ const DashBoard: React.FC = () => {
   ]);
 
   return (
-    <div className="card h-full items-center overflow-hidden">
+    <div className="card h-full items-center overflow-hidden custom-scrollbar">
       <div className="h-full w-full">
         <Tabs defaultValue="account">
           <div className="flex justify-between w-full items-end pb-2">
@@ -37,7 +37,7 @@ const DashBoard: React.FC = () => {
               {`${containerCount} / ${userSettings?.maxCompute || 0}`}
             </div>
           </div>
-          <div className="justify-center h-full">
+          <div className="overflow-auto justify-center h-full">
             <TabsContent value="account">
               <ContainerList />
             </TabsContent>

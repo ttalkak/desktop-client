@@ -15,8 +15,9 @@ import { useImageStore } from "../stores/imageStore";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
-const { createContainerEntry } = useContainerStore.getState();
-const { createImageEntry } = useImageStore.getState();
+const { createContainerEntry, updateContainerInfo } =
+  useContainerStore.getState();
+const { createImageEntry, updateImageInfo } = useImageStore.getState();
 export function setupClientHandlers(userId: string): void {
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
@@ -31,6 +32,7 @@ export function setupClientHandlers(userId: string): void {
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
         const deployCreate: DeploymentCreateEvent = JSON.parse(message.body);
+        const serviceId = `${deployCreate.instance.serviceType}-${deployCreate.instance.deploymentId}`;
         createImageEntry(
           deployCreate.instance.serviceType,
           deployCreate.instance.deploymentId
@@ -39,6 +41,8 @@ export function setupClientHandlers(userId: string): void {
           deployCreate.instance.serviceType,
           deployCreate.instance.deploymentId
         );
+        updateImageInfo(serviceId, { status: DeployStatus.WAITING });
+        updateContainerInfo(serviceId, { status: DeployStatus.WAITING });
         console.log(`생성요청 도착`, deployCreate);
         await handleDockerBuild(deployCreate);
       }
@@ -49,6 +53,7 @@ export function setupClientHandlers(userId: string): void {
       `/sub/database-create/${userId}`,
       async (message: Message) => {
         const dbCreate: DatabaseCreateEvent = JSON.parse(message.body);
+        const serviceId = `${dbCreate.instance.serviceType}-${dbCreate.instance.databaseId}`;
         createImageEntry(
           dbCreate.instance.serviceType,
           dbCreate.instance.databaseId
@@ -57,6 +62,8 @@ export function setupClientHandlers(userId: string): void {
           dbCreate.instance.serviceType,
           dbCreate.instance.databaseId
         );
+        updateImageInfo(serviceId, { status: DeployStatus.WAITING });
+        updateContainerInfo(serviceId, { status: DeployStatus.WAITING });
         console.log(`생성요청 도착`, dbCreate);
         await handleDatabaseBuild(dbCreate);
       }
@@ -69,6 +76,7 @@ export function setupClientHandlers(userId: string): void {
         try {
           const { serviceType, id, command } = JSON.parse(message.body);
           const serviceId = `${serviceType}-${id}`;
+          updateContainerInfo(serviceId, { status: DeployStatus.WAITING });
           handleContainerCommand(serviceId, command); // 컨테이너 명령 처리
         } catch (error) {
           console.error("Error processing compute update message:", error);

@@ -3,6 +3,15 @@ export {};
 
 // Docker Related Types
 declare global {
+  enum DeployStatus {
+    NA = "NA",
+    WAITING = "WAITING",
+    RUNNING = "RUNNING",
+    STOPPED = "STOPPED",
+    ERROR = "ERROR",
+    DELETED = "DELETED",
+  }
+
   //OsType
   type OsType = "WINDOWS" | "MACOS" | "LINUX" | "UNKNOWN";
   // 배포 상태 저장용 선언, database, front, back은 serviceType으로 구분함

@@ -13,7 +13,7 @@ export interface DeployContainerInfo {
   serviceType?: string;
   containerName?: string;
   imageTag?: string;
-  status?: string;
+  status?: DeployStatus;
   containerId?: string;
   ports?: Port[];
   subdomainName?: string;

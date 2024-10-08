@@ -31,7 +31,7 @@ export async function handleContainerCommand(
             //Stats 시작
             window.electronAPI.startContainerStats([containerId]);
             //store 업데이트
-            updateContainerInfo(id, { status: "RUNNING" });
+            updateContainerInfo(id, { status: DeployStatus.RUNNING });
             //상태 전송
             if (container && container.deployId) {
               sendInstanceUpdate(
@@ -44,7 +44,7 @@ export async function handleContainerCommand(
               );
             }
           } else {
-            updateContainerInfo(id, { status: "ERROR" });
+            updateContainerInfo(id, { status: DeployStatus.ERROR });
           }
         }
         break;
@@ -65,9 +65,9 @@ export async function handleContainerCommand(
               outboundPort,
               `STOPPED`
             );
-            updateContainerInfo(id, { status: "STOPPED" });
+            updateContainerInfo(id, { status: DeployStatus.STOPPED });
           } else {
-            updateContainerInfo(id, { status: "ERROR" });
+            updateContainerInfo(id, { status: DeployStatus.ERROR });
           }
         }
         break;
@@ -79,7 +79,7 @@ export async function handleContainerCommand(
             containerId
           );
           if (success) {
-            updateContainerInfo(id, { status: "RUNNING" });
+            updateContainerInfo(id, { status: DeployStatus.RUNNING });
 
             window.electronAPI.startContainerStats([containerId]);
             sendInstanceUpdate(
@@ -91,7 +91,7 @@ export async function handleContainerCommand(
               "RUNNING"
             );
           } else {
-            updateContainerInfo(id, { status: "ERROR" });
+            updateContainerInfo(id, { status: DeployStatus.ERROR });
           }
         }
         break;
@@ -114,7 +114,7 @@ export async function handleContainerCommand(
               outboundPort,
               "DELETED"
             );
-            updateContainerInfo(id, { status: "DELETED" });
+            updateContainerInfo(id, { status: DeployStatus.DELETED });
           }
         }
         break;

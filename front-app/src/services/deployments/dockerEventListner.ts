@@ -57,14 +57,14 @@ export const registerDockerEventHandlers = () => {
     try {
       switch (event.Action) {
         case "create":
-          updateContainerInfo(container.id, { status: "created" });
+          updateContainerInfo(container.id, { status: DeployStatus.WAITING });
           break;
         case "start":
-          updateContainerInfo(container.id, { status: "running" });
+          updateContainerInfo(container.id, { status: DeployStatus.RUNNING });
           break;
         case "stop":
         case "die":
-          updateContainerInfo(container.id, { status: "stopped" });
+          updateContainerInfo(container.id, { status: DeployStatus.STOPPED });
           if (event.Action === "die") {
             await window.electronAPI.stopContainerStats([event.Actor.ID]);
           }

@@ -115,7 +115,7 @@ const ContainerList: React.FC = () => {
       <ul className="list-none p-0">
         {ports.map((port, index) => (
           <li key={index}>
-            {port.internal} : {port.external || "N/A"}
+            {port.internal} : {port.external || "NA"}
           </li>
         ))}
       </ul>
@@ -145,12 +145,42 @@ const ContainerList: React.FC = () => {
     );
   };
 
+  const getStatusElement = (status: DeployStatus) => {
+    switch (status) {
+      case DeployStatus.RUNNING:
+        return { color: "bg-green-400", text: "RUNNING" };
+      case DeployStatus.STOPPED:
+        return { color: "bg-red-400", text: "STOPPED" };
+      case DeployStatus.NA:
+        return { color: "bg-yellow-400", text: "N/A" };
+      case DeployStatus.ERROR:
+        return { color: "bg-red-400 animate-pulse", text: "ERROR" };
+      default:
+        return { color: "bg-gray-400", text: "UNKNOWN" };
+    }
+  };
+
   const ContainerRow = useMemo(
     () =>
       ({ container }: { container: DeployContainerInfo }) => {
-        const { id, containerId, containerName, status, ports, created } =
+        const { id, containerId, status, containerName, ports, created } =
           container;
         const isSelected = selectedContainerIds.includes(containerId || "");
+
+        const StatusComponent = ({ status }: { status?: DeployStatus }) => {
+          // status가 없으면 N/A로 처리
+          const { color, text } = getStatusElement(status || DeployStatus.NA);
+
+          return (
+            <td className="py-2 px-4 text-sm text-gray-900">
+              <div
+                className={`inline-block w-3 h-3 rounded-full mr-2 ${color}`}
+              >
+                {text}
+              </div>
+            </td>
+          );
+        };
 
         return (
           <>
@@ -168,9 +198,7 @@ const ContainerList: React.FC = () => {
               <td className="py-2 px-4 text-sm text-gray-900">
                 {renderPorts(ports)}
               </td>
-              <td className="py-2 px-4 text-sm text-gray-900">
-                {status || "N/A"}
-              </td>
+              {StatusComponent({ status: status })}
               <td className="py-2 px-4 text-sm text-gray-900">
                 <button
                   onClick={() =>

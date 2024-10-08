@@ -35,6 +35,12 @@ export const getUserSettings = async () => {
     const response = await axiosInstance.get("/compute/status");
     const { success, data } = response.data;
 
+    let checkadress: boolean = false;
+    const address = data.address;
+    if (address && address.trim !== "") {
+      checkadress = true;
+    }
+    console.log(checkadress);
     if (success) {
       const userSettings = {
         userId: data.userId,
@@ -43,6 +49,7 @@ export const getUserSettings = async () => {
         maxCompute: data.maxCompute,
         availablePortStart: data.availablePortStart,
         availablePortEnd: data.availablePortEnd,
+        address: checkadress,
       };
 
       setUserSettings(userSettings);
