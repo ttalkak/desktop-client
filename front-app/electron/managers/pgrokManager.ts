@@ -13,13 +13,14 @@ export function setMainWindow(mainWindow: BrowserWindow) {
 }
 
 const pgrokProcesses: { [key: string]: ChildProcess } = {};
+const databaseProcesses: { [key: string]: ChildProcess } = {};
 
 // pgrok 실행 함수
 async function runPgrok(
   remoteAddr: string,
   forwardAddr: string,
   token: string,
-  deploymentId: number,
+  deploymentId: number | 0,
   domain?: string
 ): Promise<void> {
   const ttalkakDirectory = getTtalkakDirectory();
@@ -37,14 +38,16 @@ async function runPgrok(
     command = `pgrok.exe tcp --remote-addr ${remoteAddr} --forward-addr ${cleanedForwardAddr} --token ${token}`;
   }
 
-  console.log(command);
-
   // 명령 프롬프트를 사용하여 pgrok 실행
   const child = execFile(
     "cmd.exe",
     ["/c", command],
     { cwd: path.dirname(pgrokExePath) } // 명령어 실행 경로 설정
   );
+
+  if (!domain) {
+    databaseProcesses[deploymentId] = child;
+  }
 
   pgrokProcesses[deploymentId] = child;
 
@@ -99,13 +102,100 @@ function stopPgrok(deploymentId: number): Promise<void> {
   });
 }
 
+//pgrok 종료 함수-개별
+function stopdatabasePgrok(databaseId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const processToStop = databaseProcesses[databaseId];
+    if (processToStop) {
+      processToStop.kill(); // 프로세스 종료 시도
+      win?.webContents.send(
+        "pgrok-log",
+        `pgrok process with deploymentId ${databaseId} killed`
+      );
+
+      // 프로세스 종료 이벤트 처리
+      processToStop.on("close", (code) => {
+        delete pgrokProcesses[databaseId]; // 종료된 프로세스 삭제
+        if (code === 0) {
+          resolve(); // 정상 종료 시 resolve
+        } else {
+          reject(new Error(`Process exited with code ${code}`)); // 비정상 종료 시 reject
+        }
+      });
+    } else {
+      win?.webContents.send(
+        "pgrok-log",
+        `No pgrok process running with databaseId ${databaseId}`
+      );
+      reject(
+        new Error(`No pgrok process running with databaseId ${databaseId}`)
+      );
+    }
+  });
+}
+
 //pgrok 전체 종료 함수
+// export function stopAllPgrokProcesses(): Promise<void> {
+//   return new Promise((resolve, reject) => {
+//     const processIds = Object.keys(pgrokProcesses);
+
+//     if (processIds.length === 0) {
+//       win?.webContents.send("pgrok-log", "No running pgrok processes to stop");
+//       resolve(); // 실행 중인 프로세스가 없을 때 즉시 resolve
+//       return;
+//     }
+
+//     let completedProcesses = 0;
+//     let hasError = false;
+
+//     processIds.forEach((deploymentId) => {
+//       const processToStop = pgrokProcesses[deploymentId];
+
+//       if (processToStop) {
+//         processToStop.kill(); // 각 프로세스를 종료
+//         win?.webContents.send(
+//           "pgrok-log",
+//           `pgrok process with deploymentId ${deploymentId} killed`
+//         );
+
+//         // 프로세스 종료 이벤트 처리
+//         processToStop.on("close", (code) => {
+//           delete pgrokProcesses[deploymentId]; // 종료된 프로세스 삭제
+//           if (code !== 0) {
+//             hasError = true;
+//             win?.webContents.send(
+//               "pgrok-log",
+//               `pgrok process with deploymentId ${deploymentId} exited with code ${code}`
+//             );
+//           }
+
+//           completedProcesses++;
+//           if (completedProcesses === processIds.length) {
+//             if (hasError) {
+//               reject(new Error("Some pgrok processes failed to stop"));
+//             } else {
+//               win?.webContents.send(
+//                 "pgrok-log",
+//                 "All pgrok processes stopped successfully"
+//               );
+//               resolve(); // 모든 프로세스가 정상적으로 종료된 경우 resolve
+//             }
+//           }
+//         });
+//       }
+//     });
+//   });
+
+// 모든 pgrok 및 database 프로세스 종료 함수
 export function stopAllPgrokProcesses(): Promise<void> {
   return new Promise((resolve, reject) => {
-    const processIds = Object.keys(pgrokProcesses);
+    const pgrokProcessIds = Object.keys(pgrokProcesses);
+    const databaseProcessIds = Object.keys(databaseProcesses);
 
-    if (processIds.length === 0) {
-      win?.webContents.send("pgrok-log", "No running pgrok processes to stop");
+    const allProcessIds = [...pgrokProcessIds, ...databaseProcessIds];
+
+    if (allProcessIds.length === 0) {
+      win?.webContents.send("log", "No running processes to stop");
       resolve(); // 실행 중인 프로세스가 없을 때 즉시 resolve
       return;
     }
@@ -113,41 +203,61 @@ export function stopAllPgrokProcesses(): Promise<void> {
     let completedProcesses = 0;
     let hasError = false;
 
-    processIds.forEach((deploymentId) => {
-      const processToStop = pgrokProcesses[deploymentId];
-
+    // 각 프로세스를 종료하는 공통 로직
+    const stopProcess = (
+      processToStop: ChildProcess,
+      deploymentId: string,
+      type: string
+    ) => {
       if (processToStop) {
         processToStop.kill(); // 각 프로세스를 종료
         win?.webContents.send(
-          "pgrok-log",
-          `pgrok process with deploymentId ${deploymentId} killed`
+          "log",
+          `${type} process with deploymentId ${deploymentId} killed`
         );
 
         // 프로세스 종료 이벤트 처리
         processToStop.on("close", (code) => {
-          delete pgrokProcesses[deploymentId]; // 종료된 프로세스 삭제
+          if (type === "pgrok") {
+            delete pgrokProcesses[deploymentId]; // 종료된 프로세스 삭제
+          } else if (type === "database") {
+            delete databaseProcesses[deploymentId]; // 종료된 프로세스 삭제
+          }
+
           if (code !== 0) {
             hasError = true;
             win?.webContents.send(
-              "pgrok-log",
-              `pgrok process with deploymentId ${deploymentId} exited with code ${code}`
+              "log",
+              `${type} process with deploymentId ${deploymentId} exited with code ${code}`
             );
           }
 
           completedProcesses++;
-          if (completedProcesses === processIds.length) {
+          if (completedProcesses === allProcessIds.length) {
             if (hasError) {
-              reject(new Error("Some pgrok processes failed to stop"));
+              reject(new Error("Some processes failed to stop"));
             } else {
               win?.webContents.send(
-                "pgrok-log",
-                "All pgrok processes stopped successfully"
+                "log",
+                "All processes stopped successfully"
               );
               resolve(); // 모든 프로세스가 정상적으로 종료된 경우 resolve
             }
           }
         });
       }
+    };
+
+    // 모든 pgrok 프로세스 종료
+    pgrokProcessIds.forEach((deploymentId) => {
+      const processToStop = pgrokProcesses[deploymentId];
+      stopProcess(processToStop, deploymentId, "pgrok");
+    });
+
+    // 모든 database 프로세스 종료
+    databaseProcessIds.forEach((deploymentId) => {
+      const processToStop = databaseProcesses[deploymentId];
+      stopProcess(processToStop, deploymentId, "database");
     });
   });
 }
@@ -244,6 +354,16 @@ export function registerPgrokIpcHandlers() {
   ipcMain.handle("stop-pgrok", async (_, deploymentId: number) => {
     try {
       await stopPgrok(deploymentId);
+      return "pgrok stopped successfully";
+    } catch (error) {
+      return `pgrok failed to stop : ${error}`;
+    }
+  });
+
+  //개별 databasepgrok 종료함수
+  ipcMain.handle("stop-databse-pgrok", async (_, databaseId: number) => {
+    try {
+      await stopdatabasePgrok(databaseId);
       return "pgrok stopped successfully";
     } catch (error) {
       return `pgrok failed to stop : ${error}`;
