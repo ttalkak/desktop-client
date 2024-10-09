@@ -1,7 +1,7 @@
 import React from "react";
 import CpuStatusItem from "../features/home/CpuStatusItem";
 import PaymentStatusItem from "../features/home/PaymentStatusItem";
-import { FaExclamationCircle } from "react-icons/fa";
+import { FaSpinner } from "react-icons/fa";
 import {
   DeployContainerInfo,
   useContainerStore,
@@ -51,7 +51,12 @@ const Home: React.FC = () => {
                     <td className={`${tableBody} min-w-32`}>
                       <div className="flex items-center justify-center">
                         {deployment.status !== "RUNNING" && (
-                          <FaExclamationCircle className="text-yellow-500 mr-1" />
+                          <FaSpinner
+                            size={50}
+                            style={{
+                              animation: "spin 1s linear infinite",
+                            }}
+                          />
                         )}
                         <span>
                           {deployment.subdomainName || deployment.containerName}
@@ -61,7 +66,12 @@ const Home: React.FC = () => {
                     <td className={`${tableBody} min-w-md break-words`}>
                       <div className="flex items-center justify-center">
                         {deployment.status !== DeployStatus.RUNNING && (
-                          <FaExclamationCircle className="text-yellow-500 mr-1" />
+                          <FaSpinner
+                            size={50}
+                            style={{
+                              animation: "spin 1s linear infinite",
+                            }}
+                          />
                         )}
                         {deployment.status === DeployStatus.RUNNING ? (
                           <a
