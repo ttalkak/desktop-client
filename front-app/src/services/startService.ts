@@ -45,7 +45,6 @@ export const startService = async () => {
     await connectWebSocket();
     console.log("6. ServiceUtil: WebSocket connected");
 
-    setServiceStatus("running");
     startContainerStatsMonitoring();
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);

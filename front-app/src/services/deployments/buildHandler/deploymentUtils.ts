@@ -78,3 +78,10 @@ export async function prepareDeploymentContext(
 export function determineDeploymentType(instance: DeploymentCommand) {
   return instance.dockerFileScript && instance.dockerFileScript.trim() !== "";
 }
+
+// 기존 컨테이너 중지 및 삭제 처리 함수
+export async function stopAndRemoveExistingContainer(containerId: string) {
+  await window.electronAPI.stopContainerStats([containerId]);
+  await window.electronAPI.stopContainer(containerId);
+  await window.electronAPI.removeContainer(containerId);
+}

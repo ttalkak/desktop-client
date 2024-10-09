@@ -6,12 +6,13 @@ import { DeployImageInfo } from "../../../stores/imageStore";
 import { DeployContainerInfo } from "../../../stores/containerStore";
 import { DeployStatus } from "../../../types/deploy";
 import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils";
+import { stopAndRemoveExistingContainer } from "./deploymentUtils";
 
 export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
   const { senderId, instance } = dbCreate;
-  const { getContainerById, removeContainer, updateContainerInfo } =
+  const { getContainerById, updateContainerInfo } =
     useContainerStore.getState();
-  const { updateImageInfo, removeImage } = useImageStore.getState();
+  const { updateImageInfo } = useImageStore.getState();
   const id = `${instance.serviceType}-${instance.databaseId}`;
   const dbImageName = `${instance.dockerImageName}:${
     instance.dockerImageTag || "latest"
@@ -28,8 +29,6 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
           await stopAndRemoveExistingContainer(existingContainerId);
           updateImageInfo(id, { status: DeployStatus.DELETED });
           updateContainerInfo(id, { status: DeployStatus.DELETED });
-          removeImage(id);
-          removeContainer(id);
           console.log(`기존 컨테이너 삭제 완료, ID: ${existingContainerId}`);
         } catch (error) {
           console.error(`기존 배포 삭제 중 오류 발생: ${error}`);
@@ -60,13 +59,6 @@ export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
     updateImageInfo(id, { status: DeployStatus.ERROR });
     updateContainerInfo(id, { status: DeployStatus.ERROR });
   }
-}
-
-// 기존 컨테이너 중지 및 삭제 처리 함수
-async function stopAndRemoveExistingContainer(containerId: string) {
-  await window.electronAPI.stopContainerStats([containerId]);
-  await window.electronAPI.stopContainer(containerId);
-  await window.electronAPI.removeContainer(containerId);
 }
 
 // 새로운 컨테이너 시작 성공 시 처리 함수

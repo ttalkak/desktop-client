@@ -34,16 +34,35 @@ export function setupClientHandlers(userId: string): void {
       async (message: Message) => {
         const deployCreate: DeploymentCreateEvent = JSON.parse(message.body);
         const serviceId = `${deployCreate.instance.serviceType}-${deployCreate.instance.deploymentId}`;
-        createImageEntry(
-          deployCreate.instance.serviceType,
-          deployCreate.instance.deploymentId
-        );
-        createContainerEntry(
-          deployCreate.instance.serviceType,
-          deployCreate.instance.deploymentId
-        );
+
+        const imageStore = useImageStore.getState();
+        const containerStore = useContainerStore.getState();
+
+        // 이미지 처리
+        if (!imageStore.images.some((image) => image.id === serviceId)) {
+          createImageEntry(
+            deployCreate.instance.serviceType,
+            deployCreate.instance.deploymentId
+          );
+        }
+
+        // 컨테이너 처리
+        if (
+          !containerStore.containers.some(
+            (container) => container.id === serviceId
+          )
+        ) {
+          createContainerEntry(
+            deployCreate.instance.serviceType,
+            deployCreate.instance.deploymentId
+          );
+        }
+
         updateImageInfo(serviceId, { status: DeployStatus.WAITING });
-        updateContainerInfo(serviceId, { status: DeployStatus.WAITING });
+        updateContainerInfo(serviceId, {
+          status: DeployStatus.WAITING,
+        });
+
         console.log(`생성요청 도착`, deployCreate);
         await handleDockerBuild(deployCreate);
       }
