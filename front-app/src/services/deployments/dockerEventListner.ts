@@ -17,7 +17,7 @@ export interface DockerEvent {
 
 export const registerDockerEventHandlers = () => {
   const { setDockerStatus } = useAppStore.getState();
-  const { getContainerByContainerId, updateContainerInfo, removeContainer } =
+  const { getContainerByContainerId, updateContainerInfo } =
     useContainerStore.getState();
   const userId = useAuthStore.getState().userSettings?.userId;
 
@@ -52,7 +52,6 @@ export const registerDockerEventHandlers = () => {
         message: "Container not found, skipping event.",
       };
     }
-    const id = `${container?.serviceType}-${container?.deployId}`;
 
     try {
       switch (event.Action) {
