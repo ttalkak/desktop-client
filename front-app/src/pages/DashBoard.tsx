@@ -25,28 +25,26 @@ const DashBoard: React.FC = () => {
   ]);
 
   return (
-    <div className="card h-full items-center overflow-hidden custom-scrollbar">
-      <div className="h-full w-full">
-        <Tabs defaultValue="account">
-          <div className="flex justify-between w-full items-end pb-2">
-            <TabsList>
-              <TabsTrigger value="account">Containers</TabsTrigger>
-              <TabsTrigger value="password">Images</TabsTrigger>
-            </TabsList>
-            <div className="font-sans text-gray-600 text-sm pr-2.5">
-              {`${containerCount} / ${userSettings?.maxCompute || 0}`}
-            </div>
+    <div className="card h-full flex flex-col overflow-hidden">
+      <Tabs defaultValue="account" className="flex flex-col h-full">
+        <div className="flex justify-between w-full items-end pb-2 flex-shrink-0">
+          <TabsList>
+            <TabsTrigger value="account">Containers</TabsTrigger>
+            <TabsTrigger value="password">Images</TabsTrigger>
+          </TabsList>
+          <div className="font-sans text-gray-600 text-sm pr-2.5">
+            {`${containerCount} / ${userSettings?.maxCompute || 0}`}
           </div>
-          <div className="overflow-auto justify-center h-full">
-            <TabsContent value="account">
-              <ContainerList />
-            </TabsContent>
-            <TabsContent value="password">
-              <ImageList />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
+        </div>
+        <div className="overflow-auto flex-grow custom-scrollbar">
+          <TabsContent value="account" className="h-full">
+            <ContainerList />
+          </TabsContent>
+          <TabsContent value="password" className="h-full">
+            <ImageList />
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 };

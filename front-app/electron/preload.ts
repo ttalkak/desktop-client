@@ -132,8 +132,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeImage: (imageId: string) => ipcRenderer.invoke("remove-image", imageId),
 
   // Docker Logs
-  startLogStream: (containerId: string, deploymentId?: number) =>
-    ipcRenderer.send("start-container-log-stream", containerId, deploymentId),
+  startLogStream: (containerId: string) =>
+    ipcRenderer.send("start-container-log-stream", containerId),
   stopLogStream: (containerId: string) =>
     ipcRenderer.send("stop-container-log-stream", containerId),
   onLogStream: (

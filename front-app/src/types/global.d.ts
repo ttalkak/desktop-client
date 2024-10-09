@@ -101,7 +101,7 @@ declare global {
     removeAllDockerEventListeners: () => void;
 
     // Docker Logs
-    startLogStream: (containerId: string, deploymentId?: number) => void;
+    startLogStream: (containerId: string) => void;
     stopLogStream: (containerId: string) => void;
     onLogStream: (
       callback: (data: { containerId: string; log: string }) => void

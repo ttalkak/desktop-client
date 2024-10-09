@@ -132,7 +132,7 @@ async function completeDeployment(
       "PENDING"
     );
     window.electronAPI.startContainerStats([container.Id]);
-    window.electronAPI.startLogStream(container.Id, instance.deploymentId);
+    window.electronAPI.startLogStream(container.Id);
 
     checkAndUpdateContainerMonitoring();
 

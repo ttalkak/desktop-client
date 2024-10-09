@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import {
   DeployContainerInfo,
@@ -124,7 +124,7 @@ const ContainerList: React.FC = () => {
     );
   };
 
-  const Logs = ({ logs }: { logs: ParsedLog[] }) => {
+  const Logs = React.memo(({ logs }: { logs: ParsedLog[] }) => {
     return (
       <div
         className="custom-scrollbar"
@@ -145,7 +145,7 @@ const ContainerList: React.FC = () => {
         ))}
       </div>
     );
-  };
+  });
 
   const getStatusElement = (status: DeployStatus) => {
     switch (status) {
@@ -164,92 +164,91 @@ const ContainerList: React.FC = () => {
     }
   };
 
-  const ContainerRow = useMemo(
-    () =>
-      ({ container }: { container: DeployContainerInfo }) => {
-        const isSelected = selectedContainerIds.includes(
-          container.containerId || ""
-        );
-
-        const StatusComponent = ({ status }: { status?: DeployStatus }) => {
-          const { color, text } = getStatusElement(status || DeployStatus.NA);
-          return (
-            <div className="flex justify-center items-center">
-              <div
-                className={`inline-block w-3 h-3 rounded-full mr-1 ${color}`}
-              ></div>
-              <div>{text}</div>
-            </div>
-          );
-        };
-
-        return (
-          <>
-            <React.Fragment key={container.id}>
-              {container.status === DeployStatus.RUNNING ? (
-                <tr className="hover:bg-gray-50">
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    {container.id || "N/A"}
-                  </td>
-                  <td
-                    className="py-2 px-4 text-sm text-gray-900"
-                    title={container.containerName}
-                  >
-                    {container.containerName}
-                  </td>
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    {formatCreatedTime(container.created)}
-                  </td>
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    {renderPorts(container.ports)}
-                  </td>
-                  <td className="py-2 text-sm text-gray-900">
-                    <StatusComponent status={container.status} />
-                  </td>
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    <button
-                      onClick={() =>
-                        container.id && toggleContainerSelection(container.id)
-                      }
-                      className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
-                    >
-                      {isSelected ? (
-                        <MdKeyboardArrowUp className="text-gray-600" />
-                      ) : (
-                        <MdKeyboardArrowDown className="text-gray-600" />
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                <tr className="hover:bg-gray-50">
-                  <td className="py-2 px-4 text-sm text-gray-900">
-                    {container.id}
-                  </td>
-                  <td
-                    colSpan={5}
-                    className="py-2 px-4 text-xl text-gray-900 text-center align-middle"
-                  >
-                    <div className="flex justify-center items-center">
-                      <Loading />
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {isSelected && container.id && (
-                <tr>
-                  <td colSpan={6} className="p-4 bg-gray-100">
-                    <Logs logs={logData[container.id] || []} />
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          </>
-        );
-      },
-    [selectedContainerIds, logData, toggleContainerSelection]
+  const StatusComponent = React.memo(
+    ({ status }: { status?: DeployStatus }) => {
+      const { color, text } = getStatusElement(status || DeployStatus.NA);
+      return (
+        <div className="flex justify-center items-center">
+          <div
+            className={`inline-block w-3 h-3 rounded-full mr-1 ${color}`}
+          ></div>
+          <div>{text}</div>
+        </div>
+      );
+    }
   );
+
+  const ContainerRow = ({ container }: { container: DeployContainerInfo }) => {
+    const isSelected = selectedContainerIds.includes(
+      container.containerId || ""
+    );
+
+    return (
+      <>
+        <React.Fragment key={container.id}>
+          {container.status === DeployStatus.RUNNING ? (
+            <tr className="hover:bg-gray-50">
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {container.id || "N/A"}
+              </td>
+              <td
+                className="py-2 px-4 text-sm text-gray-900"
+                title={container.containerName}
+              >
+                {container.containerName}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {formatCreatedTime(container.created)}
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {renderPorts(container.ports)}
+              </td>
+              <td className="py-2 text-sm text-gray-900">
+                <StatusComponent status={container.status} />
+              </td>
+              <td className="py-2 px-4 text-sm text-gray-900">
+                <button
+                  onClick={() =>
+                    container.containerId &&
+                    toggleContainerSelection(container.containerId)
+                  }
+                  className="flex items-center justify-center p-2 hover:bg-gray-200 rounded"
+                >
+                  {isSelected ? (
+                    <MdKeyboardArrowUp className="text-gray-600" />
+                  ) : (
+                    <MdKeyboardArrowDown className="text-gray-600" />
+                  )}
+                </button>
+              </td>
+            </tr>
+          ) : (
+            <tr className="hover:bg-gray-50">
+              <td className="py-2 px-4 text-sm text-gray-900">
+                {container.id}
+              </td>
+              <td
+                colSpan={5}
+                className="py-2 px-4 text-xl text-gray-900 text-center align-middle"
+              >
+                <div className="flex justify-center items-center">
+                  <Loading />
+                </div>
+              </td>
+            </tr>
+          )}
+
+          {isSelected && container.containerId && (
+            <tr>
+              <td colSpan={6} className="p-4 bg-gray-100">
+                <Logs logs={logData[container.containerId] || []} />
+              </td>
+            </tr>
+          )}
+        </React.Fragment>
+      </>
+    );
+  };
 
   if (dockerContainers.length === 0) {
     return (
@@ -267,8 +266,8 @@ const ContainerList: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
-      <div className="overflow-hidden rounded-lg custom-scrollbar">
+    <div className="flex flex-col">
+      <div className="rounded-lg">
         <table className="min-w-full divide-y divide-gray-300">
           <thead className="sticky z-10 top-0 text-sm bg-white-gradient border-b">
             <tr>
