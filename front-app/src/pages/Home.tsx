@@ -6,7 +6,7 @@ import {
   DeployContainerInfo,
   useContainerStore,
 } from "../stores/containerStore";
-import { DeployStatus } from "src/types/deploy";
+import { DeployStatus } from "../types/deploy";
 
 const Home: React.FC = () => {
   const containers = useContainerStore((state) => state.containers);
