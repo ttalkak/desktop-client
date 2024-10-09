@@ -3,6 +3,7 @@ import { useContainerStore } from "../../stores/containerStore";
 import { DeployStatus } from "../../types/deploy";
 
 export async function handleContainerCommand(
+  serviceType: string,
   serviceId: string,
   command: string
 ) {
@@ -124,6 +125,9 @@ export async function handleContainerCommand(
           );
           if (success) {
             window.electronAPI.stopContainerStats([containerId]);
+            if (serviceType === "DATABASE") {
+              window.electronAPI.stopdatabasePgrok(container.deployId);
+            }
             window.electronAPI.stopPgrok(container.deployId);
 
             sendInstanceUpdate(
@@ -137,6 +141,7 @@ export async function handleContainerCommand(
             updateContainerInfo(id, { status: DeployStatus.DELETED });
           }
         }
+
         break;
 
       default:

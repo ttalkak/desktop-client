@@ -1,6 +1,6 @@
 import path from "node:path";
 import * as fs from "fs";
-import { dockerFileHtmlPermission } from "./dockerFileHtmlPermission";
+// import { dockerFileHtmlPermission } from "./dockerFileHtmlPermission";
 
 export function findDockerfile(directory: string): Promise<{
   found: boolean; // Dockerfile이 있는지 여부를 나타냄

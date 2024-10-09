@@ -261,6 +261,7 @@ declare global {
     ) => Promise<string>;
     onPgrokLog: (callback: LogCallback) => void;
     stopPgrok: (deploymentId: number) => Promise<string>;
+    stopdatabasePgrok: (databaseId: number) => Promise<string>;
   }
 
   // System and Project Operations
