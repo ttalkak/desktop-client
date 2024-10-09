@@ -220,6 +220,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("pgrok-log", (_event, log) => callback(log)),
   stopPgrok: (deploymentId: number) =>
     ipcRenderer.invoke("stop-pgrok", deploymentId),
+  stopdatabasePgrok: (databasetId: number) =>
+    ipcRenderer.invoke("stop-database-pgrok", databasetId),
 
   // Port Management
   getInboundRules: () => ipcRenderer.invoke("get-inbound-rules"),

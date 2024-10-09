@@ -97,7 +97,7 @@ export function setupClientHandlers(userId: string): void {
           const { serviceType, id, command } = JSON.parse(message.body);
           const serviceId = `${serviceType}-${id}`;
           updateContainerInfo(serviceId, { status: DeployStatus.WAITING });
-          handleContainerCommand(serviceId, command); // 컨테이너 명령 처리
+          handleContainerCommand(serviceType, serviceId, command); // 컨테이너 명령 처리
         } catch (error) {
           console.error("Error processing compute update message:", error);
         }

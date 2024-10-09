@@ -135,7 +135,7 @@ async function completeDeployment(
     window.electronAPI.startLogStream(container.Id, instance.deploymentId);
 
     checkAndUpdateContainerMonitoring();
-    // await startPgrok(deployCreate);
+
     try {
       console.log("pgrok will..start..");
       const message = await window.electronAPI.runPgrok(
