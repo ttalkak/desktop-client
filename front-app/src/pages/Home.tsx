@@ -6,6 +6,7 @@ import {
   DeployContainerInfo,
   useContainerStore,
 } from "../stores/containerStore";
+import { DeployStatus } from "src/types/deploy";
 
 const Home: React.FC = () => {
   const containers = useContainerStore((state) => state.containers);
@@ -59,10 +60,10 @@ const Home: React.FC = () => {
                     </td>
                     <td className={`${tableBody} min-w-md break-words`}>
                       <div className="flex items-center justify-center">
-                        {deployment.status !== "RUNNING" && (
+                        {deployment.status !== DeployStatus.RUNNING && (
                           <FaExclamationCircle className="text-yellow-500 mr-1" />
                         )}
-                        {deployment.status === "RUNNING" ? (
+                        {deployment.status === DeployStatus.RUNNING ? (
                           <a
                             href={`${getUrl(deployment)}`}
                             target="_blank"
@@ -77,11 +78,11 @@ const Home: React.FC = () => {
                       </div>
                     </td>
                     <td className={`${tableBody} min-w-32`}>
-                      {deployment.status === "RUNNING" ? (
+                      {deployment.status === DeployStatus.RUNNING ? (
                         <div
                           className={`inline-block w-3 h-3 rounded-full mr-1 animate-pulse bg-green-400`}
                         ></div>
-                      ) : deployment.status === "ERROR" ? (
+                      ) : deployment.status === DeployStatus.ERROR ? (
                         <div
                           className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
                         ></div>
