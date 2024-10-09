@@ -22,15 +22,12 @@ export async function handleDockerBuild(deployCreate: DeploymentCreateEvent) {
           await window.electronAPI.stopContainerStats([existingContainerId]);
           await window.electronAPI.stopContainer(existingContainerId);
           await window.electronAPI.removeContainer(existingContainerId);
-          containerStore.removeContainer(existingContainerId);
-
           console.log(`기존 컨테이너 삭제 완료, ID: ${existingContainerId}`);
 
           // 연관된 이미지 삭제
           const existingImage = imageStore.getImageById(existingContainerId);
           if (existingImage && existingImage.imageId) {
             await window.electronAPI.removeImage(existingImage.imageId);
-            imageStore.removeImage(existingContainerId);
             console.log(`기존 이미지 삭제 완료, ID: ${existingImage.imageId}`);
           }
         } catch (error) {

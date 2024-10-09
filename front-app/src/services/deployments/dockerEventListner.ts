@@ -70,7 +70,7 @@ export const registerDockerEventHandlers = () => {
           }
           break;
         case "destroy":
-          removeContainer(id);
+          updateContainerInfo(container.id, { status: DeployStatus.DELETED });
           break;
         default:
           console.log(`Unhandled container action: ${event.Action}`);
