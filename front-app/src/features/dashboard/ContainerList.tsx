@@ -117,7 +117,7 @@ const ContainerList: React.FC = () => {
       <ul className="list-none p-0">
         {ports.map((port, index) => (
           <li key={index}>
-            {port.internal} : {port.external || "NA"}
+            {port.external || "NA"} : {port.internal}
           </li>
         ))}
       </ul>

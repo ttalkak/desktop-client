@@ -89,13 +89,21 @@ const Home: React.FC = () => {
                     </td>
                     <td className={`${tableBody} min-w-32`}>
                       {deployment.status === DeployStatus.RUNNING ? (
-                        <div
-                          className={`inline-block w-3 h-3 rounded-full mr-1 animate-pulse bg-green-400`}
-                        ></div>
+                        <div>
+                          <span
+                            className={`inline-block w-3 h-3 rounded-full mr-1 animate-pulse bg-green-400`}
+                          ></span>
+                          <span>RUNNING</span>
+                        </div>
                       ) : deployment.status === DeployStatus.ERROR ? (
-                        <div
-                          className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
-                        ></div>
+                        <div>
+                          <div
+                            className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
+                          >
+                            ERROR
+                          </div>
+                          <span>RUNNING</span>
+                        </div>
                       ) : (
                         deployment.status
                       )}

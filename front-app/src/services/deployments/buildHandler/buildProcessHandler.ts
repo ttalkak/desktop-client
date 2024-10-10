@@ -7,7 +7,9 @@ import {
   useContainerStore,
 } from "../../../stores/containerStore.tsx";
 import { DeployStatus } from "../../../types/deploy.ts";
-import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils";
+import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils.ts";
+import { startPostInterval } from "../../../axios/payment.tsx";
+import { useAuthStore } from "../../../stores/authStore.tsx";
 
 export const PGROK_URL = "pgrok.ttalkak.com:2222";
 
@@ -71,6 +73,7 @@ async function completeDeployment(
   const { senderId, instance } = deployCreate;
   const { updateContainerInfo } = useContainerStore.getState();
   const id = `${instance.serviceType}-${instance.deploymentId}`;
+  const address = useAuthStore.getState().userSettings?.address;
 
   //빌드 타입에 따른 healthCheck로직 확인
   if (instance.serviceType === "FRONTEND") {
@@ -135,6 +138,19 @@ async function completeDeployment(
     window.electronAPI.startLogStream(container.Id);
 
     checkAndUpdateContainerMonitoring();
+
+    if (newContainer && address) {
+      const paymentContainer = {
+        id: id,
+        domain: instance.subdomainName, // 도메인 정보
+        deployId: instance.deploymentId, // 배포 ID
+        serviceType: instance.serviceType, // 서비스 타입
+        senderId: senderId, // 발신자 ID
+        address: address, // 주소 정보
+      };
+
+      startPostInterval(paymentContainer);
+    }
 
     try {
       console.log("pgrok will..start..");
