@@ -13,6 +13,8 @@ import { handleDatabaseBuild } from "./deployments/buildHandler/buildDatabaseHan
 import { useContainerStore } from "../stores/containerStore";
 import { useImageStore } from "../stores/imageStore";
 import { DeployStatus } from "../types/deploy";
+import { postPaymentInfo } from "./../axios/payment";
+import { useAuthStore } from "../stores/authStore";
 
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
@@ -20,6 +22,9 @@ const { createContainerEntry, updateContainerInfo } =
   useContainerStore.getState();
 const { createImageEntry, updateImageInfo } = useImageStore.getState();
 export function setupClientHandlers(userId: string): void {
+  const { userSettings } = useAuthStore.getState();
+  const address = userSettings?.address || "";
+
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
     setWebsocketStatus("connected");
@@ -33,11 +38,17 @@ export function setupClientHandlers(userId: string): void {
       `/sub/compute-create/${userId}`,
       async (message: Message) => {
         const deployCreate: DeploymentCreateEvent = JSON.parse(message.body);
-        const serviceId = `${deployCreate.instance.serviceType}-${deployCreate.instance.deploymentId}`;
-
+        const { senderId, instance } = deployCreate;
+        const serviceId = `${instance.serviceType}-${instance.deploymentId}`;
         const imageStore = useImageStore.getState();
         const containerStore = useContainerStore.getState();
-
+        postPaymentInfo(
+          instance.subdomainName,
+          instance.deploymentId,
+          instance.serviceType,
+          senderId,
+          address
+        );
         // 이미지 처리
         if (!imageStore.images.some((image) => image.id === serviceId)) {
           createImageEntry(
@@ -73,7 +84,18 @@ export function setupClientHandlers(userId: string): void {
       `/sub/database-create/${userId}`,
       async (message: Message) => {
         const dbCreate: DatabaseCreateEvent = JSON.parse(message.body);
-        const serviceId = `${dbCreate.instance.serviceType}-${dbCreate.instance.databaseId}`;
+
+        const { senderId, instance } = dbCreate;
+
+        postPaymentInfo(
+          instance.containerName,
+          instance.databaseId,
+          instance.serviceType,
+          senderId,
+          address
+        );
+
+        const serviceId = `${instance.serviceType}-${instance.databaseId}`;
         createImageEntry(
           dbCreate.instance.serviceType,
           dbCreate.instance.databaseId

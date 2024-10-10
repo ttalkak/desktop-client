@@ -34,7 +34,7 @@ declare global {
 
   //FE, BE  CREATE요청
   interface DeploymentCreateEvent {
-    senderId: string;
+    senderId: number;
     instance: DeploymentCommand;
   }
 
@@ -54,7 +54,7 @@ declare global {
 
   // DATABASE 생성 관련
   interface DatabaseCreateEvent {
-    senderId: string;
+    senderId: number;
     instance: DatabaseCommand;
   }
 

@@ -66,7 +66,7 @@ async function handleSuccessfulContainerStart(
   instance: DatabaseCommand,
   image: DockerImage,
   container: DockerContainer,
-  senderId: string,
+  senderId: number,
   id: string
 ) {
   const { updateImageInfo } = useImageStore.getState();

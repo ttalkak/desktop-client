@@ -7,7 +7,7 @@ export interface SettingState {
   maxCompute: number;
   availablePortStart: number;
   availablePortEnd: number;
-  address: boolean;
+  address: string | "";
 }
 
 interface AuthState {

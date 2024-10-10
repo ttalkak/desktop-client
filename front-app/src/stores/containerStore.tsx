@@ -9,7 +9,7 @@ export interface Port {
 
 export interface DeployContainerInfo {
   id: string;
-  senderId?: string;
+  senderId?: number;
   deployId?: number;
   serviceType?: string;
   containerName?: string;

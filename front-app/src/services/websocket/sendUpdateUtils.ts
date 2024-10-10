@@ -5,7 +5,7 @@ import { client } from "./stompClientUtils";
 export function sendInstanceUpdate(
   serviceType: string | undefined,
   id: number,
-  senderId: string | undefined,
+  senderId: number | undefined,
   status: string,
   port: number | 0,
   details?: string

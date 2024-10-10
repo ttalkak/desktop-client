@@ -35,10 +35,10 @@ export const getUserSettings = async () => {
     const response = await axiosInstance.get("/compute/status");
     const { success, data } = response.data;
 
-    let checkadress: boolean = false;
+    let checkadress: string = "";
     const address = data.address;
     if (address && address.trim !== "") {
-      checkadress = true;
+      checkadress = address;
     }
     console.log(checkadress);
     if (success) {
