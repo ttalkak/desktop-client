@@ -71,17 +71,19 @@ const Home: React.FC = () => {
                         </span>
                       </div>
                     </td>
+
                     <td className={`${tableBody} min-w-md break-words`}>
                       <div className="flex items-center justify-center">
-                        {deployment.status !== DeployStatus.RUNNING && (
-                          <FaSpinner
-                            size={15}
-                            style={{
-                              animation: "spin 5s linear infinite",
-                              color: "gray",
-                            }}
-                          />
-                        )}
+                        {deployment.status !== DeployStatus.RUNNING &&
+                          deployment.status !== DeployStatus.STOPPED && (
+                            <FaSpinner
+                              size={15}
+                              style={{
+                                animation: "spin 5s linear infinite",
+                                color: "gray",
+                              }}
+                            />
+                          )}
                         {deployment.status === DeployStatus.RUNNING ? (
                           <a
                             href={`${getUrl(deployment)}`}
@@ -91,11 +93,14 @@ const Home: React.FC = () => {
                           >
                             {getUrl(deployment)}
                           </a>
+                        ) : deployment.status === DeployStatus.STOPPED ? (
+                          <span>Service stopped</span>
                         ) : (
                           <span>{getUrl(deployment)}</span>
                         )}
                       </div>
                     </td>
+
                     <td className={`${tableBody} min-w-32`}>
                       {deployment.status === DeployStatus.RUNNING ? (
                         <div>
@@ -108,10 +113,15 @@ const Home: React.FC = () => {
                         <div>
                           <div
                             className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
-                          >
-                            ERROR
-                          </div>
-                          <span>RUNNING</span>
+                          ></div>
+                          <span>ERROR</span>
+                        </div>
+                      ) : deployment.status === DeployStatus.STOPPED ? (
+                        <div>
+                          <div
+                            className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
+                          ></div>
+                          <span>STOPPED</span>
                         </div>
                       ) : (
                         deployment.status

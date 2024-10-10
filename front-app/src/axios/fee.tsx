@@ -35,7 +35,7 @@ export const setCoinInterval = () => {
       } else {
         console.warn("코인 정보 업데이트 실패");
       }
-    }, 1 * 60 * 1000); //5분 주기로 업데이트
+    }, 5 * 60 * 1000); //5분 주기로 업데이트
   }
 };
 
