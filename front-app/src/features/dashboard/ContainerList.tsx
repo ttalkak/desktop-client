@@ -69,14 +69,18 @@ const ContainerList: React.FC = () => {
 
     return () => {
       clearInterval(cleanupInterval);
+      window.electronAPI.removeAllLogListeners(); // 리스너 정리
     };
   }, [addLog]);
 
   const toggleContainerSelection = useCallback((containerId: string) => {
     setSelectedContainerIds((prevIds) => {
-      if (prevIds.includes(containerId)) {
+      const isSelected = prevIds.includes(containerId);
+      if (isSelected) {
+        window.electronAPI.stopLogStream(containerId); // 로그 스트림 중지
         return prevIds.filter((id) => id !== containerId);
       } else {
+        window.electronAPI.startLogStream(containerId); // 로그 스트림 시작
         return [...prevIds, containerId];
       }
     });
@@ -117,7 +121,7 @@ const ContainerList: React.FC = () => {
       <ul className="list-none p-0">
         {ports.map((port, index) => (
           <li key={index}>
-            {port.internal} : {port.external || "NA"}
+            {port.external || "NA"} : {port.internal}
           </li>
         ))}
       </ul>

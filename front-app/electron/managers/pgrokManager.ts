@@ -361,7 +361,7 @@ export function registerPgrokIpcHandlers() {
   });
 
   //개별 databasepgrok 종료함수
-  ipcMain.handle("stop-databse-pgrok", async (_, databaseId: number) => {
+  ipcMain.handle("stop-database-pgrok", async (_, databaseId: number) => {
     try {
       await stopdatabasePgrok(databaseId);
       return "pgrok stopped successfully";

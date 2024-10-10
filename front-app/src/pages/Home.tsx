@@ -13,6 +13,9 @@ const Home: React.FC = () => {
 
   const getUrl = (deployment: DeployContainerInfo) => {
     let subdomain = deployment.subdomainName;
+    if (subdomain == undefined) {
+      return ``;
+    }
     if (deployment.serviceType === "DATABASE") {
       subdomain = deployment.containerName;
       return `database_${subdomain}`;
@@ -28,7 +31,7 @@ const Home: React.FC = () => {
         <CpuStatusItem />
         <PaymentStatusItem />
       </div>
-      <div className="card w-full h-full mt-2.5 flex flex-col">
+      <div className="card w-full h-full mt-2.5 flex flex-col overflow-y-auto custom-scrollbar">
         {Object.keys(containers).length === 0 ? (
           <div className="text-center text-gray-700 py-10">
             현재 배포중인 서비스가 없습니다.
@@ -52,9 +55,10 @@ const Home: React.FC = () => {
                       <div className="flex items-center justify-center">
                         {deployment.status !== "RUNNING" && (
                           <FaSpinner
-                            size={50}
+                            size={15}
                             style={{
-                              animation: "spin 1s linear infinite",
+                              animation: "spin 5s linear infinite",
+                              color: "gray",
                             }}
                           />
                         )}
@@ -67,9 +71,10 @@ const Home: React.FC = () => {
                       <div className="flex items-center justify-center">
                         {deployment.status !== DeployStatus.RUNNING && (
                           <FaSpinner
-                            size={50}
+                            size={15}
                             style={{
-                              animation: "spin 1s linear infinite",
+                              animation: "spin 5s linear infinite",
+                              color: "gray",
                             }}
                           />
                         )}
@@ -89,13 +94,21 @@ const Home: React.FC = () => {
                     </td>
                     <td className={`${tableBody} min-w-32`}>
                       {deployment.status === DeployStatus.RUNNING ? (
-                        <div
-                          className={`inline-block w-3 h-3 rounded-full mr-1 animate-pulse bg-green-400`}
-                        ></div>
+                        <div>
+                          <span
+                            className={`inline-block w-3 h-3 rounded-full mr-1 animate-pulse bg-green-400`}
+                          ></span>
+                          <span>RUNNING</span>
+                        </div>
                       ) : deployment.status === DeployStatus.ERROR ? (
-                        <div
-                          className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
-                        ></div>
+                        <div>
+                          <div
+                            className={`inline-block w-3 h-3 rounded-full mr-1 bg-red-400`}
+                          >
+                            ERROR
+                          </div>
+                          <span>RUNNING</span>
+                        </div>
                       ) : (
                         deployment.status
                       )}

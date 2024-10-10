@@ -3,6 +3,7 @@ import {
   useContainerStore,
 } from "../../stores/containerStore";
 import { sendCurrentState } from "../websocket/sendCurrentState";
+import { DeployStatus } from "../../types/deploy";
 
 // 컨테이너 상태와 관련된 인터페이스 정의
 interface ContainerStats {
@@ -125,25 +126,23 @@ export function stopPeriodicContainerCheck() {
 
 // 도커 컨테이너의 ID를 주기적으로 가져옴
 export async function checkAndUpdateContainerMonitoring() {
-  const containers = useContainerStore.getState().containers;
-  const currentContainers = new Set(containers.map((c) => c.id));
+  const { containers } = useContainerStore.getState();
 
-  // 실제 실행 중인 모든 컨테이너 가져오기
-  const allRunningContainers = await window.electronAPI.getDockerContainers(
-    true
+  // 현재 Store에서 실행 중인 컨테이너 목록 필터링
+  const monitoredRunningContainers = containers.filter(
+    (container) => container.status === DeployStatus.RUNNING
   );
-  const allRunningContainerIds = new Set(allRunningContainers.map((c) => c.Id));
 
-  // 현재 Store에 있는 컨테이너 중에서 실행 중인 컨테이너만 필터링
-  const monitoredRunningContainers = allRunningContainers.filter((container) =>
-    currentContainers.has(container.Id)
+  // 현재 실행 중인 컨테이너 ID Set 생성
+  const currentRunningContainerIds = new Set(
+    monitoredRunningContainers.map((container) => container.id)
   );
 
   // 새로운 컨테이너 모니터링 시작
   monitoredRunningContainers.forEach((container) => {
-    if (!currentContainers.has(container.Id)) {
+    if (!currentRunningContainerIds.has(container.id)) {
       window.electronAPI
-        .startContainerStats([container.Id])
+        .startContainerStats([container.id])
         .then((result) => console.log(result.message))
         .catch((error) =>
           console.error("Failed to start container stats:", error)
@@ -151,9 +150,9 @@ export async function checkAndUpdateContainerMonitoring() {
     }
   });
 
-  // 현재 Store에 있는 컨테이너 중 더 이상 실행 중이지 않은 컨테이너 모니터링 중지
+  // 실행 중이지 않은 컨테이너 모니터링 중지
   containers.forEach((container) => {
-    if (!allRunningContainerIds.has(container.id)) {
+    if (!currentRunningContainerIds.has(container.id)) {
       window.electronAPI
         .stopContainerStats([container.id])
         .then((result) => console.log(result.message))

@@ -7,6 +7,8 @@ import { DeployContainerInfo } from "../../../stores/containerStore";
 import { DeployStatus } from "../../../types/deploy";
 import { checkAndUpdateContainerMonitoring } from "../../../services/monitoring/healthCheckPingUtils";
 import { stopAndRemoveExistingContainer } from "./deploymentUtils";
+import { useAuthStore } from "../../../stores/authStore";
+import { startPostInterval } from "../../../axios/payment.tsx";
 
 export async function handleDatabaseBuild(dbCreate: DatabaseCreateEvent) {
   const { senderId, instance } = dbCreate;
@@ -71,6 +73,7 @@ async function handleSuccessfulContainerStart(
 ) {
   const { updateImageInfo } = useImageStore.getState();
   const { updateContainerInfo } = useContainerStore.getState();
+  const address = useAuthStore.getState().userSettings?.address;
   // 이미지 정보를 업데이트
   const newImage: Omit<DeployImageInfo, "id"> = {
     imageId: image.Id,
@@ -101,15 +104,6 @@ async function handleSuccessfulContainerStart(
   };
   updateImageInfo(id, newImage);
   // 상태 업데이트
-  sendInstanceUpdate(
-    instance.serviceType,
-    instance.databaseId,
-    senderId,
-    "PENDING",
-    instance.outboundPort,
-    "PENDING"
-  );
-
   // pgrok 실행 및 결과 처리
   const result = await window.electronAPI.runPgrok(
     PGROK_URL,
@@ -142,7 +136,20 @@ async function handleSuccessfulContainerStart(
       //pgrok 생성 되고 나서
       updateContainerInfo(id, newContainer);
       checkAndUpdateContainerMonitoring();
-      window.electronAPI.startLogStream(container.Id);
+      // window.electronAPI.startLogStream(container.Id);
+
+      if (newContainer && address) {
+        const paymentContainer = {
+          id: id,
+          domain: "database", // 도메인 정보
+          deployId: instance.databaseId, // 배포 ID
+          serviceType: instance.serviceType, // 서비스 타입
+          senderId: senderId, // 발신자 ID
+          address: address, // 주소 정보
+        };
+
+        startPostInterval(paymentContainer);
+      }
       break;
     default:
       break;
