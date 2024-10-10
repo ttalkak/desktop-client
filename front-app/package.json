@@ -93,8 +93,7 @@
       "displayLanguageSelector": true,
       "installerIcon": "public/ttalkak.ico",
       "uninstallerIcon": "public/ttalkak.ico",
-      "license": "LICENSE.txt",
-      "include": "build/installer.nsh" 
+      "license": "LICENSE.txt"
     }
   },
   "main": "dist-electron/main.js"
