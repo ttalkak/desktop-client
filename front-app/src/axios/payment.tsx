@@ -6,9 +6,9 @@ export interface PaymentInfo {
   id: string;
   domain: string;
   deployId: number;
-  serviceType: string;
-  senderId: number;
-  address: string;
+  serviceType?: string;
+  senderId?: number;
+  address?: string;
 }
 
 // 결제 정보 전달
