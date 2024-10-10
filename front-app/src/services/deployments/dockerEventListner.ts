@@ -17,7 +17,7 @@ export interface DockerEvent {
 
 export const registerDockerEventHandlers = () => {
   const { setDockerStatus } = useAppStore.getState();
-  const { getContainerByContainerId, updateContainerInfo } =
+  const { getContainerByContainerId, updateContainerInfo, removeContainer } =
     useContainerStore.getState();
   const userId = useAuthStore.getState().userSettings?.userId;
 
@@ -69,7 +69,7 @@ export const registerDockerEventHandlers = () => {
           }
           break;
         case "destroy":
-          updateContainerInfo(container.id, { status: DeployStatus.DELETED });
+          removeContainer(container.id);
           break;
         default:
           console.log(`Unhandled container action: ${event.Action}`);

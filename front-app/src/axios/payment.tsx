@@ -53,7 +53,7 @@ export const startPostInterval = (container: PaymentInfo) => {
   if (!globalIntervalIds.has(container.id)) {
     const intervalId = setInterval(() => {
       postPaymentInfo(container);
-    }, 5 * 60 * 1000); // 5분(300,000밀리초)마다 요청
+    }, 15 * 60 * 1000); // 15분(300,000밀리초)마다 요청
 
     globalIntervalIds.set(container.id, intervalId);
     console.log(

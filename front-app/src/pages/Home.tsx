@@ -31,7 +31,7 @@ const Home: React.FC = () => {
         <CpuStatusItem />
         <PaymentStatusItem />
       </div>
-      <div className="card w-full h-full mt-2.5 flex flex-col">
+      <div className="card w-full h-full mt-2.5 flex flex-col overflow-y-auto custom-scrollbar">
         {Object.keys(containers).length === 0 ? (
           <div className="text-center text-gray-700 py-10">
             현재 배포중인 서비스가 없습니다.
