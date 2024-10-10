@@ -52,9 +52,10 @@ const Home: React.FC = () => {
                       <div className="flex items-center justify-center">
                         {deployment.status !== "RUNNING" && (
                           <FaSpinner
-                            size={50}
+                            size={15}
                             style={{
-                              animation: "spin 1s linear infinite",
+                              animation: "spin 5s linear infinite",
+                              color: "gray",
                             }}
                           />
                         )}
@@ -67,9 +68,10 @@ const Home: React.FC = () => {
                       <div className="flex items-center justify-center">
                         {deployment.status !== DeployStatus.RUNNING && (
                           <FaSpinner
-                            size={50}
+                            size={15}
                             style={{
-                              animation: "spin 1s linear infinite",
+                              animation: "spin 5s linear infinite",
+                              color: "gray",
                             }}
                           />
                         )}
