@@ -13,6 +13,8 @@ import {
 import { getUserSettings } from "../axios/auth";
 import logoImg from "./../assets/images/logo.png";
 import { stopAllTasks } from "../services/stopAllFunction";
+import { stopCoinInterval } from "../axios/fee";
+
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
@@ -36,6 +38,7 @@ const Header = () => {
   };
 
   const handleLogout = () => {
+    stopCoinInterval();
     clearTokens();
     stopAllTasks();
   };

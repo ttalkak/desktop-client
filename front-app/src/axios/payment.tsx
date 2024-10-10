@@ -40,7 +40,11 @@ export const postPaymentInfo = async (container: PaymentInfo) => {
       return { success: false };
     }
   } catch (error) {
-    console.log("결제 정보 전달 실패", error);
+    console.log("결제 정산 요청 실패", container.domain);
+    if (containerId) {
+      stopPostInterval(container.id);
+      window.electronAPI.stopContainer(containerId);
+    }
     return { success: false };
   }
 };

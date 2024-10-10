@@ -1,6 +1,9 @@
 import { FaCoins } from "react-icons/fa";
+import { useCoinStore } from "../../stores/coinStore";
 
 const PaymentStatusItem = () => {
+  const coin = useCoinStore((state) => state.coin);
+
   return (
     <div className="card w-1/2 ml-1">
       <p className="font-sans font-bold text-lg">총 수익</p>
@@ -9,7 +12,7 @@ const PaymentStatusItem = () => {
         <p className="text-color-6">
           <FaCoins color="#7FC0EF" />
         </p>
-        <p className="text-lg pl-2">{}</p>
+        <p className="text-sm pl-2">{coin} SSF</p>
       </div>
     </div>
   );

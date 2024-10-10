@@ -20,7 +20,11 @@ const ContainerList: React.FC = () => {
   const [selectedContainerIds, setSelectedContainerIds] = useState<string[]>(
     []
   );
-  const dockerContainers = useContainerStore((state) => state.containers);
+  const dockerContainers = useContainerStore((state) =>
+    state.containers.filter(
+      (container) => container.status !== DeployStatus.DELETED
+    )
+  );
   const [logData, setLogData] = useState<Record<string, ParsedLog[]>>({});
 
   const addLog = useCallback((containerId: string, newLog: ParsedLog) => {

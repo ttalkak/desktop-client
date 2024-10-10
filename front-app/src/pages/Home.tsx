@@ -9,7 +9,11 @@ import {
 import { DeployStatus } from "../types/deploy";
 
 const Home: React.FC = () => {
-  const containers = useContainerStore((state) => state.containers);
+  const containers = useContainerStore((state) =>
+    state.containers.filter(
+      (container) => container.status !== DeployStatus.DELETED
+    )
+  );
 
   const getUrl = (deployment: DeployContainerInfo) => {
     let subdomain = deployment.subdomainName;
