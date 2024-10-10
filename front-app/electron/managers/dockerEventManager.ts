@@ -82,6 +82,14 @@ export async function getContainerMemoryUsage(
   const container = docker.getContainer(containerId);
 
   try {
+    // 컨테이너의 상태를 확인 (inspect 메서드로 컨테이너 정보 가져오기)
+    const containerInfo = await container.inspect();
+
+    // 컨테이너가 실행 중이 아니면 바로 return
+    if (!containerInfo.State.Running) {
+      return 0; // 컨테이너가 실행 중이지 않음
+    }
+
     // Docker 컨테이너의 stats를 1회성으로 수신
     const stats = await container.stats({ stream: false });
 

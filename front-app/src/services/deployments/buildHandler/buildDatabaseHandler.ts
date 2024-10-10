@@ -145,7 +145,7 @@ async function handleSuccessfulContainerStart(
       //pgrok 생성 되고 나서
       updateContainerInfo(id, newContainer);
       checkAndUpdateContainerMonitoring();
-      window.electronAPI.startLogStream(container.Id);
+      // window.electronAPI.startLogStream(container.Id);
 
       if (newContainer && address) {
         const paymentContainer = {
