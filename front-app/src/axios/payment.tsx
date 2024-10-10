@@ -1,6 +1,8 @@
 import { axiosInstance } from "./constants";
 import { useAuthStore } from "../stores/authStore";
 import { useContainerStore } from "../stores/containerStore";
+import { sendInstanceUpdate } from "../services/websocket/sendUpdateUtils";
+import { DeployStatus } from "../types/deploy";
 
 export interface PaymentInfo {
   id: string;
@@ -8,42 +10,37 @@ export interface PaymentInfo {
   deployId: number;
   serviceType?: string;
   senderId?: number;
-  address?: string;
 }
 
 // 결제 정보 전달
 export const postPaymentInfo = async (container: PaymentInfo) => {
   const address = useAuthStore.getState().userSettings?.address;
-  const { getContainerIdById } = useContainerStore.getState();
+  const { getContainerIdById, getContainerById } = useContainerStore.getState();
+  const containerinfo = getContainerById(container.id);
   const containerId = getContainerIdById(container.id);
 
   try {
-    const response = await axiosInstance.post("/payment/pay", {
+    console.log("결제요청 senderid", container.senderId);
+
+    await axiosInstance.post("/payment/pay", {
       domain: container.domain,
       serviceId: container.deployId,
       serviceType: container.serviceType,
       senderId: container.senderId,
       address: address,
     });
-
-    const { success } = response.data;
-
-    if (success) {
-      console.log("결제 정산 요청 성공:", container.domain);
-      return { success: true };
-    } else {
-      console.log("결제 정산 요청 실패", container.domain);
-      if (containerId) {
-        stopPostInterval(container.id);
-        window.electronAPI.stopContainer(containerId);
-      }
-      return { success: false };
-    }
   } catch (error) {
     console.log("결제 정산 요청 실패", container.domain);
-    if (containerId) {
+    if (containerId && containerinfo) {
       stopPostInterval(container.id);
       window.electronAPI.stopContainer(containerId);
+      sendInstanceUpdate(
+        containerinfo.serviceType,
+        containerinfo.deployId ?? 0, // undefined일 경우 기본값 0
+        containerinfo?.senderId ?? 0, // undefined일 경우 기본값 0
+        DeployStatus.STOPPED,
+        containerinfo.ports?.[0]?.external ?? 0 // undefined일 경우 기본값 0
+      );
     }
     return { success: false };
   }
@@ -57,7 +54,7 @@ export const startPostInterval = (container: PaymentInfo) => {
   if (!globalIntervalIds.has(container.id)) {
     const intervalId = setInterval(() => {
       postPaymentInfo(container);
-    }, 15 * 60 * 1000); // 15분(300,000밀리초)마다 요청
+    }, 1 * 30 * 1000); // 15분(300,000밀리초)마다 요청
 
     globalIntervalIds.set(container.id, intervalId);
     console.log(
