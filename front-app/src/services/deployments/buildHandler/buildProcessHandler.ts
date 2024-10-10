@@ -125,15 +125,6 @@ async function completeDeployment(
 
     //Store 저장 및 성공 상태 반환
     updateContainerInfo(id, newContainer);
-    //
-    sendInstanceUpdate(
-      instance.serviceType,
-      instance.deploymentId,
-      senderId,
-      "PENDING",
-      instance.outboundPort,
-      "PENDING"
-    );
     window.electronAPI.startContainerStats([container.Id]);
     // window.electronAPI.startLogStream(container.Id);
 

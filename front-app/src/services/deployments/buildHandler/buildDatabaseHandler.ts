@@ -104,15 +104,6 @@ async function handleSuccessfulContainerStart(
   };
   updateImageInfo(id, newImage);
   // 상태 업데이트
-  sendInstanceUpdate(
-    instance.serviceType,
-    instance.databaseId,
-    senderId,
-    "PENDING",
-    instance.outboundPort,
-    "PENDING"
-  );
-
   // pgrok 실행 및 결과 처리
   const result = await window.electronAPI.runPgrok(
     PGROK_URL,

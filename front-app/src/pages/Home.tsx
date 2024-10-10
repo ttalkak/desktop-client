@@ -13,6 +13,9 @@ const Home: React.FC = () => {
 
   const getUrl = (deployment: DeployContainerInfo) => {
     let subdomain = deployment.subdomainName;
+    if (subdomain == undefined) {
+      return ``;
+    }
     if (deployment.serviceType === "DATABASE") {
       subdomain = deployment.containerName;
       return `database_${subdomain}`;
