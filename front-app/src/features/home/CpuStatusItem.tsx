@@ -12,7 +12,8 @@ const CpuStatusItem = () => {
         setCpuUsage(usage); // CPU 사용률을 상태에 저장
       })
       .catch((error) => {
-        alert(`Failed to get CPU usage: ${error}`);
+        window.electronAPI.showMessageBox("CPU 사용량을 가져오는데 실패했습니다.")
+        console.log(`Failed to get CPU usage: ${error}`);
       });
   };
 

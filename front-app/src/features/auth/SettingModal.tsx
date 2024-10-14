@@ -158,7 +158,8 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
       });
 
       if (response.data.status === 200) {
-        alert("설정이 저장되었습니다.");
+        window.electronAPI.showMessageBox("설정이 저장되었습니다.")
+        // alert("설정이 저장되었습니다.");
 
         const updatedSettings = {
           ...userSettings,
@@ -175,7 +176,8 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
       }
     } catch (error) {
       console.error("설정을 저장하는 중 오류가 발생했습니다.", error);
-      alert("설정을 저장하는 중 오류가 발생했습니다.");
+      window.electronAPI.showMessageBox("설정을 저장하는 중 오류가 발생했습니다.")
+      // alert("설정을 저장하는 중 오류가 발생했습니다.");
     }
   };
 
@@ -399,7 +401,8 @@ const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) => {
                   setIsEditing(true);
                 }
               } else {
-                alert("서비스 실행 중에는 설정을 변경할 수 없습니다");
+                window.electronAPI.showMessageBox("서비스 실행 중에는 설정을 변경할 수 없습니다")
+                // alert("서비스 실행 중에는 설정을 변경할 수 없습니다");
               }
             }}
             className={`mt-2 px-3.5 py-1 rounded text-sm ${

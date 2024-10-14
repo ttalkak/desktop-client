@@ -17,7 +17,8 @@ export const startService = async () => {
   const address = userSettings?.address || "";
 
   if (address.trim() === "") {
-    alert("지갑 정보를 확인하세요");
+    window.electronAPI.showMessageBox("지갑 정보를 확인하세요")
+    // alert("지갑 정보를 확인하세요");
     return;
   }
 
@@ -48,7 +49,8 @@ export const startService = async () => {
     startContainerStatsMonitoring();
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);
-    alert("서비스를 시작하는 중 문제가 발생했습니다.");
+    window.electronAPI.showMessageBox("서비스를 시작하는 중 문제가 발생했습니다.")
+    // alert("서비스를 시작하는 중 문제가 발생했습니다.");
     setServiceStatus("stopped");
   }
 };

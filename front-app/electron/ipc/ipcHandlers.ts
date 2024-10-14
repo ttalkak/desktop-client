@@ -38,12 +38,13 @@ export function registerIpcHandlers() {
   // Docker Desktop을 실행하는 핸들러
   ipcMain.handle("open-docker-desktop", async (_event, dockerPath: string) => {
     if (!dockerPath) {
-      alert("dockerDesktop이 설치되었는지 확인해주세요");
+      ("dockerDesktop이 설치되었는지 확인해주세요");
     }
 
     exec(`"${dockerPath}"`, (error) => {
       if (error) {
-        alert("dockerDesktop 실행을 확인하세요.");
+        window.electronAPI.showMessageBox("dockerDesktop 실행을 확인하세요.")
+        // alert("dockerDesktop 실행을 확인하세요.");
       }
       console.log("Docker Desktop launched successfully.");
     });
