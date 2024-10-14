@@ -5,7 +5,7 @@ import {
   Tray,
   shell,
   ipcMain,
-  powerSaveBlocker,
+  powerSaveBlocker,dialog
 } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -22,6 +22,7 @@ import {
   handleGetContainerStatsPeriodic,
 } from "./managers/dockerEventManager";
 import { handleFetchContainerLogs } from "./managers/dockerLogsManager";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
@@ -92,6 +93,29 @@ function registerIpcHandlers() {
         return "LINUX";
       default:
         return "UNKNOWN";
+    }
+  });
+
+  // messagebox 사용하기
+  ipcMain.handle('show-dynamic-messagebox', async (_, message) => {
+    if (win) {  // win이 null이 아닌지 확인
+      const response = await dialog.showMessageBox(win, {
+        type: 'info',
+        buttons: ['OK'],
+        defaultId: 0,
+        title: 'Notification',
+        message: message,
+      });
+      return response.response;
+    } else {
+      console.error("Window is null, cannot show message box.");
+      return -1;  // 오류 코드 반환
+    }
+  });
+
+  ipcMain.on('close-messagebox', () => {
+    if (win) {
+      win.close();  // 창 닫기
     }
   });
 }

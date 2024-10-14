@@ -14,11 +14,15 @@ import { useContainerStore } from "../stores/containerStore";
 import { useImageStore } from "../stores/imageStore";
 import { DeployStatus } from "../types/deploy";
 
+
 const setWebsocketStatus = useAppStore.getState().setWebsocketStatus;
 const setServiceStatus = useAppStore.getState().setServiceStatus;
 const { createContainerEntry, updateContainerInfo } =
   useContainerStore.getState();
 const { createImageEntry, updateImageInfo } = useImageStore.getState();
+
+
+
 export function setupClientHandlers(userId: string): void {
   client.onConnect = (frame) => {
     console.log("Connected: " + frame);
@@ -119,7 +123,7 @@ export function setupClientHandlers(userId: string): void {
 
     // WebSocket 연결 해제 처리
     client.onDisconnect = () => {
-      alert("연결이 해제 되었습니다. 재시도 해주세요");
+      window.electronAPI.showMessageBox("연결이 해제 되었습니다. 재시도 해주세요")
       console.log("Websocket Disconnected....");
       setWebsocketStatus("disconnected");
       stopContainerStatsMonitoring();

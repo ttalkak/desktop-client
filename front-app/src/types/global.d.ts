@@ -264,6 +264,12 @@ declare global {
     stopdatabasePgrok: (databaseId: number) => Promise<string>;
   }
 
+
+  interface ElectronAPI {
+    showMessageBox: (message:string) =>Promise<number>;
+    closeMessageBox: () => void,
+  }
+
   // System and Project Operations
   interface ElectronAPI {
     minimizeWindow: () => void;

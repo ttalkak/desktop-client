@@ -227,6 +227,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getInboundRules: () => ipcRenderer.invoke("get-inbound-rules"),
   togglePort: (name: string, newEnabled: string) =>
     ipcRenderer.invoke("toggle-port", name, newEnabled),
+
+ // 메인 프로세스의 IPC 호출
+  showMessageBox: (message:string) => ipcRenderer.invoke('show-dynamic-messagebox', message), 
+  closeMessageBox: () => ipcRenderer.send('close-messagebox'),
+
+
 });
 
 contextBridge.exposeInMainWorld("ipcRenderer", {
