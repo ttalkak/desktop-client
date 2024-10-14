@@ -28,14 +28,14 @@ export const setCoinInterval = () => {
   console.log("주기적 요청 시작");
   if (!coinIntervalId) {
     coinIntervalId = setInterval(async () => {
-      const result = await getCoinInfo(); // 5분마다 코인 정보를 가져옴
+      const result = await getCoinInfo(); 
 
       if (result.success) {
         console.log("코인 정보가 성공적으로 업데이트되었습니다.");
       } else {
         console.warn("코인 정보 업데이트 실패");
       }
-    }, 5 * 60 * 1000); //5분 주기로 업데이트
+    }, 10 * 1000); //10초 주기로 업데이트
   }
 };
 
