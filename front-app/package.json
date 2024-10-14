@@ -8,7 +8,7 @@
   "author": "ssafy 11th C108",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder --win",
+    "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy:osx": "electron-builder --mac",
@@ -63,11 +63,11 @@
   "build": {
     "appId": "com.ttalkak.myapp",
     "productName": "Ttalkak",
-
     "files": [
       "dist-electron/**/*",
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!**/darwin/**"  
     ],
     "directories": {
       "buildResources": "assets"
@@ -83,8 +83,7 @@
           ]
         }
       ],
-      "icon": "public/ttalkak.ico",
-      "sign": false
+      "icon": "public/ttalkak.ico"
     },
     "nsis": {
       "oneClick": false,
