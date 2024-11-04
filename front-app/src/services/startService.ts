@@ -6,21 +6,21 @@ import { registerDockerEventHandlers } from "./deployments/dockerEventListner";
 import { connectWebSocket } from "./stompService";
 import { startContainerStatsMonitoring } from "./monitoring/healthCheckPingUtils";
 import { useCpuStore } from "../stores/cpuStore";
-import { useAuthStore } from "../stores/authStore";
+// import { useAuthStore } from "../stores/authStore";
 
 export const startService = async () => {
   const setServiceStatus = useAppStore.getState().setServiceStatus;
   const setDockerStatus = useAppStore.getState().setDockerStatus;
   const setOsType = useCpuStore.getState().setOsType;
 
-  const { userSettings } = useAuthStore.getState();
-  const address = userSettings?.address || "";
+  // const { userSettings } = useAuthStore.getState();
+  // const address = userSettings?.address || "";
 
-  if (address.trim() === "") {
-    window.electronAPI.showMessageBox("지갑 정보를 확인하세요")
-    // alert("지갑 정보를 확인하세요");
-    return;
-  }
+  // if (address.trim() === "") {
+  //   window.electronAPI.showMessageBox("지갑 정보를 확인하세요")
+  //   // alert("지갑 정보를 확인하세요");
+  //   return;
+  // }
 
   try {
     const OsType = await window.electronAPI.getOsType();
@@ -49,7 +49,9 @@ export const startService = async () => {
     startContainerStatsMonitoring();
   } catch (err) {
     console.error("!ServiceUtil: Error in service handler:", err);
-    window.electronAPI.showMessageBox("서비스를 시작하는 중 문제가 발생했습니다.")
+    window.electronAPI.showMessageBox(
+      "서비스를 시작하는 중 문제가 발생했습니다."
+    );
     // alert("서비스를 시작하는 중 문제가 발생했습니다.");
     setServiceStatus("stopped");
   }

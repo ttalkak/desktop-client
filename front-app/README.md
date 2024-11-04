@@ -1,3 +1,4 @@
 ## start
 
-npm run deploy:win64
+npm run build
+dist app/Ttalkak-Setup-0.0.0.exe

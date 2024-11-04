@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "ttalkak",
-  "author": "ssafy 11th C108",
+  "author": "KWS",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -67,12 +67,11 @@
       "dist-electron/**/*",
       "dist/**/*",
       "node_modules/**/*",
-      "!**/darwin/**"  
+      "!**/darwin/**"
     ],
     "directories": {
       "buildResources": "assets"
     },
-
     "win": {
       "target": [
         {
